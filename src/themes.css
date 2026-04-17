@@ -273,6 +273,7 @@
    Typographie globale — application des tokens
 ═══════════════════════════════════════════════════ */
 
+/* Titres : en clair = texte principal foncé ; en sombre = crème (échelle inversée) */
 h1,
 .ds-h1 {
   font-family: var(--font-display);
@@ -280,7 +281,7 @@ h1,
   font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1.1;
-  color: var(--orecchiette-50);
+  color: var(--theme-text);
 }
 
 h2,
@@ -290,7 +291,7 @@ h2,
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: var(--orecchiette-50);
+  color: var(--theme-text);
 }
 
 h3,
@@ -299,7 +300,7 @@ h3,
   font-size: var(--text-xl);
   font-weight: 600;
   line-height: 1.25;
-  color: var(--orecchiette-50);
+  color: var(--theme-text);
 }
 
 [data-theme='dark'] :is(h1, h2, h3, .ds-h1, .ds-h2, .ds-h3) {

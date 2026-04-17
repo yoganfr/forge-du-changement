@@ -1675,12 +1675,8 @@ const CSS = `
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: var(--orecchiette-50);
+  /* Couleur : hérite des règles h1 globales (theme-text clair / orecchiette-800 sombre) */
   margin: 0 0 var(--space-xs);
-}
-
-[data-theme='dark'] .ps-page-title {
-  color: var(--orecchiette-800);
 }
 
 .ps-page-sub {

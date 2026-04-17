@@ -543,7 +543,7 @@
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: var(--orecchiette-50);
+  color: var(--theme-text);
 }
 
 [data-theme='dark'] .dashboard__card-title {
@@ -687,7 +687,7 @@
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: var(--orecchiette-50);
+  color: var(--theme-text);
 }
 
 .dashboard__module-panel .dashboard__card-desc {
