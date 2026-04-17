@@ -1,16 +1,134 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  createInvitation,
   getWorkspaceInvitations,
   getWorkspaceUsers,
   isStorageBucketNotFound,
   updateWorkspace,
   uploadImageToStorage,
 } from './lib/api'
+import type { Invitation, User } from './lib/types'
 
 export interface CompanyMember {
   email: string
   role: string
   status?: 'invité' | 'actif'
+  /** Synthèse invitation + profil / connexion */
+  detail?: string
+  pillLabel?: string
+  pillVariant?: 'active' | 'invited' | 'pending' | 'expired' | 'inactive'
+}
+
+type InviteFormRole = 'Membre CODIR' | 'Pilote de projet' | 'Contributeur'
+
+const INVITE_ROLE_OPTIONS: InviteFormRole[] = ['Membre CODIR', 'Pilote de projet', 'Contributeur']
+
+function mapApiRoleToLabel(role: string): string {
+  const r = role.toLowerCase()
+  if (r === 'codir') return 'Membre CODIR'
+  if (r === 'pilote') return 'Pilote de projet'
+  if (r === 'contributeur') return 'Contributeur'
+  if (r === 'consultant') return 'Consultant'
+  return role
+}
+
+function toInvitationRole(role: InviteFormRole): 'codir' | 'pilote' | 'contributeur' {
+  if (role === 'Membre CODIR') return 'codir'
+  if (role === 'Pilote de projet') return 'pilote'
+  return 'contributeur'
+}
+
+function summarizeUserRow(user: User, invitation: Invitation | undefined): { detail: string; pillLabel: string; pillVariant: CompanyMember['pillVariant'] } {
+  const bits: string[] = []
+  if (invitation) {
+    if (invitation.status === 'en_attente') bits.push('Invitation en attente d’acceptation')
+    else if (invitation.status === 'expiree') bits.push('Dernière invitation expirée')
+    else bits.push('Invitation acceptée')
+  }
+  if (user.status === 'actif') {
+    bits.push('Profil rattaché à l’espace — compte actif (connexion enregistrée)')
+    return { detail: bits.join(' · '), pillLabel: 'Actif', pillVariant: 'active' }
+  }
+  if (user.status === 'invite') {
+    bits.push('Profil invité : pas encore compte actif / première connexion à finaliser')
+    return { detail: bits.join(' · '), pillLabel: 'Invité', pillVariant: 'invited' }
+  }
+  bits.push('Compte marqué inactif')
+  return { detail: bits.join(' · '), pillLabel: 'Inactif', pillVariant: 'inactive' }
+}
+
+function summarizeInviteOnlyRow(inv: Invitation): { detail: string; pillLabel: string; pillVariant: CompanyMember['pillVariant'] } {
+  if (inv.status === 'en_attente') {
+    return {
+      detail: 'Invitation envoyée — la personne n’a pas encore accepté ni créé de profil actif dans cet espace.',
+      pillLabel: 'En attente',
+      pillVariant: 'pending',
+    }
+  }
+  if (inv.status === 'expiree') {
+    return {
+      detail: 'Invitation expirée — renvoyer une invitation si la personne doit rejoindre l’espace.',
+      pillLabel: 'Expirée',
+      pillVariant: 'expired',
+    }
+  }
+  return {
+    detail: 'Invitation indiquée comme acceptée — si aucune ligne utilisateur n’apparaît, les données peuvent être en retard de synchro.',
+    pillLabel: 'Acceptée',
+    pillVariant: 'invited',
+  }
+}
+
+function mergeUsersAndInvitations(users: User[], invitations: Invitation[]): CompanyMember[] {
+  const key = (e: string) => e.trim().toLowerCase()
+  const byEmail = new Map<string, CompanyMember>()
+  const invByEmail = new Map<string, Invitation>()
+  for (const inv of invitations) {
+    invByEmail.set(key(inv.email), inv)
+  }
+  for (const user of users) {
+    const k = key(user.email)
+    const invitation = invByEmail.get(k)
+    const { detail, pillLabel, pillVariant } = summarizeUserRow(user, invitation)
+    byEmail.set(k, {
+      email: user.email,
+      role: mapApiRoleToLabel(user.role),
+      status: user.status === 'actif' ? 'actif' : 'invité',
+      detail,
+      pillLabel,
+      pillVariant,
+    })
+  }
+  for (const inv of invitations) {
+    const k = key(inv.email)
+    if (byEmail.has(k)) continue
+    const { detail, pillLabel, pillVariant } = summarizeInviteOnlyRow(inv)
+    byEmail.set(k, {
+      email: inv.email,
+      role: mapApiRoleToLabel(inv.role),
+      status: 'invité',
+      detail,
+      pillLabel,
+      pillVariant,
+    })
+  }
+  return Array.from(byEmail.values()).sort((a, b) => a.email.localeCompare(b.email, 'fr'))
+}
+
+function inviteApiErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = String((error as { message?: unknown }).message ?? '').trim()
+    if (message) return message
+  }
+  return 'Impossible d’envoyer l’invitation.'
+}
+
+function pillClass(variant: CompanyMember['pillVariant']): string {
+  if (variant === 'active') return 'cs-status cs-status--active'
+  if (variant === 'pending') return 'cs-status cs-status--pending'
+  if (variant === 'expired') return 'cs-status cs-status--expired'
+  if (variant === 'inactive') return 'cs-status cs-status--inactive'
+  return 'cs-status cs-status--invited'
 }
 
 export interface CompanySheetProps {
@@ -77,6 +195,12 @@ export default function CompanySheet({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [remoteMembers, setRemoteMembers] = useState<CompanyMember[] | null>(null)
+  const [membersRefreshKey, setMembersRefreshKey] = useState(0)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<InviteFormRole>('Contributeur')
+  const [inviteSubmitting, setInviteSubmitting] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     setLogoUrl(companyLogoProp ?? null)
@@ -117,34 +241,41 @@ export default function CompanySheet({
           getWorkspaceInvitations(workspaceId),
         ])
         if (cancelled) return
-
-        const byEmail = new Map<string, CompanyMember>()
-        for (const user of users) {
-          byEmail.set(user.email, {
-            email: user.email,
-            role: user.role,
-            status: user.status === 'actif' ? 'actif' : 'invité',
-          })
-        }
-        for (const inv of invitations) {
-          if (!byEmail.has(inv.email)) {
-            byEmail.set(inv.email, {
-              email: inv.email,
-              role: inv.role,
-              status: inv.status === 'acceptee' ? 'actif' : 'invité',
-            })
-          }
-        }
-        setRemoteMembers(Array.from(byEmail.values()))
+        setRemoteMembers(mergeUsersAndInvitations(users, invitations))
       } catch {
-        // fallback on props members
         setRemoteMembers(null)
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [workspaceId])
+  }, [workspaceId, membersRefreshKey])
+
+  async function submitSingleInvitation() {
+    if (!workspaceId) return
+    const email = inviteEmail.trim().toLowerCase()
+    setInviteError(null)
+    setInviteSuccess(null)
+    if (!email || !email.includes('@')) {
+      setInviteError('Saisissez une adresse email valide.')
+      return
+    }
+    setInviteSubmitting(true)
+    try {
+      await createInvitation({
+        workspace_id: workspaceId,
+        email,
+        role: toInvitationRole(inviteRole),
+      })
+      setInviteEmail('')
+      setInviteSuccess(`Invitation envoyée à ${email}`)
+      setMembersRefreshKey((k) => k + 1)
+    } catch (err) {
+      setInviteError(inviteApiErrorMessage(err))
+    } finally {
+      setInviteSubmitting(false)
+    }
+  }
 
   async function persist() {
     setSaveError(null)
@@ -283,8 +414,9 @@ export default function CompanySheet({
             <div className="cs-members">
               {mergedMembers.map((member, idx) => {
                 const badgeColor = memberAvatarColor(member.role)
-                const status = member.status ?? 'invité'
-                const isActive = status === 'actif'
+                const pillLabel =
+                  member.pillLabel ?? (member.status === 'actif' ? 'Actif' : 'Invité')
+                const pillVariant = member.pillVariant ?? (member.status === 'actif' ? 'active' : 'invited')
                 return (
                   <div key={`${member.email}-${idx}`} className="cs-member-row">
                     <div className="cs-member-avatar" style={{ background: badgeColor }}>
@@ -292,12 +424,15 @@ export default function CompanySheet({
                     </div>
                     <div className="cs-member-main">
                       <span className="cs-member-email">{member.email}</span>
+                      {member.detail && (
+                        <span className="cs-member-detail">{member.detail}</span>
+                      )}
                     </div>
                     <span className="cs-member-role" style={{ borderColor: badgeColor, color: badgeColor }}>
                       {member.role}
                     </span>
-                    <span className={isActive ? 'cs-status cs-status--active' : 'cs-status cs-status--invited'}>
-                      {isActive ? 'Actif' : 'Invité'}
+                    <span className={pillClass(pillVariant)}>
+                      {pillLabel}
                     </span>
                   </div>
                 )
@@ -305,6 +440,51 @@ export default function CompanySheet({
             </div>
           )}
         </div>
+
+        {canEdit && workspaceId && (
+          <div className="cs-section cs-section--invite">
+            <h3>Inviter un membre</h3>
+            <p className="cs-invite-lead">
+              Une invitation est créée dans l’espace ; le statut de chaque personne (acceptation, profil, connexion)
+              apparaît dans la liste ci-dessus après actualisation.
+            </p>
+            <div className="cs-invite-row">
+              <label className="cs-invite-field">
+                <span className="cs-label">Email</span>
+                <input
+                  type="email"
+                  className="cs-edit-input"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="prenom.nom@entreprise.com"
+                  autoComplete="email"
+                />
+              </label>
+              <label className="cs-invite-field cs-invite-field--role">
+                <span className="cs-label">Rôle</span>
+                <select
+                  className="cs-edit-input cs-edit-input--select"
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as InviteFormRole)}
+                >
+                  {INVITE_ROLE_OPTIONS.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="cs-invite-submit"
+                onClick={() => { void submitSingleInvitation() }}
+                disabled={inviteSubmitting}
+              >
+                {inviteSubmitting ? 'Envoi…' : 'Envoyer l’invitation'}
+              </button>
+            </div>
+            {inviteError && <p className="cs-invite-msg cs-invite-msg--error">{inviteError}</p>}
+            {inviteSuccess && <p className="cs-invite-msg cs-invite-msg--ok">{inviteSuccess}</p>}
+          </div>
+        )}
 
         {canEdit && (
           <div className="cs-actions">
@@ -467,9 +647,9 @@ const CSS = `
 
 .cs-member-row {
   display: grid;
-  grid-template-columns: 32px 1fr auto auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
   gap: 10px;
-  align-items: center;
+  align-items: start;
   border: 1px solid var(--theme-border);
   border-radius: 10px;
   padding: 8px 10px;
@@ -484,11 +664,30 @@ const CSS = `
   font-weight: 700;
   display: grid;
   place-items: center;
+  align-self: center;
+}
+
+.cs-member-row > .cs-member-role,
+.cs-member-row > .cs-status {
+  align-self: center;
 }
 
 .cs-member-email {
   font-size: 14px;
   color: var(--theme-text);
+}
+
+.cs-member-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cs-member-detail {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-text-muted);
 }
 
 .cs-member-role {
@@ -505,7 +704,70 @@ const CSS = `
 }
 
 .cs-status--active { color: #10B981; }
-.cs-status--invited { color: var(--theme-text-muted); }
+.cs-status--invited { color: #B45309; }
+.cs-status--pending { color: #4C86A8; }
+.cs-status--expired { color: #B91C1C; }
+.cs-status--inactive { color: var(--theme-text-muted); }
+
+.cs-section--invite {
+  margin-top: 8px;
+}
+
+.cs-invite-lead {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-text-muted);
+}
+
+.cs-invite-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.cs-invite-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.cs-invite-field--role {
+  flex: 0 0 200px;
+}
+
+.cs-edit-input--select {
+  cursor: pointer;
+}
+
+.cs-invite-submit {
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #4C86A8;
+  color: white;
+  font-weight: 700;
+  padding: 0 14px;
+  font-size: 13px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.cs-invite-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.cs-invite-msg {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.cs-invite-msg--error { color: #B91C1C; }
+.cs-invite-msg--ok { color: #10B981; }
 
 .cs-note {
   margin: 24px 0 0;

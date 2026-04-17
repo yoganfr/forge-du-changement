@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import './App.css'
 import ProjectSelector from './ProjectSelector'
@@ -7,9 +7,10 @@ import OnboardingFlow from './OnboardingFlow'
 import CompanySheet from './CompanySheet'
 import ProfileSheet from './ProfileSheet'
 import Login from './pages/Login'
+import SettingsPage from './pages/Settings'
 import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
-import { getWorkspace } from './lib/api'
+import { getWorkspace, listWorkspaces } from './lib/api'
 import type { Workspace } from './lib/types'
 import {
   clearWorkspaceSnapshot,
@@ -82,14 +83,54 @@ function App() {
 
   const [showProfile, setShowProfile] = useState(false)
   const [showWorkspaceOnboarding, setShowWorkspaceOnboarding] = useState(false)
+  const [workspacesCatalog, setWorkspacesCatalog] = useState<Workspace[]>([])
+  const [workspacesLoading, setWorkspacesLoading] = useState(false)
+  const [workspacesError, setWorkspacesError] = useState<string | null>(null)
   const storedRole = localStorage.getItem('lfdc-user-role') as AppUserRole | null
   const currentUserRole: AppUserRole = storedRole ?? 'consultant'
-  const canManageWorkspaces = currentUserRole === 'consultant' || currentUserRole === 'admin'
+  /** Paramètres globaux de l’espace : consultants et administrateurs. */
+  const canAccessSettings = currentUserRole === 'consultant' || currentUserRole === 'admin'
 
   useLayoutEffect(() => {
     applyThemeToDocument(theme)
     persistTheme(theme)
   }, [theme])
+
+  useEffect(() => {
+    if (activeNav === 'settings' && !canAccessSettings) {
+      setActiveNav('home')
+    }
+  }, [activeNav, canAccessSettings])
+
+  const refreshWorkspacesCatalog = useCallback(async () => {
+    if (!canAccessSettings) return
+    setWorkspacesLoading(true)
+    setWorkspacesError(null)
+    try {
+      const list = await listWorkspaces()
+      setWorkspacesCatalog(list)
+    } catch (err) {
+      const message =
+        typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message?: unknown }).message ?? '').trim()
+          : ''
+      setWorkspacesError(message || 'Impossible de charger la liste des entreprises.')
+      setWorkspacesCatalog([])
+    } finally {
+      setWorkspacesLoading(false)
+    }
+  }, [canAccessSettings])
+
+  useEffect(() => {
+    if (activeNav !== 'settings' || !canAccessSettings) return
+    void refreshWorkspacesCatalog()
+  }, [activeNav, canAccessSettings, refreshWorkspacesCatalog])
+
+  const handleSelectWorkspaceFromSettings = useCallback((id: string) => {
+    localStorage.setItem('workspaceId', id)
+    setWorkspaceId(id)
+    setActiveNav('company')
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -273,6 +314,7 @@ function App() {
           setWorkspaceData(data)
           setActiveNav('company')
           setShowWorkspaceOnboarding(false)
+          void refreshWorkspacesCatalog()
         }}
       />
     )
@@ -343,15 +385,6 @@ function App() {
           </nav>
 
           <div className="dashboard__topbar-actions">
-            {canManageWorkspaces && (
-              <button
-                type="button"
-                className="dashboard__admin-btn"
-                onClick={() => setShowWorkspaceOnboarding(true)}
-              >
-                + Entreprise
-              </button>
-            )}
             <button
               type="button"
               className="dashboard__theme-toggle"
@@ -392,6 +425,24 @@ function App() {
                   : userInitials}
               </div>
             </button>
+            {canAccessSettings && (
+              <button
+                type="button"
+                className={
+                  [
+                    'dashboard__settings-btn',
+                    activeNav === 'settings' ? 'dashboard__settings-btn--active' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                }
+                onClick={() => setActiveNav('settings')}
+                aria-label="Paramètres"
+                title="Paramètres"
+              >
+                ⚙
+              </button>
+            )}
             <button
               type="button"
               className="dashboard__logout-btn"
@@ -416,7 +467,7 @@ function App() {
 
       <div className="dashboard__main">
         <main className="dashboard__content">
-          {activeNav === 'home' || (!['fabrique', 'workspace', 'sens', 'roles', 'company'].includes(activeNav)) ? (
+          {activeNav === 'home' || (!['fabrique', 'workspace', 'sens', 'roles', 'company', 'settings'].includes(activeNav)) ? (
             <div className="dashboard__module-panel">
               <div className="dashboard__module-panel-deco" aria-hidden="true" />
               <div
@@ -450,6 +501,17 @@ function App() {
                 </div>
               </div>
             </div>
+          ) : activeNav === 'settings' ? (
+            <SettingsPage
+              workspaceId={workspaceId}
+              workspaceName={workspaceName}
+              workspaces={workspacesCatalog}
+              workspacesLoading={workspacesLoading}
+              workspacesError={workspacesError}
+              onRefreshWorkspaces={() => { void refreshWorkspacesCatalog() }}
+              onSelectWorkspace={handleSelectWorkspaceFromSettings}
+              onAddWorkspace={() => setShowWorkspaceOnboarding(true)}
+            />
           ) : activeNav === 'fabrique' ? (
             <ProjectSelector
               memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}

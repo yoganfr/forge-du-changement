@@ -55,6 +55,16 @@ export async function getWorkspace(id: string): Promise<Workspace> {
   return data as Workspace
 }
 
+/** Liste des espaces entreprise (consultant / admin). Nécessite une policy RLS SELECT adaptée. */
+export async function listWorkspaces(): Promise<Workspace[]> {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .select('id, company_name, sector, size, logo_url, created_at')
+    .order('company_name', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as Workspace[]
+}
+
 export async function updateWorkspace(
   id: string,
   data: Partial<Pick<Workspace, 'company_name' | 'sector' | 'size' | 'logo_url'>>,
