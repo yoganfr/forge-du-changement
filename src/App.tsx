@@ -4,7 +4,8 @@ import ProjectSelector from './ProjectSelector'
 import MemberOnboarding from './MemberOnboarding'
 import OnboardingFlow from './OnboardingFlow'
 import CompanySheet from './CompanySheet'
-import ProfileSheet from './ProfileSheet.tsx'
+import ProfileSheet from './ProfileSheet'
+import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
 import {
   applyThemeToDocument,
@@ -58,11 +59,13 @@ function App() {
   const storedProfile = (() => {
     try {
       const raw = localStorage.getItem('lfdc-member-onboarding')
-      return raw ? JSON.parse(raw) as { firstName?: string; lastName?: string; jobTitle?: string; directionName?: string; mission?: string; vision?: string } : null
+      return raw ? JSON.parse(raw) as StoredMemberProfile : null
     } catch {
       return null
     }
   })()
+
+  const [showProfile, setShowProfile] = useState(false)
 
   useLayoutEffect(() => {
     applyThemeToDocument(theme)
@@ -76,7 +79,14 @@ function App() {
           setOnboardingDone(true)
           setWorkspaceName(data.companyName)
           setCompanyLogo(data.companyLogo)
-          setUserInitials(`${storedProfile?.firstName?.[0] ?? ''}${storedProfile?.lastName?.[0] ?? ''}`.toUpperCase() || '?')
+          try {
+            const raw = localStorage.getItem('lfdc-member-onboarding')
+            const p = raw ? JSON.parse(raw) as StoredMemberProfile : {}
+            const u = `${p.firstName?.[0] ?? ''}${p.lastName?.[0] ?? ''}`.toUpperCase() || '?'
+            setUserInitials(u)
+          } catch {
+            setUserInitials('?')
+          }
           setWorkspaceData(data)
         }}
       />
@@ -212,7 +222,7 @@ function App() {
             <button
               type="button"
               className="user-badge"
-              onClick={() => setActiveNav('profile')}
+              onClick={() => setShowProfile(true)}
               title="Mon profil"
             >
               <div className="user-badge-avatar">
@@ -223,7 +233,7 @@ function App() {
         </header>
 
         <main className="dashboard__content">
-          {activeNav === 'home' || (!['fabrique', 'workspace', 'profile', 'sens', 'roles', 'company'].includes(activeNav)) ? (
+          {activeNav === 'home' || (!['fabrique', 'workspace', 'sens', 'roles', 'company'].includes(activeNav)) ? (
             <>
               <p className="dashboard__intro">
                 Choisissez un module pour poursuivre votre parcours de transformation.
@@ -247,7 +257,7 @@ function App() {
               </div>
             </>
           ) : activeNav === 'fabrique' ? (
-            <ProjectSelector />
+            <ProjectSelector memberDirectionName={storedProfile?.directionName ?? 'Ma direction'} />
           ) : activeNav === 'company' ? (
             <CompanySheet
               companyName={workspaceData?.companyName ?? workspaceName}
@@ -263,21 +273,34 @@ function App() {
               role="codir"
               onNavigate={setActiveNav}
             />
-          ) : activeNav === 'profile' ? (
-            <ProfileSheet
-              firstName={storedProfile?.firstName ?? ''}
-              lastName={storedProfile?.lastName ?? ''}
-              jobTitle={storedProfile?.jobTitle ?? ''}
-              direction={storedProfile?.directionName ?? ''}
-              mission={storedProfile?.mission ?? ''}
-              vision={storedProfile?.vision ?? ''}
-              role="codir"
-            />
           ) : (
             <></>
           )}
         </main>
       </div>
+
+      <ProfileSheet
+        open={showProfile}
+        onClose={() => setShowProfile(false)}
+        firstName={storedProfile?.firstName ?? ''}
+        lastName={storedProfile?.lastName ?? ''}
+        jobTitle={storedProfile?.jobTitle ?? ''}
+        direction={storedProfile?.directionName ?? ''}
+        mission={storedProfile?.mission ?? ''}
+        vision={storedProfile?.vision ?? ''}
+        role="codir"
+        directionType={storedProfile?.directionType}
+        managedCount={storedProfile?.managedCount}
+        totalEffectif={storedProfile?.totalEffectif}
+        avatarUrl={storedProfile?.avatar ?? null}
+        onSaved={() => {
+          try {
+            const raw = localStorage.getItem('lfdc-member-onboarding')
+            const p = raw ? JSON.parse(raw) as StoredMemberProfile : {}
+            setUserInitials(`${p.firstName?.[0] ?? ''}${p.lastName?.[0] ?? ''}`.toUpperCase() || '?')
+          } catch { /* ignore */ }
+        }}
+      />
     </div>
   )
 }

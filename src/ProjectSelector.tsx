@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -36,6 +36,7 @@ type Project = {
   pilote: string
   gains_quantitatifs?: number
   gains_qualitatifs?: string
+  contributorDirections: string[]
 }
 
 type Perimetre = {
@@ -117,6 +118,68 @@ const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
 
 const PERIMETRE_COLORS = ['#8E3B46', '#4C86A8', '#477890', '#6B7280', '#7C3AED', '#059669']
 
+const DIR_PERIM_ID = 'perim-direction'
+const TRANS_PERIM_ID = 'perim-transverse'
+
+const SIMULATED_DIRECTIONS = [
+  'Direction Financière',
+  'Direction IT',
+  'Direction Marketing',
+  'Direction Opérations',
+] as const
+
+function emptyPlanning(): Record<string, boolean> {
+  return MONTH_KEYS.reduce((acc, k) => ({ ...acc, [k]: false }), {} as Record<string, boolean>)
+}
+
+function createEmptyProject(): Project {
+  return {
+    id: `proj-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: '',
+    thematique: '',
+    problematique: '',
+    description: '',
+    type: 'RUN',
+    scores: {
+      criticite: 3,
+      urgence: 3,
+      recurrence: 3,
+      temps: 3,
+      etp: 3,
+      investissement: 3,
+    },
+    competences_dispo: true,
+    selected_for_transfo: false,
+    planning: emptyPlanning(),
+    pilote: '',
+    gains_quantitatifs: undefined,
+    gains_qualitatifs: '',
+    contributorDirections: [],
+  }
+}
+
+function buildInitialPerimetres(directionLabel: string): Perimetre[] {
+  const dn = directionLabel.trim() || 'Ma direction'
+  return [
+    {
+      id: DIR_PERIM_ID,
+      name: dn,
+      color: PERIMETRE_COLORS[0],
+      mission: '',
+      vision: '',
+      projects: [],
+    },
+    {
+      id: TRANS_PERIM_ID,
+      name: 'Projets transverses',
+      color: PERIMETRE_COLORS[1],
+      mission: '',
+      vision: '',
+      projects: [],
+    },
+  ]
+}
+
 // ─── Calcul du score ────────────────────────────────────────────────────────
 
 function computeScore(project: Project, coefs: Coefficients): number {
@@ -159,8 +222,6 @@ function getScoreLabel(score: number): string {
 
 // ─── Données de démo ─────────────────────────────────────────────────────────
 
-const EMPTY_DATA: Perimetre[] = []
-
 function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Perimetre[] {
   return data.map((perimetre) => {
     const topBuildIds = new Set(
@@ -181,8 +242,6 @@ function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Per
   })
 }
 
-const INITIAL_DATA = autoSelectTopBuildProjects(EMPTY_DATA, DEFAULT_COEFFICIENTS)
-
 function applyMemberDirectionPrefill(data: Perimetre[]): Perimetre[] {
   if (typeof window === 'undefined') return data
   const raw = window.localStorage.getItem('lfdc-member-onboarding')
@@ -198,12 +257,12 @@ function applyMemberDirectionPrefill(data: Perimetre[]): Perimetre[] {
     const directionName = (parsed.directionName ?? '').trim()
     const mission = (parsed.mission ?? '').trim()
     const vision = (parsed.vision ?? '').trim()
-    if (!directionName) return data
 
     return data.map((perimetre) => {
-      if (perimetre.name !== directionName) return perimetre
+      if (perimetre.id !== DIR_PERIM_ID) return perimetre
       return {
         ...perimetre,
+        name: directionName || perimetre.name,
         mission: mission || perimetre.mission,
         vision: vision || perimetre.vision,
       }
@@ -258,11 +317,55 @@ function GanttPilules({
   )
 }
 
+function MiniGantt12({
+  planning,
+  color,
+}: {
+  planning: Record<string, boolean>
+  color: string
+}) {
+  return (
+    <div className="mini-gantt-12" aria-hidden>
+      {MONTH_KEYS.map((key, i) => (
+        <span
+          key={key}
+          className={`mini-gantt-12__cell ${planning[key] ? 'mini-gantt-12__cell--on' : ''}`}
+          style={planning[key] ? { background: color } : undefined}
+          title={MONTHS[i]}
+        />
+      ))}
+    </div>
+  )
+}
+
+function ScoreRing40({ score }: { score: number }) {
+  const color = getScoreColor(score)
+  const c = 100.53
+  return (
+    <div className="score-ring-40">
+      <svg className="score-ring-40__svg" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeOpacity="0.12" strokeWidth="3" />
+        <circle
+          cx="20"
+          cy="20"
+          r="16"
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeDasharray={`${(score / 100) * c} ${c}`}
+          strokeLinecap="round"
+          transform="rotate(-90 20 20)"
+        />
+      </svg>
+      <span className="score-ring-40__val" style={{ color }}>{score}</span>
+    </div>
+  )
+}
+
 // ─── Score Badge ─────────────────────────────────────────────────────────────
 
 function ScoreBadge({ score }: { score: number }) {
   const color = getScoreColor(score)
-  const label = getScoreLabel(score)
   return (
     <div className="score-badge" style={{ '--score-color': color } as React.CSSProperties}>
       <svg className="score-ring" viewBox="0 0 36 36">
@@ -276,7 +379,7 @@ function ScoreBadge({ score }: { score: number }) {
         />
       </svg>
       <span className="score-value" style={{ color }}>{score}</span>
-      <span className="score-label" style={{ color }}>{label}</span>
+      <span className="score-label" style={{ color }}>criticité</span>
     </div>
   )
 }
@@ -331,6 +434,9 @@ function ProjectCard({
   coefs,
   perimColor,
   dgRank,
+  isTransverse,
+  expanded,
+  onToggleExpand,
   onToggleTransfo,
   onSaveProject,
 }: {
@@ -338,11 +444,23 @@ function ProjectCard({
   coefs: Coefficients
   perimColor: string
   dgRank?: number
+  isTransverse: boolean
+  expanded: boolean
+  onToggleExpand: () => void
   onToggleTransfo: () => void
   onSaveProject: (updates: Partial<Project>) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
   const [draft, setDraft] = useState<Project>(project)
+  const [pilotageError, setPilotageError] = useState(false)
+
+  useEffect(() => {
+    if (expanded) {
+      setDraft(project)
+      setPilotageError(false)
+    }
+  }, [expanded, project])
+
+  const displayScoreCollapsed = computeScore(project, coefs)
   const score = computeScore(draft, coefs)
 
   const updateDraftScore = (key: keyof Scores, v: number) => {
@@ -351,6 +469,17 @@ function ProjectCard({
 
   const toggleDraftPlanning = (key: string) => {
     setDraft((prev) => ({ ...prev, planning: { ...prev.planning, [key]: !prev.planning[key] } }))
+  }
+
+  const toggleContributor = (label: string) => {
+    setDraft((prev) => {
+      const has = prev.contributorDirections.includes(label)
+      const contributorDirections = has
+        ? prev.contributorDirections.filter((d) => d !== label)
+        : [...prev.contributorDirections, label]
+      return { ...prev, contributorDirections }
+    })
+    setPilotageError(false)
   }
 
   const formula = `${(Object.keys(coefs) as Array<keyof Coefficients>).map((k) => `${draft.scores[k]}×${coefs[k]}`).join(' + ')}`
@@ -372,27 +501,59 @@ function ProjectCard({
   const scoreBuild = draft.type === 'BUILD' ? Math.round(scoreRaw * 1.5) : scoreRaw
   const scoreFinal = computeScore(draft, coefs)
 
+  const titleLine = project.name.trim() || 'Nouveau projet'
+
+  function handleSave() {
+    if (isTransverse && draft.contributorDirections.length === 0) {
+      setPilotageError(true)
+      return
+    }
+    onSaveProject(draft)
+    onToggleExpand()
+  }
+
+  function handleCancel() {
+    setDraft(project)
+    onToggleExpand()
+  }
+
+  const contribLabel = isTransverse ? 'Directions co-pilotes *' : 'Directions contributrices'
+  const contribRequired = isTransverse
+
   return (
-    <div className={`project-card ${project.selected_for_transfo ? 'project-card--selected' : ''}`}
-      style={{ '--perim-color': perimColor } as React.CSSProperties}>
-      <div className="project-card__header" onClick={() => { setDraft(project); setExpanded(!expanded) }}>
-        <div className="project-card__meta">
-          <div className="project-card__top">
-            <span className={`type-badge type-badge--${project.type.toLowerCase()}`}>{project.type}</span>
-            <span className="project-thematique">{project.thematique}</span>
-            {!project.competences_dispo && (
-              <span className="competence-warn" title="Compétences non disponibles">⚠ Compétences</span>
-            )}
-          </div>
-          <h3 className="project-name">{project.name}</h3>
-          <p className="project-problematique">{project.problematique}</p>
-        </div>
-        <div className="project-card__right">
+    <div
+      className={`project-card ${project.selected_for_transfo ? 'project-card--selected' : ''}`}
+      style={{ '--perim-color': perimColor } as React.CSSProperties}
+    >
+      <div
+        className="project-card__header project-card__header--compact"
+        onClick={() => {
+          if (!expanded) setDraft(project)
+          onToggleExpand()
+        }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            if (!expanded) setDraft(project)
+            onToggleExpand()
+          }
+        }}
+      >
+        <span className={`type-badge type-badge--${project.type.toLowerCase()}`}>{project.type}</span>
+        <span className="project-name-compact">{titleLine}</span>
+        <MiniGantt12 planning={project.planning} color={perimColor} />
+        <ScoreRing40 score={displayScoreCollapsed} />
+        <div className="project-card__header-actions">
           {project.type === 'BUILD' && (
             <button
               type="button"
               className={`transfo-toggle ${project.selected_for_transfo ? 'transfo-toggle--on' : ''}`}
-              onClick={(e) => { e.stopPropagation(); onToggleTransfo() }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleTransfo()
+              }}
               title="Retenir pour le DG"
             >
               {project.selected_for_transfo ? `★ #${dgRank} DG` : '☆ Retenir'}
@@ -427,10 +588,6 @@ function ProjectCard({
                 </div>
                 {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 DG</div>}
               </div>
-              <label className="project-field">
-                <span>Pilote</span>
-                <input value={draft.pilote} onChange={(e) => setDraft((p) => ({ ...p, pilote: e.target.value }))} placeholder="Nom du pilote du projet" />
-              </label>
               <label className="project-field">
                 <span>Gains quantitatifs (€)</span>
                 <div className="input-prefix-wrap">
@@ -481,7 +638,7 @@ function ProjectCard({
             </div>
           </div>
 
-          <div className="project-planning">
+          <div className="project-planning project-planning--section-a">
             <div className="section-title">Planning prévisionnel</div>
             <GanttPilules planning={draft.planning} color={perimColor} editable onChange={toggleDraftPlanning} />
             <div className="recap-block">
@@ -521,10 +678,45 @@ function ProjectCard({
                 <div>Score final : <span className="recap-final-badge" style={{ background: getScoreColor(scoreFinal) }}>{scoreFinal} — {getScoreLabel(scoreFinal)}</span></div>
               </div>
             </div>
-            <div className="project-form-actions">
-              <button type="button" className="project-btn project-btn--ghost" onClick={() => { setDraft(project); setExpanded(false) }}>Annuler</button>
-              <button type="button" className="project-btn project-btn--primary" onClick={() => { onSaveProject(draft); setExpanded(false) }}>Enregistrer les modifications</button>
+          </div>
+
+          <div className="pilotage-section">
+            <div className="section-title">Pilotage &amp; contributeurs</div>
+            {isTransverse && (
+              <div className="pilotage-transverse-note">
+                Un projet transverse implique plusieurs directions. Il apparaîtra dans l&apos;espace de chaque direction co-pilote sélectionnée.
+              </div>
+            )}
+            <label className="project-field">
+              <span>Pilote du projet</span>
+              <input value={draft.pilote} onChange={(e) => setDraft((p) => ({ ...p, pilote: e.target.value }))} placeholder="Nom du pilote" />
+            </label>
+            <div className="project-field">
+              <span>
+                {contribLabel}
+              </span>
+              <div className="contrib-pills">
+                {SIMULATED_DIRECTIONS.map((dir) => (
+                  <button
+                    key={dir}
+                    type="button"
+                    className={`contrib-pill ${draft.contributorDirections.includes(dir) ? 'contrib-pill--active' : ''}`}
+                    onClick={() => toggleContributor(dir)}
+                  >
+                    {dir}
+                  </button>
+                ))}
+              </div>
+              {pilotageError && contribRequired && (
+                <div className="pilotage-err">Sélectionnez au moins une direction co-pilote.</div>
+              )}
+              <p className="pilotage-hint">Ces directions seront notifiées et auront accès à ce projet</p>
             </div>
+          </div>
+
+          <div className="project-form-actions project-form-actions--footer">
+            <button type="button" className="project-btn project-btn--ghost" onClick={handleCancel}>Annuler</button>
+            <button type="button" className="project-btn project-btn--primary" onClick={handleSave}>Enregistrer</button>
           </div>
         </div>
       )}
@@ -591,10 +783,16 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
 function PerimetreView({
   perimetre,
   coefs,
+  isTransverse,
+  expandedProjectId,
+  onExpandedChange,
   onUpdateProject,
 }: {
   perimetre: Perimetre
   coefs: Coefficients
+  isTransverse: boolean
+  expandedProjectId: string | null
+  onExpandedChange: (id: string | null) => void
   onUpdateProject: (perimId: string, projId: string, updates: Partial<Project>) => void
 }) {
   const [mode, setMode] = useState<'edition' | 'synthese'>('edition')
@@ -610,15 +808,11 @@ function PerimetreView({
 
   return (
     <div className="perimetre-view">
-      <div className="perimetre-header">
-        <div className="perimetre-dot" style={{ background: perimetre.color }} />
-        <div>
-          <h2 className="perimetre-name">{perimetre.name}</h2>
-          <div className="perimetre-stats">
-            <span>{perimetre.projects.length} projets</span>
-            <span>·</span>
-            <span style={{ color: perimetre.color }}>{selectedCount}/5 soumis au DG</span>
-          </div>
+      <div className="perimetre-toolbar-row">
+        <div className="perimetre-stats-inline">
+          <span>{perimetre.projects.length} projet{perimetre.projects.length !== 1 ? 's' : ''}</span>
+          <span>·</span>
+          <span style={{ color: perimetre.color }}>{selectedCount}/5 soumis au DG</span>
         </div>
         <div className="mode-toggle">
           <button
@@ -650,6 +844,9 @@ function PerimetreView({
               project={project}
               coefs={coefs}
               perimColor={perimetre.color}
+              isTransverse={isTransverse}
+              expanded={expandedProjectId === project.id}
+              onToggleExpand={() => onExpandedChange(expandedProjectId === project.id ? null : project.id)}
               dgRank={dgRanks.get(project.id)}
               onToggleTransfo={() => {
                 if (!project.selected_for_transfo && selectedCount >= 5) return
@@ -668,6 +865,9 @@ function PerimetreView({
               project={project}
               coefs={coefs}
               perimColor={perimetre.color}
+              isTransverse={isTransverse}
+              expanded={expandedProjectId === project.id}
+              onToggleExpand={() => onExpandedChange(expandedProjectId === project.id ? null : project.id)}
               onToggleTransfo={() => {}}
               onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
             />
@@ -721,13 +921,30 @@ function CoefPanel({ coefs, onChange, onClose }: {
 
 // ─── Composant Principal ──────────────────────────────────────────────────────
 
-export default function ProjectSelector() {
-  const [perimetres, setPerimetres] = useState<Perimetre[]>(() => applyMemberDirectionPrefill(INITIAL_DATA))
-  const [activeId, setActiveId] = useState<string | null>(INITIAL_DATA[0]?.id ?? null)
+export interface ProjectSelectorProps {
+  memberDirectionName?: string
+}
+
+export default function ProjectSelector({ memberDirectionName = 'Ma direction' }: ProjectSelectorProps) {
+  const [perimetres, setPerimetres] = useState<Perimetre[]>(() =>
+    applyMemberDirectionPrefill(
+      autoSelectTopBuildProjects(buildInitialPerimetres(memberDirectionName), DEFAULT_COEFFICIENTS),
+    ),
+  )
+  const [activeId, setActiveId] = useState<string>(DIR_PERIM_ID)
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null)
   const [coefs, setCoefs] = useState<Coefficients>(DEFAULT_COEFFICIENTS)
   const [showCoefs, setShowCoefs] = useState(false)
 
-  const active = perimetres.find((p) => p.id === activeId) ?? null
+  useEffect(() => {
+    const name = memberDirectionName.trim() || 'Ma direction'
+    setPerimetres((prev) => prev.map((p) => (p.id === DIR_PERIM_ID ? { ...p, name } : p)))
+  }, [memberDirectionName])
+
+  const active = perimetres.find((p) => p.id === activeId) ?? perimetres[0]
+  const directionPerimetre = perimetres.find((p) => p.id === DIR_PERIM_ID)
+  const transPerimetre = perimetres.find((p) => p.id === TRANS_PERIM_ID)
+  const isTransverse = activeId === TRANS_PERIM_ID
 
   function updateProject(perimId: string, projId: string, updates: Partial<Project>) {
     setPerimetres((prev) =>
@@ -735,66 +952,33 @@ export default function ProjectSelector() {
         p.id !== perimId ? p : {
           ...p,
           projects: p.projects.map((pr) =>
-            pr.id !== projId ? pr : { ...pr, ...updates }
+            pr.id !== projId ? pr : { ...pr, ...updates },
           ),
-        }
-      )
+        },
+      ),
     )
   }
 
-  function createPerimetre() {
-    const newPerimetre: Perimetre = {
-      id: `p-${Date.now()}`,
-      name: `Nouveau périmètre ${perimetres.length + 1}`,
-      color: PERIMETRE_COLORS[perimetres.length % PERIMETRE_COLORS.length],
-      mission: '',
-      vision: '',
-      projects: [],
-    }
-    setPerimetres((prev) => [...prev, newPerimetre])
-    setActiveId(newPerimetre.id)
+  function addProject() {
+    if (!active) return
+    const empty = createEmptyProject()
+    setPerimetres((prev) =>
+      prev.map((p) =>
+        p.id === active.id ? { ...p, projects: [empty, ...p.projects] } : p,
+      ),
+    )
+    setExpandedProjectId(empty.id)
+  }
+
+  function selectTab(id: string) {
+    setActiveId(id)
+    setExpandedProjectId(null)
   }
 
   return (
     <>
       <style>{CSS}</style>
       <div className="ps-root">
-        {/* Sidebar périmètres */}
-        <aside className="ps-sidebar">
-          <div className="ps-sidebar-title">Périmètres</div>
-          {perimetres.map((p) => {
-            const sel = p.projects.filter((pr) => pr.type === 'BUILD' && pr.selected_for_transfo).length
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className={`ps-perim-btn ${activeId === p.id ? 'ps-perim-btn--active' : ''}`}
-                onClick={() => setActiveId(p.id)}
-              >
-                <span className="ps-perim-dot" style={{ background: p.color }} />
-                <span className="ps-perim-label">{p.name}</span>
-                {sel > 0 && (
-                  <span className="ps-perim-count" style={{ background: p.color }}>{sel}/5</span>
-                )}
-              </button>
-            )
-          })}
-
-          {perimetres.length > 0 && (
-            <>
-              <div className="ps-sidebar-divider" />
-              <button
-                type="button"
-                className="ps-coef-btn"
-                onClick={() => setShowCoefs(true)}
-              >
-                ⚙ Coefficients
-              </button>
-            </>
-          )}
-        </aside>
-
-        {/* Contenu principal */}
         <main className="ps-main">
           <div className="ps-page-header">
             <div>
@@ -802,31 +986,55 @@ export default function ProjectSelector() {
               <p className="ps-page-sub">Les projets BUILD sont classés par score de criticité — le top 5 est soumis au DG</p>
             </div>
             <div className="ps-legend">
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#10B981' }} />Critique (76+)</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#F59E0B' }} />Haute (56+)</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#E0777D' }} />Moyenne (31+)</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#6B7280' }} />Faible</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: '#EF4444' }} />≥75</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: '#F59E0B' }} />≥50</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: '#4C86A8' }} />≥25</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: '#10B981' }} />&lt;25</span>
             </div>
           </div>
 
-          {active ? (
+          <div className="ps-toolbar">
+            <div className="ps-pills">
+              {directionPerimetre && (
+                <button
+                  type="button"
+                  className={`ps-pill ${activeId === DIR_PERIM_ID ? 'ps-pill--active' : ''}`}
+                  onClick={() => selectTab(DIR_PERIM_ID)}
+                >
+                  {directionPerimetre.name}
+                  <span className="ps-pill-dot" style={{ background: directionPerimetre.color }} aria-hidden />
+                </button>
+              )}
+              {transPerimetre && (
+                <button
+                  type="button"
+                  className={`ps-pill ${activeId === TRANS_PERIM_ID ? 'ps-pill--active' : ''}`}
+                  onClick={() => selectTab(TRANS_PERIM_ID)}
+                >
+                  Projets transverses
+                  <span className="ps-pill-dot" style={{ background: transPerimetre.color }} aria-hidden />
+                </button>
+              )}
+            </div>
+            <div className="ps-toolbar-right">
+              <button type="button" className="ps-add-project" onClick={addProject}>
+                + Ajouter un projet →
+              </button>
+              <button type="button" className="ps-coef-fab" onClick={() => setShowCoefs(true)} title="Coefficients">
+                ⚙
+              </button>
+            </div>
+          </div>
+
+          {active && (
             <PerimetreView
               perimetre={active}
               coefs={coefs}
+              isTransverse={isTransverse}
+              expandedProjectId={expandedProjectId}
+              onExpandedChange={setExpandedProjectId}
               onUpdateProject={updateProject}
             />
-          ) : (
-            <div className="ps-empty">
-              <svg className="ps-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M3 7h7l2 2h9v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <path d="M8 13h8" />
-              </svg>
-              <h3>Aucun projet pour le moment</h3>
-              <p>Commencez par créer votre premier périmètre et ajouter vos projets</p>
-              <button type="button" className="ps-empty-btn" onClick={createPerimetre}>
-                + Créer un périmètre
-              </button>
-            </div>
           )}
         </main>
 
@@ -847,113 +1055,114 @@ export default function ProjectSelector() {
 const CSS = `
 /* ── Root ── */
 .ps-root {
-  display: flex;
   min-height: 100svh;
   background: var(--theme-bg-page);
   color: var(--theme-text);
   font-family: var(--font-body);
 }
 
-/* ── Sidebar ── */
-.ps-sidebar {
-  width: 240px;
-  flex-shrink: 0;
-  background: var(--theme-bg-sidebar);
-  padding: var(--space-xl) var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.ps-sidebar-title {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--theme-sidebar-text-muted);
-  padding: 0 var(--space-sm);
-  margin-bottom: var(--space-sm);
-}
-
-.ps-perim-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
+/* ── Toolbar onglets ── */
+.ps-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  width: 100%;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+}
+
+.ps-pills {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ps-pill {
+  appearance: none;
+  border: 1px solid var(--theme-border);
+  background: transparent;
+  border-radius: 999px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-text-muted);
   cursor: pointer;
-  text-align: left;
   font-family: var(--font-body);
-  font-size: 0.85rem;
-  color: var(--theme-sidebar-text-muted);
-  transition: background var(--transition), color var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
-.ps-perim-btn:hover {
-  background: rgba(255,255,255,0.06);
-  color: var(--theme-sidebar-text);
+.ps-pill:hover {
+  color: var(--theme-text);
+  border-color: color-mix(in srgb, var(--theme-accent) 35%, var(--theme-border));
 }
 
-.ps-perim-btn--active {
-  background: rgba(255,255,255,0.1);
-  color: var(--theme-sidebar-text);
+.ps-pill--active {
+  background: var(--theme-bg-card);
+  border-color: var(--theme-accent);
+  color: var(--theme-text);
+  box-shadow: 0 0 0 3px rgba(142, 59, 70, 0.08);
 }
 
-.ps-perim-dot {
+.ps-pill-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.ps-perim-label {
-  flex: 1;
-  line-height: 1.3;
+.ps-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 
-.ps-perim-count {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #fff;
-  padding: 1px 7px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-
-.ps-sidebar-divider {
-  height: 1px;
-  background: rgba(255,255,255,0.08);
-  margin: var(--space-md) 0;
-}
-
-.ps-coef-btn {
+.ps-add-project {
   appearance: none;
   border: none;
-  background: transparent;
-  width: 100%;
-  text-align: left;
-  padding: var(--space-sm) var(--space-md);
+  background: var(--theme-accent);
+  color: #fff;
   border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   font-family: var(--font-body);
-  font-size: 0.85rem;
-  color: var(--theme-sidebar-text-muted);
-  transition: background var(--transition), color var(--transition);
+  transition: transform 0.15s, background 0.2s, filter 0.2s;
 }
 
-.ps-coef-btn:hover {
-  background: rgba(255,255,255,0.06);
-  color: var(--theme-sidebar-text);
+.ps-add-project:hover {
+  filter: brightness(0.92);
+  transform: translateY(-1px);
+}
+
+.ps-coef-fab {
+  appearance: none;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--theme-border);
+  background: var(--theme-bg-card);
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.ps-coef-fab:hover {
+  border-color: var(--theme-accent);
+  color: var(--theme-text);
 }
 
 /* ── Main ── */
 .ps-main {
   flex: 1;
   min-width: 0;
+  width: 100%;
   padding: var(--space-xl);
   display: flex;
   flex-direction: column;
@@ -1168,6 +1377,165 @@ const CSS = `
   padding: var(--space-lg) var(--space-xl);
   cursor: pointer;
   transition: background var(--transition);
+}
+
+.project-card__header--compact {
+  flex-wrap: nowrap;
+  gap: 12px;
+  padding: 12px 16px;
+  align-items: center;
+}
+
+.project-card__header--compact .type-badge {
+  flex-shrink: 0;
+}
+
+.project-name-compact {
+  flex: 1;
+  min-width: 80px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--theme-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-card__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mini-gantt-12 {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.mini-gantt-12__cell {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--theme-border);
+  flex-shrink: 0;
+}
+
+.score-ring-40 {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.score-ring-40__svg {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.score-ring-40__val {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.perimetre-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-sm);
+}
+
+.perimetre-stats-inline {
+  font-size: 0.82rem;
+  color: var(--theme-text-muted);
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.pilotage-section {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--theme-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.pilotage-transverse-note {
+  background: rgba(142, 59, 70, 0.06);
+  border-left: 3px solid var(--theme-accent);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--theme-text-muted);
+  line-height: 1.45;
+}
+
+.contrib-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.contrib-pill {
+  appearance: none;
+  border: 1px solid var(--theme-border);
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.contrib-pill--active {
+  background: var(--theme-accent);
+  border-color: var(--theme-accent);
+  color: #fff;
+}
+
+.pilotage-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--theme-text-muted);
+  font-style: italic;
+}
+
+.pilotage-err {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #EF4444;
+  font-weight: 600;
+}
+
+.project-planning--section-a {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--theme-border);
+}
+
+.project-form-actions--footer {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--theme-border);
 }
 
 .project-card__header:hover {
@@ -2012,32 +2380,31 @@ const CSS = `
   .synthese-header {
     grid-template-columns: 1fr;
   }
-  .ps-sidebar {
-    width: 200px;
+  .ps-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ps-toolbar-right {
+    margin-left: 0;
+    width: 100%;
+    justify-content: stretch;
+  }
+  .ps-add-project {
+    flex: 1;
   }
 }
 
 @media (max-width: 640px) {
-  .ps-root {
-    flex-direction: column;
-  }
-  .ps-sidebar {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    padding: var(--space-md);
-  }
   .ps-main {
     padding: var(--space-md);
   }
-  .project-card__header {
-    flex-direction: column;
-    align-items: flex-start;
+  .project-card__header--compact {
+    flex-wrap: wrap;
   }
-  .project-card__right {
+  .mini-gantt-12 {
+    order: 10;
     width: 100%;
-    flex-direction: row;
-    justify-content: space-between;
+    justify-content: flex-start;
   }
   .project-card__body {
     padding: var(--space-md);
