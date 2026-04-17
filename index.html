@@ -11,12 +11,8 @@
         } catch (_) {}
       })()
     </script>
-    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
-    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
-    <link
-      href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@400,500,700,900&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Typo : fichiers woff2 dans /public/fonts (même origine — réseaux stricts, offline build, pas de requête tierce) -->
+    <link rel="stylesheet" href="/fonts/fonts.css" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>forge-du-changement</title>
