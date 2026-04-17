@@ -104,10 +104,8 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 76) return 'Critique'
-  if (score >= 56) return 'Haute'
-  if (score >= 31) return 'Moyenne'
-  return 'Faible'
+  void score
+  return 'criticité'
 }
 
 // ─── Données de démo ─────────────────────────────────────────────────────────
@@ -177,6 +175,58 @@ const DEMO_DATA: Perimetre[] = [
     ],
   },
 ]
+
+function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Perimetre[] {
+  return data.map((perimetre) => {
+    const topBuildIds = new Set(
+      perimetre.projects
+        .filter((project) => project.type === 'BUILD')
+        .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
+        .slice(0, 5)
+        .map((project) => project.id),
+    )
+
+    return {
+      ...perimetre,
+      projects: perimetre.projects.map((project) => ({
+        ...project,
+        selected_for_transfo: topBuildIds.has(project.id),
+      })),
+    }
+  })
+}
+
+const INITIAL_DATA = autoSelectTopBuildProjects(DEMO_DATA, DEFAULT_COEFFICIENTS)
+
+function applyMemberDirectionPrefill(data: Perimetre[]): Perimetre[] {
+  if (typeof window === 'undefined') return data
+  const raw = window.localStorage.getItem('lfdc-member-onboarding')
+  if (!raw) return data
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      directionName?: string
+      mission?: string
+      vision?: string
+    }
+
+    const directionName = (parsed.directionName ?? '').trim()
+    const mission = (parsed.mission ?? '').trim()
+    const vision = (parsed.vision ?? '').trim()
+    if (!directionName) return data
+
+    return data.map((perimetre) => {
+      if (perimetre.name !== directionName) return perimetre
+      return {
+        ...perimetre,
+        mission: mission || perimetre.mission,
+        vision: vision || perimetre.vision,
+      }
+    })
+  } catch {
+    return data
+  }
+}
 
 // ─── Composant Gantt Pilules ─────────────────────────────────────────────────
 
@@ -294,6 +344,7 @@ function ProjectCard({
   project,
   coefs,
   perimColor,
+  dgRank,
   onToggleTransfo,
   onUpdateScore,
   onTogglePlanning,
@@ -301,6 +352,7 @@ function ProjectCard({
   project: Project
   coefs: Coefficients
   perimColor: string
+  dgRank?: number
   onToggleTransfo: () => void
   onUpdateScore: (key: keyof Scores, v: number) => void
   onTogglePlanning: (key: string) => void
@@ -325,14 +377,16 @@ function ProjectCard({
         </div>
         <div className="project-card__right">
           <ScoreBadge score={score} />
-          <button
-            type="button"
-            className={`transfo-toggle ${project.selected_for_transfo ? 'transfo-toggle--on' : ''}`}
-            onClick={(e) => { e.stopPropagation(); onToggleTransfo() }}
-            title="Retenir pour la transformation"
-          >
-            {project.selected_for_transfo ? '★ Retenu' : '☆ Retenir'}
-          </button>
+          {project.type === 'BUILD' && (
+            <button
+              type="button"
+              className={`transfo-toggle ${project.selected_for_transfo ? 'transfo-toggle--on' : ''}`}
+              onClick={(e) => { e.stopPropagation(); onToggleTransfo() }}
+              title="Retenir pour le DG"
+            >
+              {project.selected_for_transfo ? `★ #${dgRank} DG` : '☆ Retenir'}
+            </button>
+          )}
           <span className="expand-icon">{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
@@ -386,6 +440,7 @@ function ProjectCard({
 
 function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coefficients }) {
   const selected = perimetre.projects
+    .filter((p) => p.type === 'BUILD')
     .filter((p) => p.selected_for_transfo)
     .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
     .slice(0, 5)
@@ -404,11 +459,11 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
       </div>
 
       <div className="section-title" style={{ marginTop: 'var(--space-xl)' }}>
-        Projets transformants retenus ({selected.length}/5)
+        Projets soumis au DG ({selected.length}/5)
       </div>
 
       {selected.length === 0 && (
-        <div className="empty-state">Aucun projet retenu pour la transformation.</div>
+        <div className="empty-state">Aucun projet BUILD retenu pour le DG.</div>
       )}
 
       <div className="synthese-projects">
@@ -447,9 +502,15 @@ function PerimetreView({
   onUpdateProject: (perimId: string, projId: string, updates: Partial<Project>) => void
 }) {
   const [mode, setMode] = useState<'edition' | 'synthese'>('edition')
-  const selectedCount = perimetre.projects.filter((p) => p.selected_for_transfo).length
-
-  const sorted = [...perimetre.projects].sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
+  const buildProjects = perimetre.projects
+    .filter((p) => p.type === 'BUILD')
+    .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
+  const runProjects = perimetre.projects
+    .filter((p) => p.type === 'RUN')
+    .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
+  const selectedBuilds = buildProjects.filter((p) => p.selected_for_transfo)
+  const selectedCount = selectedBuilds.length
+  const dgRanks = new Map(selectedBuilds.map((project, index) => [project.id, index + 1]))
 
   return (
     <div className="perimetre-view">
@@ -460,7 +521,7 @@ function PerimetreView({
           <div className="perimetre-stats">
             <span>{perimetre.projects.length} projets</span>
             <span>·</span>
-            <span style={{ color: perimetre.color }}>{selectedCount} retenus pour la transfo</span>
+            <span style={{ color: perimetre.color }}>{selectedCount}/5 soumis au DG</span>
           </div>
         </div>
         <div className="mode-toggle">
@@ -476,23 +537,51 @@ function PerimetreView({
             className={`mode-btn ${mode === 'synthese' ? 'mode-btn--active' : ''}`}
             onClick={() => setMode('synthese')}
           >
-            📋 Synthèse
+            📋 Synthèse DG
           </button>
         </div>
       </div>
 
       {mode === 'edition' ? (
         <div className="projects-list">
-          {sorted.map((project) => (
+          <div className="projects-group-header">
+            <span>Projets BUILD — classés par score de criticité</span>
+            <span className="projects-group-count">{selectedCount}/5 retenus</span>
+          </div>
+          {buildProjects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}
               coefs={coefs}
               perimColor={perimetre.color}
+              dgRank={dgRanks.get(project.id)}
               onToggleTransfo={() => {
                 if (!project.selected_for_transfo && selectedCount >= 5) return
                 onUpdateProject(perimetre.id, project.id, { selected_for_transfo: !project.selected_for_transfo })
               }}
+              onUpdateScore={(key, v) =>
+                onUpdateProject(perimetre.id, project.id, {
+                  scores: { ...project.scores, [key]: v },
+                })
+              }
+              onTogglePlanning={(key) =>
+                onUpdateProject(perimetre.id, project.id, {
+                  planning: { ...project.planning, [key]: !project.planning[key] },
+                })
+              }
+            />
+          ))}
+
+          <div className="projects-group-header projects-group-header--run">
+            <span>Projets RUN — amélioration continue</span>
+          </div>
+          {runProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              coefs={coefs}
+              perimColor={perimetre.color}
+              onToggleTransfo={() => {}}
               onUpdateScore={(key, v) =>
                 onUpdateProject(perimetre.id, project.id, {
                   scores: { ...project.scores, [key]: v },
@@ -555,8 +644,8 @@ function CoefPanel({ coefs, onChange, onClose }: {
 // ─── Composant Principal ──────────────────────────────────────────────────────
 
 export default function ProjectSelector() {
-  const [perimetres, setPerimetres] = useState<Perimetre[]>(DEMO_DATA)
-  const [activeId, setActiveId] = useState<string>(DEMO_DATA[0].id)
+  const [perimetres, setPerimetres] = useState<Perimetre[]>(() => applyMemberDirectionPrefill(INITIAL_DATA))
+  const [activeId, setActiveId] = useState<string>(INITIAL_DATA[0].id)
   const [coefs, setCoefs] = useState<Coefficients>(DEFAULT_COEFFICIENTS)
   const [showCoefs, setShowCoefs] = useState(false)
 
@@ -583,7 +672,7 @@ export default function ProjectSelector() {
         <aside className="ps-sidebar">
           <div className="ps-sidebar-title">Périmètres</div>
           {perimetres.map((p) => {
-            const sel = p.projects.filter((pr) => pr.selected_for_transfo).length
+            const sel = p.projects.filter((pr) => pr.type === 'BUILD' && pr.selected_for_transfo).length
             return (
               <button
                 key={p.id}
@@ -594,7 +683,7 @@ export default function ProjectSelector() {
                 <span className="ps-perim-dot" style={{ background: p.color }} />
                 <span className="ps-perim-label">{p.name}</span>
                 {sel > 0 && (
-                  <span className="ps-perim-count" style={{ background: p.color }}>{sel}</span>
+                  <span className="ps-perim-count" style={{ background: p.color }}>{sel}/5</span>
                 )}
               </button>
             )
@@ -615,7 +704,7 @@ export default function ProjectSelector() {
           <div className="ps-page-header">
             <div>
               <h1 className="ps-page-title">Sélection de projets transformants</h1>
-              <p className="ps-page-sub">Évaluez et priorisez vos projets BUILD & RUN avec le système de scoring hybride pondéré</p>
+              <p className="ps-page-sub">Les projets BUILD sont classés par score de criticité — le top 5 est soumis au DG</p>
             </div>
             <div className="ps-legend">
               <span className="legend-item"><span className="legend-dot" style={{ background: '#10B981' }} />Critique (76+)</span>
@@ -880,6 +969,30 @@ const CSS = `
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+}
+
+.projects-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--theme-text-muted);
+}
+
+.projects-group-header--run {
+  margin-top: var(--space-lg);
+}
+
+.projects-group-count {
+  color: var(--theme-accent);
 }
 
 .project-card {

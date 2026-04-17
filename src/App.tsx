@@ -1,6 +1,8 @@
 import { useLayoutEffect, useState } from 'react'
 import './App.css'
 import ProjectSelector from './ProjectSelector'
+import WorkspaceCreation from './WorkspaceCreation'
+import MemberOnboarding from './MemberOnboarding'
 import {
   applyThemeToDocument,
   getStoredTheme,
@@ -12,6 +14,8 @@ const navItems = [
   { id: 'sens', label: 'Sens' },
   { id: 'roles', label: 'Rôles & Rythmes' },
   { id: 'fabrique', label: 'La Fabrique' },
+  { id: 'workspace', label: 'Mon Espace' },
+  { id: 'onboarding', label: 'Mon Profil' },
 ] as const
 
 const cards = [
@@ -104,6 +108,10 @@ function App() {
         <main className="dashboard__content">
           {activeNav === 'fabrique' ? (
             <ProjectSelector />
+          ) : activeNav === 'workspace' ? (
+            <WorkspaceCreation />
+          ) : activeNav === 'onboarding' ? (
+            <MemberOnboarding />
           ) : (
             <>
               <p className="dashboard__intro">
