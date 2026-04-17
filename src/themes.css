@@ -228,7 +228,6 @@
   /* Verre fumé ~20 % + forte réfraction (flou + saturation) */
   --glass-blur: 32px;
   --glass-saturate: 1.62;
-  /* ~15 % moins transparent qu’avant (20 % → 35 % de la teinte dans le mix) */
   --glass-bg-header: color-mix(in srgb, rgb(24, 14, 16) 35%, transparent);
   --glass-bg-card: color-mix(in srgb, rgb(32, 22, 26) 20%, transparent);
   --glass-bg-chip: color-mix(in srgb, rgb(28, 18, 22) 20%, transparent);
