@@ -13,7 +13,11 @@ import { getWorkspace } from './lib/api'
 import type { Workspace } from './lib/types'
 import {
   clearWorkspaceSnapshot,
+  readInitialCompanyLogo,
+  readWorkspaceLogoUrl,
   readWorkspaceSnapshot,
+  normalizeWorkspaceLogoUrl,
+  writeWorkspaceLogoUrl,
   writeWorkspaceSnapshot,
 } from './lib/workspaceSnapshot'
 import { getCurrentUser, isSuperAdmin, signOut } from './lib/auth'
@@ -63,7 +67,7 @@ function App() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
   const [workspaceName, setWorkspaceName] = useState('La Forge')
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null)
+  const [companyLogo, setCompanyLogo] = useState<string | null>(readInitialCompanyLogo)
   const [userInitials, setUserInitials] = useState('?')
   const [activeNav, setActiveNav] = useState<string>('home')
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
@@ -149,12 +153,18 @@ function App() {
         const workspace = await getWorkspace(workspaceId)
         if (cancelled) return
         const snap = readWorkspaceSnapshot()
-        const logoFromApi = workspace.logo_url
-        const logoMerged =
-          logoFromApi
-          || (snap?.id === workspace.id && snap?.logo_url?.startsWith('http') ? snap.logo_url : null)
+        const snapLogo =
+          snap?.id === workspace.id ? normalizeWorkspaceLogoUrl(snap.logo_url) : null
+        const cachedLogo = readWorkspaceLogoUrl(workspace.id)
+        const logoFromApi = normalizeWorkspaceLogoUrl(workspace.logo_url)
+        const logoMerged = logoFromApi || cachedLogo || snapLogo
         setWorkspaceName(workspace.company_name)
         setCompanyLogo(logoMerged)
+        if (logoFromApi) {
+          writeWorkspaceLogoUrl(workspace.id, logoFromApi)
+        } else if (logoMerged) {
+          writeWorkspaceLogoUrl(workspace.id, logoMerged)
+        }
         writeWorkspaceSnapshot({
           id: workspace.id,
           company_name: workspace.company_name,
@@ -175,7 +185,10 @@ function App() {
         const snap = readWorkspaceSnapshot()
         if (snap && snap.id === workspaceId) {
           setWorkspaceName(snap.company_name)
-          setCompanyLogo(snap.logo_url)
+          const fallback =
+            normalizeWorkspaceLogoUrl(snap.logo_url) || readWorkspaceLogoUrl(workspaceId)
+          setCompanyLogo(fallback)
+          if (fallback) writeWorkspaceLogoUrl(workspaceId, fallback)
           setWorkspaceData((prev) => ({
             workspace: prev?.workspace ?? {
               id: snap.id,
@@ -237,13 +250,17 @@ function App() {
           localStorage.setItem('workspaceId', data.workspace.id)
           setWorkspaceId(data.workspace.id)
           setWorkspaceName(data.workspace.company_name)
-          setCompanyLogo(data.workspace.logo_url)
+          const logo =
+            normalizeWorkspaceLogoUrl(data.workspace.logo_url)
+            ?? normalizeWorkspaceLogoUrl(data.companyLogo)
+          setCompanyLogo(logo)
+          writeWorkspaceLogoUrl(data.workspace.id, logo)
           writeWorkspaceSnapshot({
             id: data.workspace.id,
             company_name: data.workspace.company_name,
             sector: data.workspace.sector,
             size: data.workspace.size,
-            logo_url: data.workspace.logo_url,
+            logo_url: logo,
           })
           try {
             const raw = localStorage.getItem('lfdc-member-onboarding')
@@ -474,6 +491,7 @@ function App() {
                     : prev,
                 )
                 if (workspaceId) {
+                  writeWorkspaceLogoUrl(workspaceId, data.logo)
                   writeWorkspaceSnapshot({
                     id: workspaceId,
                     company_name: data.companyName,
