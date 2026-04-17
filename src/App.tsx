@@ -1,13 +1,17 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
+import type { User } from '@supabase/supabase-js'
 import './App.css'
 import ProjectSelector from './ProjectSelector'
 import MemberOnboarding from './MemberOnboarding'
 import OnboardingFlow from './OnboardingFlow'
 import CompanySheet from './CompanySheet'
 import ProfileSheet from './ProfileSheet'
+import Login from './pages/Login'
 import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
 import { getWorkspace } from './lib/api'
+import { getCurrentUser, isSuperAdmin, signOut } from './lib/auth'
+import { supabase } from './lib/supabase'
 import {
   applyThemeToDocument,
   getStoredTheme,
@@ -50,6 +54,8 @@ type OnboardingData = OnboardingFlowProps extends { onComplete: (data: infer T) 
 type AppUserRole = 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
 
 function App() {
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authUser, setAuthUser] = useState<User | null>(null)
   const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
   const [workspaceName, setWorkspaceName] = useState('La Forge')
@@ -79,6 +85,60 @@ function App() {
   }, [theme])
 
   useEffect(() => {
+    let alive = true
+
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!alive) return
+      const user = session?.user ?? null
+      if (!user) {
+        setAuthUser(null)
+        setAuthLoading(false)
+        return
+      }
+
+      const email = user.email ?? ''
+      const invitedUser = await getCurrentUser()
+      if (!alive) return
+      if (isSuperAdmin(email) || invitedUser) {
+        setAuthUser(user)
+      } else {
+        await signOut()
+        setAuthUser(null)
+      }
+      setAuthLoading(false)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      void (async () => {
+        const user = session?.user ?? null
+        if (!user) {
+          setAuthUser(null)
+          setAuthLoading(false)
+          return
+        }
+
+        const email = user.email ?? ''
+        const invitedUser = await getCurrentUser()
+        if (isSuperAdmin(email) || invitedUser) {
+          setAuthUser(user)
+        } else {
+          await signOut()
+          setAuthUser(null)
+        }
+        setAuthLoading(false)
+      })()
+    })
+
+    return () => {
+      alive = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!authUser) return
     if (!workspaceId) return
     let cancelled = false
     void (async () => {
@@ -104,7 +164,33 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [workspaceId])
+  }, [authUser, workspaceId])
+
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: '100svh',
+          display: 'grid',
+          placeItems: 'center',
+          background: 'var(--theme-bg-page)',
+          color: 'var(--theme-text)',
+        }}
+      >
+        <p>Chargement...</p>
+      </div>
+    )
+  }
+
+  if (!authUser) {
+    return (
+      <Login
+        onAuthenticated={(user) => {
+          setAuthUser(user)
+        }}
+      />
+    )
+  }
 
   if (showWorkspaceOnboarding) {
     return (
@@ -210,15 +296,18 @@ function App() {
             type="button"
             className="dashboard__reset-btn"
             onClick={() => {
+              void signOut()
               localStorage.removeItem('workspaceId')
+              localStorage.removeItem('lfdc-member-onboarding')
               setWorkspaceId(null)
               setWorkspaceData(null)
               setCompanyLogo(null)
               setWorkspaceName('La Forge')
               setActiveNav('home')
+              setAuthUser(null)
             }}
           >
-            ↺ Recommencer
+            Se deconnecter
           </button>
         </div>
       </aside>

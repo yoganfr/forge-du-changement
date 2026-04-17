@@ -13,6 +13,7 @@
   display: flex;
   min-height: 100svh;
   font-family: var(--font-body);
+  font-size: var(--fs-base);
   background: var(--theme-bg-page);
   color: var(--theme-text);
 }
@@ -193,7 +194,7 @@
 .dashboard__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--theme-text);
@@ -208,11 +209,11 @@
 
 .dashboard__admin-btn {
   border: 1px solid var(--theme-accent);
-  background: color-mix(in srgb, var(--theme-accent) 10%, var(--theme-bg-card));
+  background: color-mix(in srgb, var(--theme-accent) 18%, var(--theme-bg-card));
   color: var(--theme-text);
   border-radius: 999px;
   padding: 8px 14px;
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
@@ -230,7 +231,7 @@
   gap: 8px;
   padding: 6px 14px 6px 6px;
   border-radius: 999px;
-  border: 1px solid var(--theme-border);
+  border: 1px solid color-mix(in srgb, var(--theme-border) 92%, var(--theme-text));
   background: var(--theme-bg-card);
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -256,7 +257,7 @@
 }
 
 .company-badge-name {
-  font-size: 13px;
+  font-size: var(--fs-small);
   font-weight: 600;
   color: var(--theme-text);
 }
@@ -346,7 +347,7 @@
 
 .dashboard__intro {
   margin: 0 0 var(--space-lg);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   color: var(--theme-text-muted);
   line-height: 1.55;
 }
@@ -405,9 +406,9 @@
   justify-content: center;
   border-radius: var(--radius-md);
   font-size: 1.25rem;
-  background: color-mix(in srgb, var(--theme-border) 40%, var(--theme-bg-card));
+  background: color-mix(in srgb, var(--theme-border) 65%, var(--theme-bg-card));
   color: var(--theme-text-muted);
-  border: 1px solid var(--theme-border);
+  border: 1px solid color-mix(in srgb, var(--theme-border) 92%, var(--theme-text));
   transition:
     color var(--transition),
     background var(--transition);
@@ -427,9 +428,9 @@
 }
 
 .dashboard__card-desc {
-  font-size: 0.9rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
-  color: var(--theme-text-muted);
+  color: color-mix(in srgb, var(--theme-text) 80%, var(--theme-bg-card));
 }
 
 @media (max-width: 1024px) {

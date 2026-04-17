@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   createDirection,
   deleteProjet,
@@ -286,18 +286,10 @@ function mapProjectToDbProjet(
 
 // ─── Calcul du score ────────────────────────────────────────────────────────
 
-export type ScoringOptions = {
-  applyBuildBonus?: boolean
-  applyCompetencesMalus?: boolean
-}
-
-function computeScore(project: Project, coefs: Coefficients, options: ScoringOptions = {}): number {
-  const applyBuildBonus = options.applyBuildBonus ?? true
-  const applyCompetencesMalus = options.applyCompetencesMalus ?? true
-
+function computeScore(project: Project, coefs: Coefficients): number {
   if (Object.values(project.scores).reduce((a, b) => a + b, 0) === 0) return 0
 
-  const { scores, type, competences_dispo } = project
+  const { scores } = project
   const scoreMax =
     (5 * coefs.criticite) +
     (5 * coefs.urgence) +
@@ -314,10 +306,8 @@ function computeScore(project: Project, coefs: Coefficients, options: ScoringOpt
     (scores.etp * coefs.etp) +
     (scores.investissement * coefs.investissement)
 
-  let normalise = (scoreBrut / scoreMax) * 100
-  if (applyBuildBonus && type === 'BUILD') normalise *= 1.5
-  if (applyCompetencesMalus && !competences_dispo) normalise *= 0.8
-  return Math.min(100, Math.round(normalise))
+  const normalise = (scoreBrut / scoreMax) * 100
+  return Math.round(normalise)
 }
 
 function getScoreColor(score: number): string {
@@ -600,8 +590,8 @@ function CritereSlider({
     value >= 5 ? 'critical' : value >= 4 ? 'high' : value >= 3 ? 'medium' : value >= 1 ? 'low' : 'none'
 
   function renderIcon() {
-    const commonFill = { width: 38, height: 38, viewBox: '0 0 24 24', fill: 'currentColor' }
-    const commonStroke = { width: 38, height: 38, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+    const commonFill = { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'currentColor' }
+    const commonStroke = { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
     if (criteriaKey === 'criticite') {
       return (
         <svg {...commonFill}>
@@ -691,7 +681,6 @@ function ProjectCard({
   onSaveProject,
   onDeleteProject,
   onPatchProject,
-  scoringOptions,
 }: {
   project: Project
   coefs: Coefficients
@@ -704,7 +693,6 @@ function ProjectCard({
   onSaveProject: (updates: Partial<Project>) => void
   onDeleteProject: () => void
   onPatchProject: (updates: Partial<Project>) => void
-  scoringOptions: ScoringOptions
 }) {
   const [draft, setDraft] = useState<Project>(project)
   const [pilotageError, setPilotageError] = useState(false)
@@ -744,11 +732,8 @@ function ProjectCard({
     }
   }, [draft, expanded, isTransverse, onSaveProject, project])
 
-  const applyBuildBonus = scoringOptions.applyBuildBonus ?? true
-  const applyCompetencesMalus = scoringOptions.applyCompetencesMalus ?? true
-
-  const displayScoreCollapsed = computeScore(project, coefs, scoringOptions)
-  const score = computeScore(draft, coefs, scoringOptions)
+  const displayScoreCollapsed = computeScore(project, coefs)
+  const score = computeScore(draft, coefs)
 
   const updateDraftScore = (key: keyof Scores, v: number) => {
     setDraft((prev) => ({ ...prev, scores: { ...prev.scores, [key]: v } }))
@@ -788,8 +773,7 @@ function ProjectCard({
   })
   const scoreMax = (Object.keys(coefs) as Array<keyof Coefficients>).reduce((acc, key) => acc + (5 * coefs[key]), 0)
   const scoreRaw = criteriaRows.reduce((acc, row) => acc + row.points, 0)
-  const scoreBuild = draft.type === 'BUILD' && applyBuildBonus ? Math.round(scoreRaw * 1.5) : scoreRaw
-  const scoreFinal = computeScore(draft, coefs, scoringOptions)
+  const scoreFinal = computeScore(draft, coefs)
   const evalLevels = [1, 2, 3, 4, 5] as const
 
   const titleLine = project.name.trim() || 'Nouveau projet'
@@ -958,16 +942,11 @@ function ProjectCard({
                     <button type="button" className={draft.competences_dispo ? 'toggle-pill toggle-pill--yes' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: true }))}>OUI</button>
                     <button type="button" className={!draft.competences_dispo ? 'toggle-pill toggle-pill--no' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: false }))}>NON</button>
                   </div>
-                  {applyCompetencesMalus && !draft.competences_dispo && (
-                    <div className="competence-impact">⚠ Impact ×0.8 sur le score</div>
-                  )}
                 </div>
 
                 <div className="score-summary">
                   <div className="score-summary-formula">
                     Score = ({formula}) normalisé
-                    {draft.type === 'BUILD' && applyBuildBonus ? ' × 1.5 si BUILD' : ''}
-                    {applyCompetencesMalus && !draft.competences_dispo ? ' × 0.8 si compétences NON' : ''}
                   </div>
                   <div className="score-summary-value" style={{ color: getScoreColor(score) }}>{score}/100</div>
                 </div>
@@ -1011,9 +990,6 @@ function ProjectCard({
               </table>
               <div className="recap-lines">
                 <div>Score brut : {scoreRaw} / {scoreMax} (max pondéré)</div>
-                {draft.type === 'BUILD' && applyBuildBonus && (
-                  <div>× 1.5 BUILD : {scoreBuild} / 100</div>
-                )}
                 <div>Score final : <span className="recap-final-badge" style={{ background: scoreFinal === 0 ? '#9CA3AF' : getScoreColor(scoreFinal) }}>{scoreFinal} — {getScoreLabel(scoreFinal)}</span></div>
               </div>
             </div>
@@ -1078,11 +1054,11 @@ function ProjectCard({
 
 // ─── Vue Synthèse ─────────────────────────────────────────────────────────────
 
-function SyntheseView({ perimetre, coefs, scoringOptions }: { perimetre: Perimetre; coefs: Coefficients; scoringOptions: ScoringOptions }) {
+function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coefficients }) {
   const selected = perimetre.projects
     .filter((p) => p.type === 'BUILD')
     .filter((p) => p.selected_for_transfo)
-    .sort((a, b) => computeScore(b, coefs, scoringOptions) - computeScore(a, coefs, scoringOptions))
+    .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
     .slice(0, 5)
 
   return (
@@ -1108,7 +1084,7 @@ function SyntheseView({ perimetre, coefs, scoringOptions }: { perimetre: Perimet
 
       <div className="synthese-projects">
         {selected.map((project, i) => {
-          const score = computeScore(project, coefs, scoringOptions)
+          const score = computeScore(project, coefs)
           return (
             <div key={project.id} className="synthese-project-row">
               <div className="synthese-rank" style={{ color: perimetre.color }}>#{i + 1}</div>
@@ -1141,7 +1117,6 @@ function PerimetreView({
   onUpdateProject,
   onDeleteProject,
   onPatchProject,
-  scoringOptions,
 }: {
   perimetre: Perimetre
   coefs: Coefficients
@@ -1151,15 +1126,14 @@ function PerimetreView({
   onUpdateProject: (perimId: string, projId: string, updates: Partial<Project>) => Promise<void> | void
   onDeleteProject: (perimId: string, projId: string) => Promise<void> | void
   onPatchProject: (perimId: string, projId: string, updates: Partial<Project>) => void
-  scoringOptions: ScoringOptions
 }) {
   const [mode, setMode] = useState<'edition' | 'synthese'>('edition')
   const buildProjects = perimetre.projects
     .filter((p) => p.type === 'BUILD')
-    .sort((a, b) => computeScore(b, coefs, scoringOptions) - computeScore(a, coefs, scoringOptions))
+    .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
   const runProjects = perimetre.projects
     .filter((p) => p.type === 'RUN')
-    .sort((a, b) => computeScore(b, coefs, scoringOptions) - computeScore(a, coefs, scoringOptions))
+    .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
   const selectedBuilds = buildProjects.filter((p) => p.selected_for_transfo)
   const selectedCount = selectedBuilds.length
   const dgRanks = new Map(selectedBuilds.map((project, index) => [project.id, index + 1]))
@@ -1213,7 +1187,6 @@ function PerimetreView({
               onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
               onDeleteProject={() => onDeleteProject(perimetre.id, project.id)}
               onPatchProject={(updates) => onPatchProject(perimetre.id, project.id, updates)}
-              scoringOptions={scoringOptions}
             />
           ))}
 
@@ -1233,12 +1206,11 @@ function PerimetreView({
               onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
               onDeleteProject={() => onDeleteProject(perimetre.id, project.id)}
               onPatchProject={(updates) => onPatchProject(perimetre.id, project.id, updates)}
-              scoringOptions={scoringOptions}
             />
           ))}
         </div>
       ) : (
-        <SyntheseView perimetre={perimetre} coefs={coefs} scoringOptions={scoringOptions} />
+        <SyntheseView perimetre={perimetre} coefs={coefs} />
       )}
     </div>
   )
@@ -1250,18 +1222,10 @@ function CoefPanel({
   coefs,
   onChange,
   onClose,
-  applyBuildBonus,
-  applyCompetencesMalus,
-  onApplyBuildBonus,
-  onApplyCompetencesMalus,
 }: {
   coefs: Coefficients
   onChange: (k: keyof Coefficients, v: number) => void
   onClose: () => void
-  applyBuildBonus: boolean
-  applyCompetencesMalus: boolean
-  onApplyBuildBonus: (v: boolean) => void
-  onApplyCompetencesMalus: (v: boolean) => void
 }) {
   return (
     <div className="coef-overlay" onClick={onClose}>
@@ -1290,37 +1254,6 @@ function CoefPanel({
             </div>
           </div>
         ))}
-        <div className="coef-panel-sep" />
-        <div className="coef-toggle-row">
-          <div>
-            <div className="coef-toggle-title">Bonus BUILD × 1.5</div>
-            <p className="coef-toggle-desc">Les projets transformants bénéficient d&apos;un multiplicateur ×1.5</p>
-          </div>
-          <button
-            type="button"
-            className={`coef-switch ${applyBuildBonus ? 'coef-switch--on' : ''}`}
-            onClick={() => onApplyBuildBonus(!applyBuildBonus)}
-            aria-pressed={applyBuildBonus}
-            aria-label="Bonus BUILD"
-          >
-            <span className="coef-switch-knob" />
-          </button>
-        </div>
-        <div className="coef-toggle-row">
-          <div>
-            <div className="coef-toggle-title">Malus compétences indisponibles × 0.8</div>
-            <p className="coef-toggle-desc">Les projets sans compétences disponibles sont pénalisés ×0.8</p>
-          </div>
-          <button
-            type="button"
-            className={`coef-switch ${applyCompetencesMalus ? 'coef-switch--on' : ''}`}
-            onClick={() => onApplyCompetencesMalus(!applyCompetencesMalus)}
-            aria-pressed={applyCompetencesMalus}
-            aria-label="Malus compétences"
-          >
-            <span className="coef-switch-knob" />
-          </button>
-        </div>
       </div>
     </div>
   )
@@ -1343,15 +1276,9 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null)
   const [coefs, setCoefs] = useState<Coefficients>(DEFAULT_COEFFICIENTS)
   const [showCoefs, setShowCoefs] = useState(false)
-  const [applyBuildBonus, setApplyBuildBonus] = useState(true)
-  const [applyCompetencesMalus, setApplyCompetencesMalus] = useState(true)
   const [syncLoading, setSyncLoading] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const pendingCreateRef = useRef<Record<string, Promise<string>>>({})
-  const scoringOptions = useMemo<ScoringOptions>(
-    () => ({ applyBuildBonus, applyCompetencesMalus }),
-    [applyBuildBonus, applyCompetencesMalus],
-  )
 
   useEffect(() => {
     const name = memberDirectionName.trim() || 'Ma direction'
@@ -1596,7 +1523,6 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
               onUpdateProject={persistProject}
               onDeleteProject={removeProject}
               onPatchProject={updateProjectLocal}
-              scoringOptions={scoringOptions}
             />
           )}
           {syncLoading && <p className="ps-sync-note">Synchronisation en cours...</p>}
@@ -1608,10 +1534,6 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
             coefs={coefs}
             onChange={(k, v) => setCoefs((c) => ({ ...c, [k]: v }))}
             onClose={() => setShowCoefs(false)}
-            applyBuildBonus={applyBuildBonus}
-            applyCompetencesMalus={applyCompetencesMalus}
-            onApplyBuildBonus={setApplyBuildBonus}
-            onApplyCompetencesMalus={setApplyCompetencesMalus}
           />
         )}
       </div>
@@ -1628,6 +1550,7 @@ const CSS = `
   background: var(--theme-bg-page);
   color: var(--theme-text);
   font-family: var(--font-body);
+  font-size: var(--fs-base);
 }
 
 /* ── Toolbar onglets ── */
@@ -1748,7 +1671,7 @@ const CSS = `
 
 .ps-page-title {
   font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--theme-text);
@@ -1756,7 +1679,7 @@ const CSS = `
 }
 
 .ps-page-sub {
-  font-size: 0.9rem;
+  font-size: var(--fs-small);
   color: var(--theme-text-muted);
   margin: 0;
 }
@@ -1764,7 +1687,7 @@ const CSS = `
 .ps-sync-note {
   margin: 0;
   font-size: 12px;
-  color: var(--theme-text-muted);
+  color: color-mix(in srgb, var(--theme-text) 82%, var(--theme-bg-card));
 }
 
 .ps-sync-err {
@@ -1829,7 +1752,7 @@ const CSS = `
   align-items: center;
   gap: 6px;
   font-size: 0.78rem;
-  color: var(--theme-text-muted);
+  color: color-mix(in srgb, var(--theme-text) 80%, var(--theme-bg-card));
 }
 
 .legend-dot {
@@ -1940,7 +1863,8 @@ const CSS = `
 
 .project-card {
   background: var(--theme-bg-card);
-  border: 1px solid var(--theme-border);
+  border: 1px solid color-mix(in srgb, var(--theme-border) 88%, var(--theme-text));
+  box-shadow: var(--shadow-sm);
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: border-color var(--transition), box-shadow var(--transition);
@@ -2177,7 +2101,7 @@ const CSS = `
 }
 
 .project-card__header:hover {
-  background: color-mix(in srgb, var(--theme-border) 30%, var(--theme-bg-card));
+  background: color-mix(in srgb, var(--theme-border) 44%, var(--theme-bg-card));
 }
 
 .project-card__meta {
@@ -2422,9 +2346,10 @@ const CSS = `
 }
 
 .eval-legend-card {
-  border: 1px solid var(--theme-border);
+  border: 1px solid color-mix(in srgb, var(--theme-border) 88%, var(--theme-text));
   border-radius: 12px;
   background: color-mix(in srgb, var(--theme-bg-card) 88%, var(--theme-bg-page));
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -2444,7 +2369,7 @@ const CSS = `
 .eval-legend-table td {
   padding: 7px 10px;
   font-size: 0.74rem;
-  color: var(--theme-text-muted);
+  color: color-mix(in srgb, var(--theme-text) 78%, var(--theme-bg-card));
   border-top: 1px solid color-mix(in srgb, var(--theme-border) 70%, transparent);
 }
 
@@ -2462,7 +2387,7 @@ const CSS = `
 }
 
 .project-field span {
-  font-size: 0.78rem;
+  font-size: var(--fs-small);
   font-weight: 700;
   color: var(--theme-text);
 }
@@ -2534,9 +2459,9 @@ const CSS = `
 }
 
 .section-title {
-  font-size: 0.7rem;
+  font-size: var(--fs-small);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--theme-text-muted);
   margin-bottom: var(--space-md);
@@ -2569,8 +2494,8 @@ const CSS = `
 
 .critere-bar {
   display: grid;
-  grid-template-columns: 116px 1fr 120px;
-  min-height: 104px;
+  grid-template-columns: 94px 1fr 102px;
+  min-height: 86px;
   border-radius: 18px;
   overflow: hidden;
 }
@@ -2583,8 +2508,8 @@ const CSS = `
 }
 
 .critere-icon {
-  width: 86px;
-  height: 86px;
+  width: 68px;
+  height: 68px;
   display: grid;
   place-items: center;
 }
@@ -2606,7 +2531,7 @@ const CSS = `
 }
 
 .critere-title-above {
-  font-size: 1.02rem;
+  font-size: var(--fs-small);
   font-weight: 800;
   color: var(--theme-text);
   text-align: center;
@@ -2659,7 +2584,7 @@ const CSS = `
 }
 
 .critere-val {
-  font-size: 2.25rem;
+  font-size: 1.9rem;
   font-family: var(--font-display);
   font-weight: 900;
   color: #0f172a;
@@ -2669,28 +2594,28 @@ const CSS = `
 
 .critere-grid {
   display: grid;
-  grid-template-columns: repeat(5, 40px);
-  gap: 8px;
+  grid-template-columns: repeat(5, 34px);
+  gap: 6px;
   justify-content: center;
 }
 
 .critere-grid--six {
-  grid-template-columns: repeat(5, minmax(42px, 1fr));
+  grid-template-columns: repeat(5, minmax(34px, 1fr));
   max-width: 100%;
 }
 
 .critere-square {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   max-width: 100%;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.16);
   background: #050709;
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
   color: #ffffff;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .critere-square:hover {
@@ -2744,7 +2669,7 @@ const CSS = `
 }
 
 .critere-level-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--theme-text-muted);
   font-style: italic;
   margin: 8px 12px 10px;
@@ -2803,11 +2728,6 @@ const CSS = `
 .toggle-pill--no {
   background: rgba(245,158,11,0.14);
   border-color: #F59E0B;
-  color: #F59E0B;
-}
-
-.competence-impact {
-  font-size: 12px;
   color: #F59E0B;
 }
 
@@ -2906,10 +2826,11 @@ const CSS = `
 
 .recap-block {
   margin-top: 14px;
-  background: var(--theme-bg-page);
+  background: var(--theme-bg-card);
   border-radius: 12px;
   padding: 16px;
   border: 1px solid var(--theme-border);
+  box-shadow: var(--shadow-sm);
 }
 
 .recap-title {
@@ -3225,72 +3146,6 @@ const CSS = `
   width: min(480px, 95vw);
 }
 
-.coef-panel-sep {
-  height: 1px;
-  background: var(--theme-border);
-  margin: var(--space-md) 0;
-}
-
-.coef-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--theme-border);
-}
-
-.coef-toggle-row:last-of-type {
-  border-bottom: none;
-}
-
-.coef-toggle-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--theme-text);
-}
-
-.coef-toggle-desc {
-  margin: 4px 0 0;
-  font-size: 0.75rem;
-  color: var(--theme-text-muted);
-  line-height: 1.4;
-  max-width: 320px;
-}
-
-.coef-switch {
-  position: relative;
-  width: 34px;
-  height: 18px;
-  border-radius: 999px;
-  border: none;
-  padding: 0;
-  flex-shrink: 0;
-  cursor: pointer;
-  background: var(--theme-border);
-  transition: background 0.2s;
-}
-
-.coef-switch--on {
-  background: var(--theme-accent);
-}
-
-.coef-switch-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-}
-
-.coef-switch--on .coef-switch-knob {
-  transform: translateX(16px);
-}
-
 .coef-panel-header {
   display: flex;
   align-items: center;
@@ -3409,22 +3264,22 @@ const CSS = `
     width: 100%;
   }
   .critere-grid {
-    grid-template-columns: repeat(5, minmax(34px, 1fr));
+    grid-template-columns: repeat(5, minmax(32px, 1fr));
   }
   .critere-square {
     width: 100%;
-    height: 38px;
-    font-size: 1rem;
+    height: 32px;
+    font-size: 0.9rem;
   }
   .critere-bar {
-    grid-template-columns: 96px 1fr 96px;
+    grid-template-columns: 84px 1fr 88px;
   }
   .critere-icon {
-    width: 72px;
-    height: 72px;
+    width: 58px;
+    height: 58px;
   }
   .critere-val {
-    font-size: 1.9rem;
+    font-size: 1.6rem;
   }
   .score-summary-value {
     font-size: 24px;
@@ -3446,6 +3301,23 @@ const CSS = `
   }
 }
 
+@media (max-width: 1200px) and (min-width: 901px) {
+  .project-eval-layout {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+  }
+
+  .project-eval-header,
+  .project-eval-row,
+  .project-eval-extras {
+    min-width: 980px;
+    scroll-snap-align: start;
+  }
+}
+
 @media (max-width: 640px) {
   .ps-main {
     padding: var(--space-md);
@@ -3458,8 +3330,8 @@ const CSS = `
     width: 100%;
   }
   .critere-bar {
-    grid-template-columns: 78px 1fr 80px;
-    min-height: 84px;
+    grid-template-columns: 66px 1fr 72px;
+    min-height: 74px;
   }
   .critere-middle-pane {
     padding: 8px;
@@ -3471,11 +3343,11 @@ const CSS = `
     font-size: 0.68rem;
   }
   .critere-val {
-    font-size: 1.55rem;
+    font-size: 1.35rem;
   }
   .critere-icon {
-    width: 58px;
-    height: 58px;
+    width: 46px;
+    height: 46px;
   }
   .mini-gantt-24-wrap {
     order: 3;

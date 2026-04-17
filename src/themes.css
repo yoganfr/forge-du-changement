@@ -5,16 +5,50 @@
 ═══════════════════════════════════════════════════ */
 
 :root {
-  /* Marque (fixes — jamais en fond page / fond carte) */
-  --dark-red-500: #8e3b46;
-  --dark-red-600: #7a3340;
-  --coral-400: #e0777d;
-  --straw-400: #e1dd8f;
+  /* Palette fondamentale (mode clair) */
+  --caramel-candy-50: #ffeeb3;
+  --caramel-candy-100: #fdd284;
+  --caramel-candy-200: #f1872a;
+  --caramel-candy-300: #bf651a;
+  --caramel-candy-400: #b46118;
+  --caramel-candy-500: #af5214;
+  --caramel-candy-600: #921509;
+  --caramel-candy-700: #5f0202;
+  --caramel-candy-800: #470000;
+
+  --orecchiette-50: #fffbbd;
+  --orecchiette-100: #fbe086;
+  --orecchiette-200: #d1a035;
+  --orecchiette-300: #977629;
+  --orecchiette-400: #8f7224;
+  --orecchiette-500: #8a6f1c;
+  --orecchiette-600: #704a0c;
+  --orecchiette-700: #450b02;
+  --orecchiette-800: #2e0000;
+
+  --muted-yellow-green-50: #f3ffc7;
+  --muted-yellow-green-100: #d2ef96;
+  --muted-yellow-green-200: #91b64c;
+  --muted-yellow-green-300: #69843a;
+  --muted-yellow-green-400: #637e35;
+  --muted-yellow-green-500: #5e7c29;
+  --muted-yellow-green-600: #316411;
+  --muted-yellow-green-700: #022f02;
+  --muted-yellow-green-800: #001400;
+
+  /* Alias marque conservés pour compatibilité existante */
+  --dark-red-500: var(--caramel-candy-600);
+  --dark-red-600: var(--caramel-candy-700);
+  --coral-400: var(--caramel-candy-200);
+  --straw-400: var(--orecchiette-100);
   --steel-blue-400: #4c86a8;
 
   /* Typographie & layout (hors couleur surface) */
   --font-display: 'Playfair Display', serif;
   --font-body: 'Inter', system-ui, sans-serif;
+  --fs-base: 16px;
+  --fs-title: 24px;
+  --fs-small: 14px;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -34,25 +68,26 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --theme-bg-page: #f0eeee;
+  /* Couples fond/texte choisis pour un contraste élevé */
+  --theme-bg-page: #fffaf0;
   --theme-bg-card: #ffffff;
   /* Cartes dashboard (clair uniquement — le sombre garde ses fallbacks) */
-  --theme-dashboard-card-border: #e0dada;
-  --theme-dashboard-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --theme-dashboard-card-border: #e8d7b2;
+  --theme-dashboard-card-shadow: 0 6px 18px rgba(45, 26, 31, 0.12);
   --theme-bg-sidebar: #1a1a1a;
-  --theme-text: #1a1a1a;
-  --theme-text-muted: #555555;
-  --theme-accent: #7a3340;
+  --theme-text: var(--caramel-candy-800);
+  --theme-text-muted: var(--caramel-candy-700);
+  --theme-accent: var(--caramel-candy-600);
   --theme-on-accent: #ffffff;
-  --theme-border: #e8e8e8;
+  --theme-border: #bea779;
   --theme-sidebar-text: #f0f0f0;
   --theme-sidebar-text-muted: #a8a8a8;
-  --theme-bg-raised: #ffffff;
+  --theme-bg-raised: #fffdf7;
   --theme-image-placeholder: #ececec;
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 4px 12px rgba(42, 25, 30, 0.09);
+  --shadow-md: 0 10px 28px rgba(42, 25, 30, 0.12);
+  --shadow-lg: 0 18px 44px rgba(42, 25, 30, 0.16);
 
   /* Alias consommés par design-system.css */
   --clr-surface: var(--theme-bg-page);
@@ -74,14 +109,45 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --theme-bg-page: #121212;
-  --theme-bg-card: #1e1e1e;
+  /* Inversion palette fondamentale (mode sombre) */
+  --caramel-candy-50: #470000;
+  --caramel-candy-100: #5f0202;
+  --caramel-candy-200: #921509;
+  --caramel-candy-300: #af5214;
+  --caramel-candy-400: #b46118;
+  --caramel-candy-500: #bf651a;
+  --caramel-candy-600: #f1872a;
+  --caramel-candy-700: #fdd284;
+  --caramel-candy-800: #ffeeb3;
+
+  --orecchiette-50: #2e0000;
+  --orecchiette-100: #450b02;
+  --orecchiette-200: #704a0c;
+  --orecchiette-300: #8a6f1c;
+  --orecchiette-400: #8f7224;
+  --orecchiette-500: #977629;
+  --orecchiette-600: #d1a035;
+  --orecchiette-700: #fbe086;
+  --orecchiette-800: #fffbbd;
+
+  --muted-yellow-green-50: #001400;
+  --muted-yellow-green-100: #022f02;
+  --muted-yellow-green-200: #316411;
+  --muted-yellow-green-300: #5e7c29;
+  --muted-yellow-green-400: #637e35;
+  --muted-yellow-green-500: #69843a;
+  --muted-yellow-green-600: #91b64c;
+  --muted-yellow-green-700: #d2ef96;
+  --muted-yellow-green-800: #f3ffc7;
+
+  --theme-bg-page: #190f0e;
+  --theme-bg-card: #261816;
   --theme-bg-sidebar: #0a0a0a;
-  --theme-text: #f0f0f0;
-  --theme-text-muted: #a0a0a0;
-  --theme-accent: #8e3b46;
+  --theme-text: var(--orecchiette-800);
+  --theme-text-muted: #eadbbf;
+  --theme-accent: var(--caramel-candy-600);
   --theme-on-accent: #ffffff;
-  --theme-border: #2e2e2e;
+  --theme-border: #6a4338;
   --theme-sidebar-text: #f0f0f0;
   --theme-sidebar-text-muted: #a0a0a0;
   --theme-bg-raised: #2a2a2a;
