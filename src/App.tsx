@@ -10,7 +10,13 @@ import Login from './pages/Login'
 import SettingsPage from './pages/Settings'
 import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
-import { getLatestPendingInvitationForEmail, getWorkspace, listWorkspaces } from './lib/api'
+import {
+  getAcceptedInvitationAwaitingUserRow,
+  getLatestPendingInvitationForEmail,
+  getWorkspace,
+  listWorkspaces,
+  markInvitationsAcceptedForWorkspaceEmail,
+} from './lib/api'
 import type { Invitation, Workspace } from './lib/types'
 import {
   clearWorkspaceSnapshot,
@@ -141,22 +147,43 @@ function App() {
 
   const reconcileAuthSession = useCallback(async (user: User) => {
     const email = user.email ?? ''
+    const emailNorm = email.trim().toLowerCase()
     const invitedUser = await getCurrentUser()
-    const pendingInv =
-      invitedUser || isSuperAdmin(email)
-        ? null
-        : await getLatestPendingInvitationForEmail(email.trim().toLowerCase())
+    const skipInvFetch = Boolean(invitedUser) || isSuperAdmin(email)
+    const pendingInv = skipInvFetch ? null : await getLatestPendingInvitationForEmail(emailNorm)
+    const acceptedInv = skipInvFetch ? null : await getAcceptedInvitationAwaitingUserRow(emailNorm)
+    const invBootstrap = pendingInv ?? acceptedInv
 
     if (isSuperAdmin(email) || invitedUser) {
       setAuthUser(user)
+      if (invitedUser?.workspace_id) {
+        const isConsultantMember = invitedUser.role === 'consultant'
+        if (!isConsultantMember) {
+          localStorage.setItem('workspaceId', invitedUser.workspace_id)
+          setWorkspaceId(invitedUser.workspace_id)
+          localStorage.setItem(
+            'lfdc-user-role',
+            invitationRoleToStoredRole(invitedUser.role as Invitation['role']),
+          )
+        } else {
+          localStorage.setItem('lfdc-user-role', 'consultant')
+        }
+      }
+      try {
+        if (invitedUser?.workspace_id && invitedUser.email) {
+          await markInvitationsAcceptedForWorkspaceEmail(invitedUser.workspace_id, invitedUser.email)
+        }
+      } catch {
+        /* alignement statut invitation : best-effort */
+      }
       return
     }
-    if (pendingInv?.workspace_id) {
+    if (invBootstrap?.workspace_id) {
       setAuthUser(user)
-      localStorage.setItem('workspaceId', pendingInv.workspace_id)
-      setWorkspaceId(pendingInv.workspace_id)
+      localStorage.setItem('workspaceId', invBootstrap.workspace_id)
+      setWorkspaceId(invBootstrap.workspace_id)
       localStorage.removeItem('lfdc-user-id')
-      localStorage.setItem('lfdc-user-role', invitationRoleToStoredRole(pendingInv.role))
+      localStorage.setItem('lfdc-user-role', invitationRoleToStoredRole(invBootstrap.role))
       return
     }
     await signOut()
@@ -201,6 +228,22 @@ function App() {
       subscription.unsubscribe()
     }
   }, [reconcileAuthSession])
+
+  /** Quand l’email Auth est confirmé, aligner `invitations.status` pour que la liste côté consultant ne reste pas bloquée sur « en attente ». */
+  useEffect(() => {
+    if (!authUser?.email_confirmed_at || !authUser.email) return
+    const email = authUser.email.trim().toLowerCase()
+    void (async () => {
+      try {
+        const pending = await getLatestPendingInvitationForEmail(email)
+        if (pending?.workspace_id) {
+          await markInvitationsAcceptedForWorkspaceEmail(pending.workspace_id, email)
+        }
+      } catch {
+        /* Nécessite en base la policy UPDATE invitations pour l’invité (voir message déploiement). */
+      }
+    })()
+  }, [authUser?.id, authUser?.email, authUser?.email_confirmed_at])
 
   useEffect(() => {
     if (!authUser) return

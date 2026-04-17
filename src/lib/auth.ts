@@ -1,4 +1,7 @@
-import { getLatestPendingInvitationForEmail } from './api'
+import {
+  getAcceptedInvitationAwaitingUserRow,
+  getLatestPendingInvitationForEmail,
+} from './api'
 import { supabase } from './supabase'
 
 // Connexion email + password
@@ -75,18 +78,22 @@ export async function getCurrentUser() {
   return data
 }
 
-/** Accès app : super-admin, ligne `users`, ou invitation en attente pour l’email de session. */
+/** Accès app : super-admin, ligne `users`, invitation en attente, ou invitation acceptée sans profil `users` encore. */
 export async function userCanAccessApp(userEmail: string | undefined | null): Promise<boolean> {
   if (!userEmail?.trim()) return false
   const e = userEmail.trim().toLowerCase()
   if (isSuperAdmin(e)) return true
   const appUser = await getCurrentUser()
   if (appUser) return true
-  const inv = await getLatestPendingInvitationForEmail(e)
-  return inv !== null && inv.status === 'en_attente'
+  const pending = await getLatestPendingInvitationForEmail(e)
+  if (pending?.status === 'en_attente') return true
+  const accepted = await getAcceptedInvitationAwaitingUserRow(e)
+  return accepted !== null
 }
 
 // Vérifier si super admin
+/** Comptes plateforme : accès total côté app (à terme, préférer un flag en base plutôt qu’une liste d’emails). */
 export function isSuperAdmin(email: string): boolean {
-  return email.trim().toLowerCase() === 'yoganhedef@yahoo.fr'
+  const e = email.trim().toLowerCase()
+  return e === 'yoganhedef@yahoo.fr' || e === 'yoganhedef@gmail.com'
 }

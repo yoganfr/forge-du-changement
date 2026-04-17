@@ -215,3 +215,35 @@ export async function getLatestPendingInvitationForEmail(email: string): Promise
   if (error) return null
   return data as Invitation | null
 }
+
+/** Invitation déjà acceptée côté Auth / base, mais pas encore de ligne `public.users` (profil à créer). */
+export async function getAcceptedInvitationAwaitingUserRow(email: string): Promise<Invitation | null> {
+  const normalized = email.trim().toLowerCase()
+  const { data: existingUser } = await supabase.from('users').select('id').eq('email', normalized).maybeSingle()
+  if (existingUser) return null
+  const { data, error } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('email', normalized)
+    .eq('status', 'acceptee')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) return null
+  return data as Invitation | null
+}
+
+/** Passe les invitations `en_attente` à `acceptee` pour cet email dans cet espace (après confirmation email ou profil). */
+export async function markInvitationsAcceptedForWorkspaceEmail(
+  workspaceId: string,
+  email: string,
+): Promise<void> {
+  const normalized = email.trim().toLowerCase()
+  const { error } = await supabase
+    .from('invitations')
+    .update({ status: 'acceptee' })
+    .eq('workspace_id', workspaceId)
+    .eq('email', normalized)
+    .eq('status', 'en_attente')
+  if (error) throw error
+}

@@ -44,7 +44,8 @@ function summarizeUserRow(user: User, invitation: Invitation | undefined): { det
   if (invitation) {
     if (invitation.status === 'en_attente') bits.push('Invitation en attente d’acceptation')
     else if (invitation.status === 'expiree') bits.push('Dernière invitation expirée')
-    else bits.push('Invitation acceptée')
+    else if (invitation.status === 'acceptee') bits.push('Email de connexion confirmé (Supabase Auth)')
+    else bits.push('Invitation mise à jour')
   }
   if (user.status === 'actif') {
     bits.push('Profil rattaché à l’espace — compte actif (connexion enregistrée)')
@@ -74,7 +75,8 @@ function summarizeInviteOnlyRow(inv: Invitation): { detail: string; pillLabel: s
     }
   }
   return {
-    detail: 'Invitation indiquée comme acceptée — si aucune ligne utilisateur n’apparaît, les données peuvent être en retard de synchro.',
+    detail:
+      'Email confirmé côté Auth — complétez votre profil via « Mon profil » pour activer le compte dans l’espace.',
     pillLabel: 'Acceptée',
     pillVariant: 'invited',
   }
@@ -182,6 +184,63 @@ function canEditCompany(role: CompanySheetProps['currentUserRole']) {
   return role === 'consultant' || role === 'admin'
 }
 
+/** Inviter des membres entreprise (unitaire, lot CSV, renvoi mail) : consultants + CODIR. */
+function canInviteMembers(role: CompanySheetProps['currentUserRole']) {
+  return role === 'consultant' || role === 'admin' || role === 'codir'
+}
+
+function parseRoleCell(raw: string | undefined): InviteFormRole {
+  if (!raw?.trim()) return 'Contributeur'
+  const t = raw
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (t.includes('codir') || t === 'codir') return 'Membre CODIR'
+  if (t.includes('pilote') || t.includes('chef') || t === 'pilote') return 'Pilote de projet'
+  return 'Contributeur'
+}
+
+function parseInvitationCsv(
+  raw: string,
+  defaultRole: InviteFormRole,
+): { rows: Array<{ email: string; role: InviteFormRole }>; lineErrors: string[] } {
+  const lines = raw
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+  if (lines.length === 0) return { rows: [], lineErrors: ['Aucune ligne à traiter.'] }
+  let start = 0
+  if (/^email\b/i.test(lines[0])) start = 1
+  const rows: Array<{ email: string; role: InviteFormRole }> = []
+  const lineErrors: string[] = []
+  for (let i = start; i < lines.length; i++) {
+    const lineNum = i + 1
+    const line = lines[i]
+    const parts = line.includes(';') ? line.split(';') : line.split(',')
+    const email = parts[0]?.trim().toLowerCase() ?? ''
+    const roleCell = parts[1]?.trim()
+    if (!email) {
+      lineErrors.push(`Ligne ${lineNum} : email manquant`)
+      continue
+    }
+    if (!email.includes('@')) {
+      lineErrors.push(`Ligne ${lineNum} : email invalide (${email})`)
+      continue
+    }
+    rows.push({ email, role: roleCell ? parseRoleCell(roleCell) : defaultRole })
+  }
+  const seen = new Set<string>()
+  const deduped: Array<{ email: string; role: InviteFormRole }> = []
+  for (const r of rows) {
+    if (seen.has(r.email)) continue
+    seen.add(r.email)
+    deduped.push(r)
+  }
+  return { rows: deduped, lineErrors }
+}
+
 export default function CompanySheet({
   workspaceId = null,
   companyName,
@@ -210,6 +269,10 @@ export default function CompanySheet({
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
   const [resendingEmail, setResendingEmail] = useState<string | null>(null)
   const [resendBanner, setResendBanner] = useState<{ ok: boolean; text: string } | null>(null)
+  const [csvText, setCsvText] = useState('')
+  const [batchDefaultRole, setBatchDefaultRole] = useState<InviteFormRole>('Contributeur')
+  const [batchSubmitting, setBatchSubmitting] = useState(false)
+  const [batchSummary, setBatchSummary] = useState<string | null>(null)
 
   useEffect(() => {
     setLogoUrl(companyLogoProp ?? null)
@@ -223,9 +286,13 @@ export default function CompanySheet({
   }, [companyName, sector, size])
 
   const roleLabel = getRoleLabel(currentUserRole)
-  const roleColor = currentUserRole === 'consultant' || currentUserRole === 'admin' ? '#8E3B46' : '#4C86A8'
+  const roleColor =
+    currentUserRole === 'consultant' || currentUserRole === 'admin' || currentUserRole === 'codir'
+      ? '#8E3B46'
+      : '#4C86A8'
   const initials = useMemo(() => getInitials(draftName), [draftName])
   const canEdit = canEditCompany(currentUserRole)
+  const canInvite = canInviteMembers(currentUserRole)
   const mergedMembers = remoteMembers ?? members
 
   function onLogoFile(file: File | null) {
@@ -292,6 +359,57 @@ export default function CompanySheet({
       setInviteError(inviteApiErrorMessage(err))
     } finally {
       setInviteSubmitting(false)
+    }
+  }
+
+  async function submitBatchInvitations() {
+    if (!workspaceId) return
+    setInviteError(null)
+    setInviteSuccess(null)
+    setBatchSummary(null)
+    const { rows, lineErrors } = parseInvitationCsv(csvText, batchDefaultRole)
+    if (rows.length === 0 && lineErrors.length > 0) {
+      setInviteError(lineErrors.join(' '))
+      return
+    }
+    if (rows.length === 0) {
+      setInviteError('Collez au moins une ligne avec une adresse email.')
+      return
+    }
+    setBatchSubmitting(true)
+    try {
+      let ok = 0
+      let mailFail = 0
+      const rowErrors: string[] = [...lineErrors]
+      for (const { email, role } of rows) {
+        try {
+          await createInvitation({
+            workspace_id: workspaceId,
+            email,
+            role: toInvitationRole(role),
+          })
+          ok += 1
+          try {
+            await sendInvitationMagicLink(email)
+          } catch {
+            mailFail += 1
+          }
+        } catch (e) {
+          rowErrors.push(`${email} : ${inviteApiErrorMessage(e)}`)
+        }
+      }
+      setCsvText('')
+      setMembersRefreshKey((k) => k + 1)
+      const parts = [`${ok} invitation(s) enregistrée(s).`]
+      if (mailFail > 0) {
+        parts.push(`${mailFail} email(s) de connexion non envoyés (réessayez ou « Renvoyer l’email »).`)
+      }
+      if (rowErrors.length > 0) {
+        parts.push(`Détail : ${rowErrors.slice(0, 8).join(' ')}${rowErrors.length > 8 ? '…' : ''}`)
+      }
+      setBatchSummary(parts.join(' '))
+    } finally {
+      setBatchSubmitting(false)
     }
   }
 
@@ -452,7 +570,7 @@ export default function CompanySheet({
                 const pillVariant = member.pillVariant ?? (member.status === 'actif' ? 'active' : 'invited')
                 const emailKey = member.email.trim().toLowerCase()
                 const showResend =
-                  canEdit && workspaceId && memberCanReceiveInviteResend(member)
+                  canInvite && workspaceId && memberCanReceiveInviteResend(member)
                 return (
                   <div key={`${member.email}-${idx}`} className="cs-member-row">
                     <div className="cs-member-avatar" style={{ background: badgeColor }}>
@@ -496,12 +614,19 @@ export default function CompanySheet({
           )}
         </div>
 
-        {canEdit && workspaceId && (
+        {canInvite && workspaceId && (
           <div className="cs-section cs-section--invite">
             <h3>Inviter un membre</h3>
             <p className="cs-invite-lead">
               Une invitation est créée dans l’espace ; le statut de chaque personne (acceptation, profil, connexion)
-              apparaît dans la liste ci-dessus après actualisation.
+              apparaît dans la liste ci-dessus après actualisation. Les{' '}
+              <strong>consultants</strong> (y compris invités sur le dossier) et les{' '}
+              <strong>membres CODIR</strong> peuvent inviter des personnes de l’entreprise cliente.
+            </p>
+            <p className="cs-invite-warn">
+              Si vous êtes connecté en tant que consultant sur ce navigateur, ouvrez le lien reçu par l’invité dans un
+              autre navigateur ou une fenêtre privée : sinon la session consultant est remplacée par celle de l’invité
+              et vous ne verrez plus qu’un seul espace entreprise.
             </p>
             <div className="cs-invite-row">
               <label className="cs-invite-field">
@@ -538,6 +663,62 @@ export default function CompanySheet({
             </div>
             {inviteError && <p className="cs-invite-msg cs-invite-msg--error">{inviteError}</p>}
             {inviteSuccess && <p className="cs-invite-msg cs-invite-msg--ok">{inviteSuccess}</p>}
+
+            <h4 className="cs-invite-batch-title">Invitation par lot (CSV)</h4>
+            <label className="cs-batch-file-label">
+              <span className="cs-label">Importer un fichier .csv</span>
+              <input
+                type="file"
+                accept=".csv,text/csv,text/plain"
+                className="cs-batch-file"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    setCsvText(typeof reader.result === 'string' ? reader.result : '')
+                  }
+                  reader.readAsText(f, 'UTF-8')
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            <p className="cs-invite-batch-hint">
+              Après accord avec le client sur la liste des personnes : une ligne par email. Colonnes{' '}
+              <strong>email</strong> puis <strong>role</strong> (séparateur virgule ou point-virgule). Rôle optionnel :
+              sinon le rôle par défaut ci-dessous s’applique. Valeurs reconnues : codir / pilote / contributeur, ou
+              Membre CODIR / Pilote de projet / Contributeur. Première ligne optionnelle :{' '}
+              <code>email,role</code>
+            </p>
+            <label className="cs-invite-field cs-invite-field--batch-role">
+              <span className="cs-label">Rôle par défaut (si absent par ligne)</span>
+              <select
+                className="cs-edit-input cs-edit-input--select"
+                value={batchDefaultRole}
+                onChange={(e) => setBatchDefaultRole(e.target.value as InviteFormRole)}
+              >
+                {INVITE_ROLE_OPTIONS.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </label>
+            <textarea
+              className="cs-csv-textarea"
+              value={csvText}
+              onChange={(e) => setCsvText(e.target.value)}
+              placeholder={'email,role\njean.dupont@client.fr,codir\nmarie@client.fr\npierre@client.fr,pilote'}
+              rows={6}
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              className="cs-invite-submit cs-invite-submit--batch"
+              onClick={() => { void submitBatchInvitations() }}
+              disabled={batchSubmitting || !csvText.trim()}
+            >
+              {batchSubmitting ? 'Traitement…' : 'Lancer les invitations depuis le CSV'}
+            </button>
+            {batchSummary && <p className="cs-invite-msg cs-invite-msg--ok">{batchSummary}</p>}
           </div>
         )}
 
@@ -558,9 +739,16 @@ export default function CompanySheet({
           </div>
         )}
 
-        {!canEdit && (
+        {!canEdit && canInvite && (
           <p className="cs-note">
-            Seul le consultant ou l&apos;administrateur peut modifier ces informations.
+            Seul le consultant ou l’administrateur peut modifier la fiche entreprise (logo, nom, secteur). Vous pouvez
+            inviter des membres ci-dessus.
+          </p>
+        )}
+        {!canEdit && !canInvite && (
+          <p className="cs-note">
+            Seuls le consultant, l’administrateur ou un membre CODIR peuvent inviter des membres. Seul le consultant ou
+            l’administrateur peut modifier la fiche entreprise.
           </p>
         )}
       </section>
@@ -797,6 +985,66 @@ const CSS = `
   font-size: 12px;
   line-height: 1.45;
   color: var(--theme-text-muted);
+}
+
+.cs-invite-warn {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #b45309 35%, var(--theme-border));
+  background: color-mix(in srgb, #b45309 8%, var(--theme-bg-page));
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--theme-text);
+}
+
+.cs-invite-batch-title {
+  margin: 20px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.cs-invite-batch-hint {
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--theme-text-muted);
+}
+
+.cs-invite-field--batch-role {
+  flex: 0 0 220px;
+  margin-bottom: 10px;
+}
+
+.cs-csv-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 120px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--theme-text);
+  background: var(--theme-bg-page);
+  resize: vertical;
+}
+
+.cs-invite-submit--batch {
+  margin-top: 4px;
+}
+
+.cs-batch-file-label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.cs-batch-file {
+  font-size: 12px;
+  max-width: 100%;
 }
 
 .cs-invite-row {

@@ -15,7 +15,7 @@ export type User = {
   nom: string | null
   job_title: string | null
   avatar_url: string | null
-  role: 'consultant' | 'codir' | 'pilote' | 'contributeur'
+  role: 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
   direction_type: 'Fonctionnel' | 'Métier' | 'Géographique' | null
   direction_nom: string | null
   managed_count: number

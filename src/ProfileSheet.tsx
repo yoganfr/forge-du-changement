@@ -3,6 +3,7 @@ import {
   createUser,
   getWorkspaceUsers,
   isStorageBucketNotFound,
+  markInvitationsAcceptedForWorkspaceEmail,
   updateUser,
   uploadImageToStorage,
 } from './lib/api'
@@ -316,11 +317,13 @@ export default function ProfileSheet({
       try {
         const roleDb: User['role'] = role.toLowerCase().includes('consultant')
           ? 'consultant'
-          : role.toLowerCase().includes('pilote')
-            ? 'pilote'
-            : role.toLowerCase().includes('contributeur')
-              ? 'contributeur'
-              : 'codir'
+          : role.toLowerCase().includes('admin')
+            ? 'admin'
+            : role.toLowerCase().includes('pilote')
+              ? 'pilote'
+              : role.toLowerCase().includes('contributeur')
+                ? 'contributeur'
+                : 'codir'
 
         if (currentUserId) {
           await updateUser(currentUserId, {
@@ -355,6 +358,11 @@ export default function ProfileSheet({
             total_effectif: totalEffectif,
             status: 'actif',
           })
+          try {
+            await markInvitationsAcceptedForWorkspaceEmail(workspaceId, authEmail)
+          } catch {
+            /* idempotent si déjà acceptée */
+          }
           setCurrentUserId(created.id)
           localStorage.setItem('lfdc-user-id', created.id)
         }
