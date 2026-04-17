@@ -29,6 +29,10 @@
 }
 
 .dashboard__brand {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: var(--space-md);
@@ -97,12 +101,62 @@
   outline-offset: 2px;
 }
 
+.dashboard__nav-item--child {
+  padding-left: 20px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  margin-left: 16px;
+  width: calc(100% - 16px);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-left: 2px solid rgba(142, 59, 70, 0.5);
+  color: var(--theme-sidebar-text-muted);
+  position: relative;
+}
+
+.dashboard__nav-item--child::before {
+  content: '↳';
+  position: absolute;
+  left: 6px;
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
+.dashboard__nav-item--child:hover {
+  border-left-color: var(--theme-accent);
+  color: var(--theme-sidebar-text);
+}
+
+.dashboard__nav-item--child.dashboard__nav-item--active {
+  border-left-color: var(--theme-accent);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--theme-sidebar-text);
+}
+
 .dashboard__sidebar-foot {
   margin: 0;
   padding-top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dashboard__sidebar-foot p {
+  margin: 0;
   font-size: 0.75rem;
   color: var(--theme-sidebar-text-muted);
   line-height: 1.4;
+}
+
+.dashboard__reset-btn {
+  align-self: flex-start;
+  font-size: 0.65rem;
+  opacity: 0.35;
+  color: var(--theme-sidebar-text);
+  text-decoration: underline;
+}
+
+.dashboard__reset-btn:hover {
+  opacity: 0.75;
 }
 
 .dashboard__main {
@@ -146,6 +200,43 @@
   align-items: center;
   gap: var(--space-md);
   flex-shrink: 0;
+}
+
+.company-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-bg-card);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: var(--font-body);
+}
+
+.company-badge:hover {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 3px rgba(142, 59, 70, 0.1);
+}
+
+.company-badge-initials {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.company-badge-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-text);
 }
 
 /* Toggle thème : bouton → accent */

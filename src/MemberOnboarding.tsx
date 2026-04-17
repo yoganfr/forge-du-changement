@@ -1,181 +1,56 @@
-import { useMemo, useState } from 'react'
-
-type DirectionOption = 'Direction Ressources Humaines' | 'Direction des Systèmes d\'Information' | 'Autre'
-
-const DIRECTION_OPTIONS: DirectionOption[] = [
-  'Direction Ressources Humaines',
-  'Direction des Systèmes d\'Information',
-  'Autre',
-]
-
-type SavedOnboardingProfile = {
-  firstName: string
-  lastName: string
-  jobTitle: string
-  directionName: string
-  mission: string
-  vision: string
+export interface MemberOnboardingProps {
+  firstName?: string
+  direction?: string
+  role?: string
+  onNavigate: (id: string) => void
 }
 
-function getInitials(firstName: string, lastName: string) {
-  const left = firstName.trim()[0] ?? ''
-  const right = lastName.trim()[0] ?? ''
-  const computed = `${left}${right}`.toUpperCase()
-  return computed || 'MF'
-}
-
-export default function MemberOnboarding() {
-  const [step, setStep] = useState<1 | 2>(1)
-
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [jobTitle, setJobTitle] = useState('')
-  const [direction, setDirection] = useState<DirectionOption>('Direction Ressources Humaines')
-  const [otherDirection, setOtherDirection] = useState('')
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-
-  const [mission, setMission] = useState('')
-  const [vision, setVision] = useState('')
-
-  const canContinue = firstName.trim() && lastName.trim() && jobTitle.trim()
-  const initials = useMemo(() => getInitials(firstName, lastName), [firstName, lastName])
-  const directionName = direction === 'Autre' ? otherDirection.trim() : direction
-
-  function onAvatarChange(file: File | null) {
-    if (!file) {
-      setAvatarPreview(null)
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => setAvatarPreview(typeof reader.result === 'string' ? reader.result : null)
-    reader.readAsDataURL(file)
-  }
-
-  function persistProfile() {
-    const payload: SavedOnboardingProfile = {
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      jobTitle: jobTitle.trim(),
-      directionName,
-      mission: mission.trim(),
-      vision: vision.trim(),
-    }
-    localStorage.setItem('lfdc-member-onboarding', JSON.stringify(payload))
-  }
-
+export default function MemberOnboarding({
+  firstName = 'vous',
+  direction = 'votre direction',
+  role = 'Membre CODIR',
+  onNavigate,
+}: MemberOnboardingProps) {
   return (
     <div className="mo-root">
       <style>{CSS}</style>
       <main className="mo-main">
         <header className="mo-header">
-          <h2 className="mo-title">Onboarding membre invité</h2>
-          <p className="mo-subtitle">Complétez votre profil pour rejoindre votre espace de transformation.</p>
+          <h2 className="mo-title">Bonjour {firstName} 👋</h2>
+          <p className="mo-subtitle">
+            Espace {direction} · {role}
+          </p>
         </header>
 
-        <section className="mo-progress-card">
-          <div className="mo-progress-top">
-            <span>Étape {step}/2</span>
-            <span>{step === 1 ? 'Mon identité' : 'Ma direction'}</span>
+        <section className="mo-grid">
+          <button type="button" className="mo-card mo-card--active" onClick={() => onNavigate('fabrique')}>
+            <span className="mo-icon">{ICON_PENCIL}</span>
+            <h3>Saisir mes projets</h3>
+            <p>Évaluer vos projets RUN & BUILD sur les 6 dimensions de criticité</p>
+            <span className="mo-cta">Ouvrir →</span>
+          </button>
+
+          <button type="button" className="mo-card mo-card--active" onClick={() => onNavigate('fabrique')}>
+            <span className="mo-icon">{ICON_LIST}</span>
+            <h3>Vue synthèse</h3>
+            <p>Visualiser le classement et le top 5 BUILD soumis au DG</p>
+            <span className="mo-cta">Ouvrir →</span>
+          </button>
+
+          <div className="mo-card mo-card--disabled">
+            <span className="mo-soon">Bientôt disponible</span>
+            <span className="mo-icon mo-icon--muted">{ICON_TIMELINE}</span>
+            <h3>Ma roadmap</h3>
+            <p>Construire ma feuille de route de transformation par axe</p>
           </div>
-          <div className="mo-progress-track">
-            <div className="mo-progress-fill" style={{ width: step === 1 ? '50%' : '100%' }} />
+
+          <div className="mo-card mo-card--disabled">
+            <span className="mo-soon">Bientôt disponible</span>
+            <span className="mo-icon mo-icon--muted">{ICON_CHECKLIST}</span>
+            <h3>Plans d&apos;actions</h3>
+            <p>Piloter les actions managériales et suivre la charge par équipe</p>
           </div>
         </section>
-
-        {step === 1 ? (
-          <section className="mo-card">
-            <h3 className="mo-card-title">Étape 1 — Mon identité</h3>
-            <div className="mo-grid">
-              <label className="mo-field">
-                <span>Prénom *</span>
-                <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              </label>
-              <label className="mo-field">
-                <span>Nom *</span>
-                <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              </label>
-              <label className="mo-field">
-                <span>Poste / Titre *</span>
-                <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
-              </label>
-              <label className="mo-field">
-                <span>Direction</span>
-                <select value={direction} onChange={(e) => setDirection(e.target.value as DirectionOption)}>
-                  {DIRECTION_OPTIONS.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {direction === 'Autre' && (
-                <label className="mo-field mo-field--full">
-                  <span>Nom de la direction</span>
-                  <input value={otherDirection} onChange={(e) => setOtherDirection(e.target.value)} />
-                </label>
-              )}
-              <label className="mo-field mo-field--full">
-                <span>Avatar (optionnel)</span>
-                <input type="file" accept="image/*" onChange={(e) => onAvatarChange(e.target.files?.[0] ?? null)} />
-              </label>
-            </div>
-
-            <div className="mo-preview">
-              <div className="mo-avatar">
-                {avatarPreview ? <img src={avatarPreview} alt="Avatar membre" /> : <span>{initials}</span>}
-              </div>
-              <div>
-                <div className="mo-name">{`${firstName || 'Prénom'} ${lastName || 'Nom'}`}</div>
-                <div className="mo-meta">{jobTitle || 'Poste'} · {directionName || 'Direction'}</div>
-              </div>
-            </div>
-
-            <div className="mo-actions">
-              <button type="button" className="mo-btn mo-btn--primary" disabled={!canContinue} onClick={() => setStep(2)}>
-                Continuer
-              </button>
-            </div>
-          </section>
-        ) : (
-          <section className="mo-card">
-            <h3 className="mo-card-title">Étape 2 — Ma direction</h3>
-            <div className="mo-grid">
-              <label className="mo-field mo-field--full">
-                <span>Nom de ma direction</span>
-                <input value={directionName} readOnly />
-              </label>
-              <label className="mo-field mo-field--full">
-                <span>Mission de ma direction</span>
-                <textarea
-                  value={mission}
-                  onChange={(e) => setMission(e.target.value)}
-                  placeholder="Décrivez la mission principale..."
-                />
-              </label>
-              <label className="mo-field mo-field--full">
-                <span>Vision de ma direction</span>
-                <textarea
-                  value={vision}
-                  onChange={(e) => setVision(e.target.value)}
-                  placeholder="Décrivez la vision cible..."
-                />
-              </label>
-            </div>
-
-            <p className="mo-note">
-              Ces informations pré-rempliront les champs Mission / Vision dans la vue périmètre correspondante.
-            </p>
-
-            <div className="mo-actions">
-              <button type="button" className="mo-btn mo-btn--ghost" onClick={() => setStep(1)}>
-                Retour
-              </button>
-              <button type="button" className="mo-btn mo-btn--primary" onClick={persistProfile}>
-                Accéder à mon espace
-              </button>
-            </div>
-          </section>
-        )}
       </main>
     </div>
   )
@@ -190,7 +65,7 @@ const CSS = `
 .mo-main {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
 }
 
 .mo-header {
@@ -201,164 +76,94 @@ const CSS = `
 
 .mo-title {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: 'Playfair Display', serif;
   color: var(--theme-text);
-  font-size: 1.45rem;
+  font-size: 28px;
+  font-weight: 700;
 }
 
 .mo-subtitle {
   margin: 0;
   color: var(--theme-text-muted);
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
-.mo-progress-card,
 .mo-card {
   background: var(--theme-bg-card);
   border: 1px solid var(--theme-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.mo-progress-top {
+  padding: 28px 24px;
   display: flex;
-  justify-content: space-between;
-  font-size: 0.82rem;
-  color: var(--theme-text-muted);
-  margin-bottom: var(--space-sm);
-}
-
-.mo-progress-track {
-  height: 10px;
-  background: var(--theme-border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.mo-progress-fill {
-  height: 100%;
-  background: var(--theme-accent);
-  transition: width var(--transition);
-}
-
-.mo-card-title {
-  margin: 0 0 var(--space-md);
-  font-size: 1rem;
-  color: var(--theme-text);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
 }
 
 .mo-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: var(--space-md);
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
 }
 
-.mo-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.82rem;
-  color: var(--theme-text-muted);
-}
-
-.mo-field--full {
-  grid-column: 1 / -1;
-}
-
-.mo-field input,
-.mo-field select,
-.mo-field textarea {
-  border: 1px solid var(--theme-border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  font: inherit;
+.mo-card h3 {
+  margin: 0;
   color: var(--theme-text);
-  background: var(--theme-bg-page);
+  font-size: 1.05rem;
 }
 
-.mo-field textarea {
-  min-height: 90px;
-  resize: vertical;
+.mo-card p {
+  margin: 0;
+  color: var(--theme-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
-.mo-preview {
-  margin-top: var(--space-lg);
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-md);
-  border: 1px dashed var(--theme-border);
-  border-radius: var(--radius-md);
+.mo-card--active {
+  cursor: pointer;
+  transition:
+    transform .2s,
+    box-shadow .2s,
+    border-color .2s;
 }
 
-.mo-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--theme-accent);
-  color: var(--theme-on-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.mo-card--active:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  border-color: var(--theme-accent);
+}
+
+.mo-card--disabled {
+  opacity: .45;
+  cursor: default;
+  position: relative;
+}
+
+.mo-soon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 10px;
   font-weight: 700;
-  font-size: 1rem;
-  overflow: hidden;
-}
-
-.mo-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.mo-name {
-  color: var(--theme-text);
-  font-weight: 600;
-}
-
-.mo-meta {
   color: var(--theme-text-muted);
-  font-size: 0.82rem;
-}
-
-.mo-note {
-  margin: var(--space-md) 0 0;
-  color: var(--theme-text-muted);
-  font-size: 0.82rem;
-  border-top: 1px solid var(--theme-border);
-  padding-top: var(--space-md);
-}
-
-.mo-actions {
-  margin-top: var(--space-lg);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-sm);
-}
-
-.mo-btn {
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 600;
-}
-
-.mo-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.mo-btn--primary {
-  background: var(--theme-accent);
-  color: var(--theme-on-accent);
-}
-
-.mo-btn--ghost {
-  background: transparent;
   border: 1px solid var(--theme-border);
-  color: var(--theme-text-muted);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.mo-icon {
+  color: #8E3B46;
+}
+
+.mo-icon--muted {
+  color: #6B7280;
+}
+
+.mo-cta {
+  margin-top: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8E3B46;
 }
 
 @media (max-width: 900px) {
@@ -367,3 +172,31 @@ const CSS = `
   }
 }
 `
+
+const ICON_PENCIL = (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7">
+    <path d="M4 20h4l10-10-4-4L4 16z" />
+    <path d="M13 7l4 4" />
+  </svg>
+)
+
+const ICON_LIST = (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7">
+    <path d="M9 7h10M9 12h10M9 17h10" />
+    <path d="M4 7l1.2 1.2L7 6.5M4 12l1.2 1.2L7 11.5M4 17l1.2 1.2L7 16.5" />
+  </svg>
+)
+
+const ICON_TIMELINE = (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7">
+    <path d="M4 6h16M4 12h10M4 18h16" />
+    <circle cx="18" cy="12" r="2" />
+  </svg>
+)
+
+const ICON_CHECKLIST = (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7">
+    <path d="M9 7h10M9 12h10M9 17h10" />
+    <path d="M4 7h1M4 12h1M4 17h1" />
+  </svg>
+)
