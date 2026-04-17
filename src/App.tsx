@@ -47,11 +47,11 @@ const cards = [
 ] as const
 
 type OnboardingData = OnboardingFlowProps extends { onComplete: (data: infer T) => void } ? T : never
+type AppUserRole = 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
 
 function App() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
-  const [onboardingDone, setOnboardingDone] = useState(() => Boolean(localStorage.getItem('workspaceId')))
   const [workspaceName, setWorkspaceName] = useState('La Forge')
   const [companyLogo, setCompanyLogo] = useState<string | null>(null)
   const [userInitials, setUserInitials] = useState('?')
@@ -68,6 +68,10 @@ function App() {
   })()
 
   const [showProfile, setShowProfile] = useState(false)
+  const [showWorkspaceOnboarding, setShowWorkspaceOnboarding] = useState(false)
+  const storedRole = localStorage.getItem('lfdc-user-role') as AppUserRole | null
+  const currentUserRole: AppUserRole = storedRole ?? 'consultant'
+  const canManageWorkspaces = currentUserRole === 'consultant' || currentUserRole === 'admin'
 
   useLayoutEffect(() => {
     applyThemeToDocument(theme)
@@ -91,12 +95,10 @@ function App() {
           companyLogo: workspace.logo_url,
           members: prev?.members ?? [],
         }))
-        setOnboardingDone(true)
       } catch {
         if (cancelled) return
         localStorage.removeItem('workspaceId')
         setWorkspaceId(null)
-        setOnboardingDone(false)
       }
     })()
     return () => {
@@ -104,13 +106,13 @@ function App() {
     }
   }, [workspaceId])
 
-  if (!onboardingDone) {
+  if (showWorkspaceOnboarding) {
     return (
       <OnboardingFlow
+        onCancel={() => setShowWorkspaceOnboarding(false)}
         onComplete={(data) => {
           localStorage.setItem('workspaceId', data.workspace.id)
           setWorkspaceId(data.workspace.id)
-          setOnboardingDone(true)
           setWorkspaceName(data.workspace.company_name)
           setCompanyLogo(data.workspace.logo_url)
           try {
@@ -122,6 +124,8 @@ function App() {
             setUserInitials('?')
           }
           setWorkspaceData(data)
+          setActiveNav('company')
+          setShowWorkspaceOnboarding(false)
         }}
       />
     )
@@ -208,7 +212,10 @@ function App() {
             onClick={() => {
               localStorage.removeItem('workspaceId')
               setWorkspaceId(null)
-              setOnboardingDone(false)
+              setWorkspaceData(null)
+              setCompanyLogo(null)
+              setWorkspaceName('La Forge')
+              setActiveNav('home')
             }}
           >
             ↺ Recommencer
@@ -229,6 +236,15 @@ function App() {
             </h1>
           </div>
           <div className="dashboard__header-actions">
+            {canManageWorkspaces && (
+              <button
+                type="button"
+                className="dashboard__admin-btn"
+                onClick={() => setShowWorkspaceOnboarding(true)}
+              >
+                + Ajouter une entreprise
+              </button>
+            )}
             <button
               type="button"
               className="dashboard__theme-toggle"
@@ -308,7 +324,7 @@ function App() {
               sector={workspaceData?.sector ?? 'Non renseigné'}
               size={workspaceData?.size ?? 'Non renseigné'}
               members={workspaceData?.members ?? []}
-              currentUserRole="consultant"
+              currentUserRole={currentUserRole}
               companyLogo={companyLogo}
               onCompanyUpdate={(data) => {
                 setCompanyLogo(data.logo)

@@ -10,6 +10,7 @@ import type { Workspace } from './lib/types'
 type MemberRole = 'Membre CODIR' | 'Pilote de projet' | 'Contributeur'
 
 export interface OnboardingFlowProps {
+  onCancel?: () => void
   onComplete: (data: {
     workspace: Workspace
     companyName: string
@@ -54,7 +55,7 @@ function getApiErrorMessage(error: unknown): string {
   return 'Une erreur est survenue, veuillez réessayer'
 }
 
-export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState(1)
   const [prevStep, setPrevStep] = useState(1)
   const [errors, setErrors] = useState<Errors>({})
@@ -235,6 +236,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <p className="of-subtitle">
                 Configuré par le consultant ou le chef de projet — prend moins de 2 minutes
               </p>
+              {onCancel && (
+                <button type="button" className="of-cancel-btn" onClick={onCancel}>
+                  ← Retour à l&apos;accueil
+                </button>
+              )}
 
               <label className="of-field">
                 <span className="of-label of-label--required">Nom de l&apos;entreprise</span>
@@ -519,6 +525,14 @@ const CSS = `
   margin: 8px 0 32px;
   font-size: 14px;
   color: var(--theme-text-muted);
+}
+
+.of-cancel-btn {
+  margin: -14px 0 18px;
+  color: var(--theme-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 .of-field { display: block; margin-bottom: 14px; }
