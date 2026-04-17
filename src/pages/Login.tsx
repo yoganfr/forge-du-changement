@@ -94,12 +94,17 @@ export default function Login({ onAuthenticated }: LoginProps) {
   return (
     <div className="login-page">
       <style>{CSS}</style>
+      {/* Fonds décoratifs mesh — purement visuels */}
+      <div className="login-page__mesh" aria-hidden="true" />
       <div className="login-card">
         {error && <div className="login-error-banner">{error}</div>}
         <div className="login-brand">
+          <p className="login-brand-kicker">Forge du Changement</p>
           <div className="login-brand-mark">◈</div>
           <h1>La Forge du Changement</h1>
-          <p>Acces reserve aux membres invites</p>
+          <p className="login-brand-lead">
+            Accès réservé aux membres invités — pilotez votre transformation avec clarté et rythme.
+          </p>
         </div>
 
         <form
@@ -197,23 +202,67 @@ export default function Login({ onAuthenticated }: LoginProps) {
 
 const CSS = `
 .login-page {
+  position: relative;
+  isolation: isolate;
   min-height: 100svh;
   display: grid;
   place-items: center;
-  background: var(--theme-bg-page);
-  padding: 24px;
+  padding: clamp(20px, 4vw, 40px);
   box-sizing: border-box;
+  overflow-x: hidden;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  /* Mesh #ffeeb3 ↔ #f1872a */
+  background-color: #ffeeb3;
+  background-image:
+    radial-gradient(ellipse 100% 70% at 15% 20%, rgba(241, 135, 42, 0.42) 0%, transparent 58%),
+    radial-gradient(ellipse 90% 80% at 88% 15%, rgba(255, 238, 179, 0.95) 0%, transparent 52%),
+    radial-gradient(ellipse 85% 75% at 75% 85%, rgba(241, 135, 42, 0.38) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 60% at 10% 90%, rgba(255, 238, 179, 0.75) 0%, transparent 50%),
+    linear-gradient(152deg, #ffeeb3 0%, #f1872a 42%, #ffeeb3 100%);
+  background-attachment: fixed;
+}
+
+.login-page__mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.22) 0%, transparent 35%),
+    radial-gradient(circle at 70% 60%, rgba(241, 135, 42, 0.15) 0%, transparent 40%);
+  mix-blend-mode: soft-light;
 }
 
 .login-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 480px;
-  background: var(--theme-bg-card);
-  border: 1px solid var(--theme-border);
-  border-radius: 24px;
-  padding: 48px;
-  box-shadow: var(--shadow-lg);
+  max-width: min(520px, 100%);
   box-sizing: border-box;
+  border-radius: 28px;
+  padding: clamp(36px, 5vw, 52px);
+  /* Vitre : 12 % blanc + 40px flou */
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(40px) saturate(1.25);
+  -webkit-backdrop-filter: blur(40px) saturate(1.25);
+  /* Bordure duo : haut Caramel 100, côtés Orecchiette 200 */
+  border-top: 1.5px solid #fdd284;
+  border-left: 1.5px solid #d1a035;
+  border-right: 1.5px solid #d1a035;
+  border-bottom: 1.5px solid #d1a035;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(71, 0, 0, 0.04),
+    0 28px 56px -20px rgba(71, 0, 0, 0.14);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .login-card {
+    background: color-mix(in srgb, #fffef8 88%, #ffeeb3);
+  }
 }
 
 .login-error-banner {
@@ -243,27 +292,47 @@ const CSS = `
   margin-bottom: 28px;
 }
 
+.login-brand-kicker {
+  margin: 0 0 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, #470000 58%, #f1872a);
+}
+
 .login-brand-mark {
-  width: 36px;
-  height: 36px;
-  margin: 0 auto 10px;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 12px;
   display: grid;
   place-items: center;
   color: #8E3B46;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #fdd284 70%, #d1a035);
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 1.1rem;
+}
+
+.login-brand-lead {
+  margin: 12px 0 0;
+  max-width: 36ch;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 500;
+  color: color-mix(in srgb, #470000 72%, #bf651a);
 }
 
 .login-brand h1 {
   margin: 0;
-  font-family: 'Playfair Display', serif;
-  font-size: 28px;
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
   font-weight: 700;
-  color: var(--theme-text);
-}
-
-.login-brand p {
-  margin: 8px 0 0;
-  font-size: 14px;
-  color: var(--theme-text-muted);
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: #470000;
 }
 
 .login-form {
@@ -277,6 +346,7 @@ const CSS = `
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
+  color: #470000;
 }
 
 .login-field input,
@@ -284,9 +354,9 @@ const CSS = `
   width: 100%;
   height: 48px;
   border-radius: 10px;
-  border: 1px solid var(--theme-border);
-  background: var(--theme-bg-page);
-  color: var(--theme-text);
+  border: 1px solid color-mix(in srgb, #d1a035 55%, rgba(255, 255, 255, 0.6));
+  background: rgba(255, 255, 255, 0.55);
+  color: #470000;
   padding: 0 14px;
   box-sizing: border-box;
 }
@@ -328,9 +398,11 @@ const CSS = `
   border: none;
   background: #8E3B46;
   color: #fff;
-  font-family: 'Playfair Display', serif;
-  font-size: 17px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   transition: transform .15s, box-shadow .2s, filter .2s;
 }
 
@@ -344,7 +416,7 @@ const CSS = `
   align-items: center;
   gap: 12px;
   margin: 2px 0;
-  color: var(--theme-text-muted);
+  color: color-mix(in srgb, #470000 55%, #f1872a);
   font-size: 13px;
 }
 
@@ -353,16 +425,16 @@ const CSS = `
   content: '';
   height: 1px;
   flex: 1;
-  background: var(--theme-border);
+  background: color-mix(in srgb, #d1a035 40%, transparent);
 }
 
 .login-google-btn {
   width: 100%;
   height: 52px;
   border-radius: 12px;
-  border: 1px solid var(--theme-border);
-  background: transparent;
-  color: var(--theme-text);
+  border: 1px solid color-mix(in srgb, #d1a035 50%, rgba(255, 255, 255, 0.5));
+  background: rgba(255, 255, 255, 0.2);
+  color: #470000;
   font-size: 15px;
   font-weight: 600;
   display: flex;

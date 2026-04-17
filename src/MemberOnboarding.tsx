@@ -76,7 +76,7 @@ const CSS = `
 
 .mo-title {
   margin: 0;
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-display);
   color: var(--theme-text);
   font-size: 28px;
   font-weight: 700;

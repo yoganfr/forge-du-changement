@@ -393,7 +393,7 @@ const CSS = `
 
 .cs-heading h2 {
   margin: 0;
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-display);
   font-size: 32px;
   color: var(--theme-text);
 }
@@ -541,7 +541,7 @@ const CSS = `
 .cs-edit-input--title {
   height: 46px;
   width: 100%;
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-display);
   font-size: 24px;
 }
 `

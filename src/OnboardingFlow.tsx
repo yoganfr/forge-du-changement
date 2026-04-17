@@ -516,7 +516,7 @@ const CSS = `
 
 .of-step h2 {
   margin: 0;
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-display);
   font-size: var(--fs-title);
   font-weight: 700;
   color: var(--theme-text);
@@ -694,7 +694,7 @@ const CSS = `
   border-radius: 12px;
   font-size: 16px;
   font-weight: 700;
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-display);
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: background .2s, transform .1s, box-shadow .2s;

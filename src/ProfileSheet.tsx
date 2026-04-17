@@ -511,7 +511,7 @@ const CSS = `
 
 .psd-drawer-title {
   margin: 0 0 24px;
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-display);
   font-size: 22px;
   font-weight: 700;
   color: var(--theme-text);

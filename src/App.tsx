@@ -63,7 +63,6 @@ function App() {
   const [userInitials, setUserInitials] = useState('?')
   const [activeNav, setActiveNav] = useState<string>('home')
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
-  const isFabriqueGroupActive = ['fabrique', 'workspace'].includes(activeNav)
   const storedProfile = (() => {
     try {
       const raw = localStorage.getItem('lfdc-member-onboarding')
@@ -219,119 +218,76 @@ function App() {
 
   return (
     <div className="dashboard">
-      <aside className="dashboard__sidebar" aria-label="Navigation principale">
-        <button
-          type="button"
-          className="dashboard__brand"
-          onClick={() => setActiveNav('home')}
-          aria-label="Retour à l'accueil"
-        >
-          <div className="dashboard__brand-mark">
-            {companyLogo
-              ? <img src={companyLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-              : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
-                {workspaceName.slice(0, 2).toUpperCase()}
-              </span>
-            }
-          </div>
-          <span className="dashboard__brand-text">{workspaceName}</span>
-        </button>
-        <nav className="dashboard__nav">
-          {navItems.filter((item) => item.group === null).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={
-                [
-                  'dashboard__nav-item',
-                  activeNav === item.id ? 'dashboard__nav-item--active' : '',
-                  item.group === 'fabrique' && isFabriqueGroupActive ? 'dashboard__nav-item--child' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')
-              }
-              onClick={() => setActiveNav(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-          <div style={{
-            height: '1px',
-            background: 'rgba(255,255,255,0.06)',
-            margin: '2px 0 2px 16px',
-          }} />
-          <div style={{
-            fontSize: '0.62rem',
-            fontWeight: 700,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: 'var(--theme-accent)',
-            padding: '4px 0 2px 16px',
-            opacity: 0.8,
-          }}>
-            Espace de travail
-          </div>
-          {navItems.filter((item) => item.group === 'fabrique').map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={
-                [
-                  'dashboard__nav-item',
-                  activeNav === item.id ? 'dashboard__nav-item--active' : '',
-                  isFabriqueGroupActive ? 'dashboard__nav-item--child' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')
-              }
-              onClick={() => setActiveNav(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="dashboard__sidebar-foot">
-          <p>Espace SaaS — accès sécurisé</p>
+      <header className="dashboard__topbar">
+        <div className="dashboard__topbar-inner">
           <button
             type="button"
-            className="dashboard__reset-btn"
-            onClick={() => {
-              void signOut()
-              localStorage.removeItem('workspaceId')
-              localStorage.removeItem('lfdc-member-onboarding')
-              setWorkspaceId(null)
-              setWorkspaceData(null)
-              setCompanyLogo(null)
-              setWorkspaceName('La Forge')
-              setActiveNav('home')
-              setAuthUser(null)
-            }}
+            className="dashboard__brand"
+            onClick={() => setActiveNav('home')}
+            aria-label="Retour à l'accueil"
           >
-            Se deconnecter
+            <div className="dashboard__brand-mark">
+              {companyLogo
+                ? <img src={companyLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
+                  {workspaceName.slice(0, 2).toUpperCase()}
+                </span>
+              }
+            </div>
+            <span className="dashboard__brand-stack">
+              <span className="dashboard__brand-product">La Forge du Changement</span>
+              <span className="dashboard__brand-text">{workspaceName}</span>
+            </span>
           </button>
-        </div>
-      </aside>
 
-      <div className="dashboard__main">
-        <header className="dashboard__header">
-          <div className="dashboard__header-main">
-            <h1
-              className="dashboard__title"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setActiveNav('home')}
-              title="Retour à l'accueil"
-            >
-              La Forge du Changement
-            </h1>
-          </div>
-          <div className="dashboard__header-actions">
+          <nav className="dashboard__nav dashboard__nav--top" aria-label="Navigation principale">
+            {navItems.filter((item) => item.group === null).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={
+                  [
+                    'dashboard__nav-item',
+                    activeNav === item.id ? 'dashboard__nav-item--active' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                }
+                onClick={() => setActiveNav(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+            <span className="dashboard__nav-divider" aria-hidden="true" />
+            <span className="dashboard__nav-section-label">Espace</span>
+            {navItems.filter((item) => item.group === 'fabrique').map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={
+                  [
+                    'dashboard__nav-item',
+                    'dashboard__nav-item--sub',
+                    activeNav === item.id ? 'dashboard__nav-item--active' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                }
+                onClick={() => setActiveNav(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="dashboard__topbar-actions">
             {canManageWorkspaces && (
               <button
                 type="button"
                 className="dashboard__admin-btn"
                 onClick={() => setShowWorkspaceOnboarding(true)}
               >
-                + Ajouter une entreprise
+                + Entreprise
               </button>
             )}
             <button
@@ -374,33 +330,63 @@ function App() {
                   : userInitials}
               </div>
             </button>
+            <button
+              type="button"
+              className="dashboard__logout-btn"
+              onClick={() => {
+                void signOut()
+                localStorage.removeItem('workspaceId')
+                localStorage.removeItem('lfdc-member-onboarding')
+                setWorkspaceId(null)
+                setWorkspaceData(null)
+                setCompanyLogo(null)
+                setWorkspaceName('La Forge')
+                setActiveNav('home')
+                setAuthUser(null)
+              }}
+            >
+              Déconnexion
+            </button>
           </div>
-        </header>
+        </div>
+      </header>
 
+      <div className="dashboard__main">
         <main className="dashboard__content">
           {activeNav === 'home' || (!['fabrique', 'workspace', 'sens', 'roles', 'company'].includes(activeNav)) ? (
-            <>
-              <p className="dashboard__intro">
-                Choisissez un module pour poursuivre votre parcours de transformation.
-              </p>
-              <div className="dashboard__cards" role="list">
-                {cards.map((card) => (
-                  <button
-                    key={card.id}
-                    type="button"
-                    className={`dashboard__card dashboard__card--${card.id}`}
-                    role="listitem"
-                    onClick={() => setActiveNav(card.id)}
-                  >
-                    <span className="dashboard__card-icon" aria-hidden="true">
-                      {card.icon}
-                    </span>
-                    <span className="dashboard__card-title">{card.title}</span>
-                    <span className="dashboard__card-desc">{card.description}</span>
-                  </button>
-                ))}
+            <div className="dashboard__module-panel">
+              <div className="dashboard__module-panel-deco" aria-hidden="true" />
+              <div
+                className="dashboard__module-panel-blob dashboard__module-panel-blob--green"
+                aria-hidden="true"
+              />
+              <div
+                className="dashboard__module-panel-blob dashboard__module-panel-blob--caramel"
+                aria-hidden="true"
+              />
+              <div className="dashboard__module-panel-inner">
+                <p className="dashboard__intro">
+                  Choisissez un module pour poursuivre votre parcours de transformation.
+                </p>
+                <div className="dashboard__cards" role="list">
+                  {cards.map((card) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      className={`dashboard__card dashboard__card--${card.id}`}
+                      role="listitem"
+                      onClick={() => setActiveNav(card.id)}
+                    >
+                      <span className="dashboard__card-icon" aria-hidden="true">
+                        {card.icon}
+                      </span>
+                      <span className="dashboard__card-title">{card.title}</span>
+                      <span className="dashboard__card-desc">{card.description}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </>
+            </div>
           ) : activeNav === 'fabrique' ? (
             <ProjectSelector
               memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}

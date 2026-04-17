@@ -12,11 +12,17 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 100%;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   font-family: var(--font-body);
-  color: var(--clr-text);
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: color-mix(in srgb, var(--theme-text) 85%, var(--theme-bg-page));
   background: var(--clr-surface);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;

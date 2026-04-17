@@ -24,7 +24,7 @@ export default function AuthCallback() {
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: '100svh',
-      fontFamily: 'Inter, system-ui',
+      fontFamily: 'var(--font-body)',
       background: 'var(--theme-bg-page, #121212)',
       color: 'var(--theme-text, #f0f0f0)',
       gap: '16px'
