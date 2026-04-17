@@ -200,3 +200,18 @@ export async function getWorkspaceInvitations(workspaceId: string): Promise<Invi
   if (error) throw error
   return (data ?? []) as Invitation[]
 }
+
+/** Dernière invitation en attente pour cet email (connexion magic link avant ligne `users`). */
+export async function getLatestPendingInvitationForEmail(email: string): Promise<Invitation | null> {
+  const normalized = email.trim().toLowerCase()
+  const { data, error } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('email', normalized)
+    .eq('status', 'en_attente')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) return null
+  return data as Invitation | null
+}

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import {
-  getCurrentUser,
   isSuperAdmin,
   sendMagicLink,
   signInWithEmail,
   signInWithGoogle,
   signOut,
+  userCanAccessApp,
 } from '../lib/auth'
 
 interface LoginProps {
@@ -39,8 +39,8 @@ export default function Login({ onAuthenticated }: LoginProps) {
     if (!userEmail) throw new Error('Cet email n\'est pas invité dans l\'application')
     if (isSuperAdmin(userEmail)) return
 
-    const appUser = await getCurrentUser()
-    if (!appUser) {
+    const allowed = await userCanAccessApp(userEmail)
+    if (!allowed) {
       await signOut()
       throw new Error('Cet email n\'est pas invité dans l\'application')
     }

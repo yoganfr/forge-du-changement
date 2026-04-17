@@ -10,8 +10,8 @@ import Login from './pages/Login'
 import SettingsPage from './pages/Settings'
 import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
-import { getWorkspace, listWorkspaces } from './lib/api'
-import type { Workspace } from './lib/types'
+import { getLatestPendingInvitationForEmail, getWorkspace, listWorkspaces } from './lib/api'
+import type { Invitation, Workspace } from './lib/types'
 import {
   clearWorkspaceSnapshot,
   readInitialCompanyLogo,
@@ -61,6 +61,13 @@ const cards = [
 
 type OnboardingData = OnboardingFlowProps extends { onComplete: (data: infer T) => void } ? T : never
 type AppUserRole = 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
+
+function invitationRoleToStoredRole(role: Invitation['role']): Exclude<AppUserRole, 'admin'> {
+  if (role === 'consultant') return 'consultant'
+  if (role === 'pilote') return 'pilote'
+  if (role === 'contributeur') return 'contributeur'
+  return 'codir'
+}
 
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
@@ -132,6 +139,30 @@ function App() {
     setActiveNav('company')
   }, [])
 
+  const reconcileAuthSession = useCallback(async (user: User) => {
+    const email = user.email ?? ''
+    const invitedUser = await getCurrentUser()
+    const pendingInv =
+      invitedUser || isSuperAdmin(email)
+        ? null
+        : await getLatestPendingInvitationForEmail(email.trim().toLowerCase())
+
+    if (isSuperAdmin(email) || invitedUser) {
+      setAuthUser(user)
+      return
+    }
+    if (pendingInv?.workspace_id) {
+      setAuthUser(user)
+      localStorage.setItem('workspaceId', pendingInv.workspace_id)
+      setWorkspaceId(pendingInv.workspace_id)
+      localStorage.removeItem('lfdc-user-id')
+      localStorage.setItem('lfdc-user-role', invitationRoleToStoredRole(pendingInv.role))
+      return
+    }
+    await signOut()
+    setAuthUser(null)
+  }, [])
+
   useEffect(() => {
     let alive = true
 
@@ -144,15 +175,8 @@ function App() {
         return
       }
 
-      const email = user.email ?? ''
-      const invitedUser = await getCurrentUser()
+      await reconcileAuthSession(user)
       if (!alive) return
-      if (isSuperAdmin(email) || invitedUser) {
-        setAuthUser(user)
-      } else {
-        await signOut()
-        setAuthUser(null)
-      }
       setAuthLoading(false)
     })
 
@@ -167,14 +191,7 @@ function App() {
           return
         }
 
-        const email = user.email ?? ''
-        const invitedUser = await getCurrentUser()
-        if (isSuperAdmin(email) || invitedUser) {
-          setAuthUser(user)
-        } else {
-          await signOut()
-          setAuthUser(null)
-        }
+        await reconcileAuthSession(user)
         setAuthLoading(false)
       })()
     })
@@ -183,7 +200,7 @@ function App() {
       alive = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, [reconcileAuthSession])
 
   useEffect(() => {
     if (!authUser) return

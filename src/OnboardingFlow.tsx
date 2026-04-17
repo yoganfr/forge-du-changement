@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { sendInvitationMagicLink } from './lib/auth'
 import {
   createInvitation,
   createWorkspace,
@@ -178,6 +179,11 @@ export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowP
           email: member.email,
           role: toInvitationRole(member.role),
         })
+        try {
+          await sendInvitationMagicLink(member.email)
+        } catch {
+          // L’invitation est en base ; l’email peut être renvoyé depuis la fiche entreprise.
+        }
       }
       const ws = createdWorkspace
       if (!ws) {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { sendInvitationMagicLink } from './lib/auth'
 import {
   createInvitation,
   getWorkspaceInvitations,
@@ -131,6 +132,12 @@ function pillClass(variant: CompanyMember['pillVariant']): string {
   return 'cs-status cs-status--invited'
 }
 
+/** Lignes où un renvoi du magic link Auth a encore du sens (pas encore compte actif dans l’espace). */
+function memberCanReceiveInviteResend(member: CompanyMember): boolean {
+  const pillVariant = member.pillVariant ?? (member.status === 'actif' ? 'active' : 'invited')
+  return pillVariant !== 'active'
+}
+
 export interface CompanySheetProps {
   workspaceId?: string | null
   companyName: string
@@ -201,6 +208,8 @@ export default function CompanySheet({
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null)
+  const [resendBanner, setResendBanner] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     setLogoUrl(companyLogoProp ?? null)
@@ -267,13 +276,37 @@ export default function CompanySheet({
         email,
         role: toInvitationRole(inviteRole),
       })
+      try {
+        await sendInvitationMagicLink(email)
+        setInviteSuccess(
+          `Invitation enregistrée. Un email avec un lien de connexion a été envoyé à ${email}.`,
+        )
+      } catch (mailErr) {
+        setInviteSuccess(
+          `Invitation enregistrée pour ${email}. L’email automatique n’a pas pu être envoyé (${inviteApiErrorMessage(mailErr)}). Vérifiez Auth → Email dans Supabase, ou utilisez « Mot de passe oublié » sur l’écran de connexion.`,
+        )
+      }
       setInviteEmail('')
-      setInviteSuccess(`Invitation envoyée à ${email}`)
       setMembersRefreshKey((k) => k + 1)
     } catch (err) {
       setInviteError(inviteApiErrorMessage(err))
     } finally {
       setInviteSubmitting(false)
+    }
+  }
+
+  async function resendInvitationEmail(rawEmail: string) {
+    const email = rawEmail.trim().toLowerCase()
+    if (!email) return
+    setResendBanner(null)
+    setResendingEmail(email)
+    try {
+      await sendInvitationMagicLink(email)
+      setResendBanner({ ok: true, text: `Lien de connexion renvoyé à ${email}.` })
+    } catch (err) {
+      setResendBanner({ ok: false, text: inviteApiErrorMessage(err) })
+    } finally {
+      setResendingEmail(null)
     }
   }
 
@@ -417,6 +450,9 @@ export default function CompanySheet({
                 const pillLabel =
                   member.pillLabel ?? (member.status === 'actif' ? 'Actif' : 'Invité')
                 const pillVariant = member.pillVariant ?? (member.status === 'actif' ? 'active' : 'invited')
+                const emailKey = member.email.trim().toLowerCase()
+                const showResend =
+                  canEdit && workspaceId && memberCanReceiveInviteResend(member)
                 return (
                   <div key={`${member.email}-${idx}`} className="cs-member-row">
                     <div className="cs-member-avatar" style={{ background: badgeColor }}>
@@ -426,6 +462,16 @@ export default function CompanySheet({
                       <span className="cs-member-email">{member.email}</span>
                       {member.detail && (
                         <span className="cs-member-detail">{member.detail}</span>
+                      )}
+                      {showResend && (
+                        <button
+                          type="button"
+                          className="cs-member-resend"
+                          disabled={resendingEmail === emailKey}
+                          onClick={() => { void resendInvitationEmail(member.email) }}
+                        >
+                          {resendingEmail === emailKey ? 'Envoi en cours…' : 'Renvoyer l’email de connexion'}
+                        </button>
                       )}
                     </div>
                     <span className="cs-member-role" style={{ borderColor: badgeColor, color: badgeColor }}>
@@ -438,6 +484,15 @@ export default function CompanySheet({
                 )
               })}
             </div>
+          )}
+          {resendBanner && (
+            <p
+              className={
+                resendBanner.ok ? 'cs-invite-msg cs-invite-msg--ok cs-resend-banner' : 'cs-invite-msg cs-invite-msg--error cs-resend-banner'
+              }
+            >
+              {resendBanner.text}
+            </p>
           )}
         </div>
 
@@ -688,6 +743,30 @@ const CSS = `
   font-size: 11px;
   line-height: 1.4;
   color: var(--theme-text-muted);
+}
+
+.cs-member-resend {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.cs-member-resend:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.cs-resend-banner {
+  margin-top: 10px;
 }
 
 .cs-member-role {

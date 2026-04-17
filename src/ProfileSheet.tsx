@@ -6,6 +6,7 @@ import {
   updateUser,
   uploadImageToStorage,
 } from './lib/api'
+import { supabase } from './lib/supabase'
 import type { User } from './lib/types'
 
 export type DirectionType = 'fonctionnel' | 'metier' | 'geographique'
@@ -249,8 +250,13 @@ export default function ProfileSheet({
       try {
         const users = await getWorkspaceUsers(workspaceId)
         if (cancelled || users.length === 0) return
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        const authEmail = session?.user?.email?.trim().toLowerCase() ?? ''
         const storedId = localStorage.getItem('lfdc-user-id')
-        const selected = users.find((u) => u.id === storedId) ?? users[0]
+        const self = authEmail ? users.find((u) => u.email.trim().toLowerCase() === authEmail) : undefined
+        const selected = self ?? (storedId ? users.find((u) => u.id === storedId) : undefined)
         if (cancelled || !selected) return
         setCurrentUserId(selected.id)
         localStorage.setItem('lfdc-user-id', selected.id)
@@ -328,9 +334,16 @@ export default function ProfileSheet({
             total_effectif: totalEffectif,
           })
         } else {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession()
+          const authEmail = session?.user?.email?.trim().toLowerCase()
+          if (!authEmail) {
+            throw new Error('Session sans email')
+          }
           const created = await createUser({
             workspace_id: workspaceId,
-            email: `user-${Date.now()}@local.lfdc`,
+            email: authEmail,
             prenom: firstName || null,
             nom: lastName || null,
             job_title: jobTitle || null,

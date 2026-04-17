@@ -11,4 +11,9 @@ const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_KEY?.trim() ||
   (import.meta.env.DEV ? DEV_FALLBACK_KEY : '')
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    flowType: 'pkce',
+    detectSessionInUrl: true,
+  },
+})

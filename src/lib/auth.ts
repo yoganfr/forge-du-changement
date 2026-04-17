@@ -1,3 +1,4 @@
+import { getLatestPendingInvitationForEmail } from './api'
 import { supabase } from './supabase'
 
 // Connexion email + password
@@ -32,6 +33,18 @@ export async function sendMagicLink(email: string) {
   if (error) throw error
 }
 
+/** Magic link pour un invité : crée le compte Auth si besoin et envoie l’email (Supabase Auth). */
+export async function sendInvitationMagicLink(inviteeEmail: string) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email: inviteeEmail.trim().toLowerCase(),
+    options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      shouldCreateUser: true,
+    },
+  })
+  if (error) throw error
+}
+
 // Déconnexion
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
@@ -51,17 +64,29 @@ export async function getCurrentUser() {
   const session = await getSession()
   if (!session?.user.email) return null
 
+  const email = session.user.email.trim().toLowerCase()
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('email', session.user.email)
+    .eq('email', email)
     .single()
 
   if (error) return null
   return data
 }
 
+/** Accès app : super-admin, ligne `users`, ou invitation en attente pour l’email de session. */
+export async function userCanAccessApp(userEmail: string | undefined | null): Promise<boolean> {
+  if (!userEmail?.trim()) return false
+  const e = userEmail.trim().toLowerCase()
+  if (isSuperAdmin(e)) return true
+  const appUser = await getCurrentUser()
+  if (appUser) return true
+  const inv = await getLatestPendingInvitationForEmail(e)
+  return inv !== null && inv.status === 'en_attente'
+}
+
 // Vérifier si super admin
 export function isSuperAdmin(email: string): boolean {
-  return email === 'yoganhedef@yahoo.fr'
+  return email.trim().toLowerCase() === 'yoganhedef@yahoo.fr'
 }
