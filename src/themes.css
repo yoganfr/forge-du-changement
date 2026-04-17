@@ -228,7 +228,8 @@
   /* Verre fumé ~20 % + forte réfraction (flou + saturation) */
   --glass-blur: 32px;
   --glass-saturate: 1.62;
-  --glass-bg-header: color-mix(in srgb, rgb(24, 14, 16) 20%, transparent);
+  /* ~15 % moins transparent qu’avant (20 % → 35 % de la teinte dans le mix) */
+  --glass-bg-header: color-mix(in srgb, rgb(24, 14, 16) 35%, transparent);
   --glass-bg-card: color-mix(in srgb, rgb(32, 22, 26) 20%, transparent);
   --glass-bg-chip: color-mix(in srgb, rgb(28, 18, 22) 20%, transparent);
   --glass-bg-sidebar: color-mix(in srgb, rgba(6, 4, 6) 88%, transparent);
@@ -304,7 +305,8 @@ h3,
 }
 
 [data-theme='dark'] :is(h1, h2, h3, .ds-h1, .ds-h2, .ds-h3) {
-  color: var(--orecchiette-800);
+  /* Ne pas utiliser --orecchiette-800 en sombre : le token est inversé (#fffbbd) et paraît jaune */
+  color: var(--theme-text);
 }
 
 /* Boutons CTA — Satoshi, SM, graisse forte, casse naturelle (pas de caps forcées) */
