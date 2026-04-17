@@ -1,0 +1,4 @@
+/* Coquille React : tokens dans design-system.css (importé avant ce fichier) */
+#root {
+  min-height: 100svh;
+}

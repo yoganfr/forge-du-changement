@@ -1,0 +1,106 @@
+/* ═══════════════════════════════════════════════════
+   Thèmes — Règles strictes :
+   Les couleurs vives (bordeaux, corail, paille, bleus)
+   sont réservées aux boutons, icônes actives et badges.
+═══════════════════════════════════════════════════ */
+
+:root {
+  /* Marque (fixes — jamais en fond page / fond carte) */
+  --dark-red-500: #8e3b46;
+  --dark-red-600: #7a3340;
+  --coral-400: #e0777d;
+  --straw-400: #e1dd8f;
+  --steel-blue-400: #4c86a8;
+
+  /* Typographie & layout (hors couleur surface) */
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  --max-width: 1280px;
+  --card-min: 240px;
+}
+
+/* ─── Thème clair ─── */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --theme-bg-page: #f0eeee;
+  --theme-bg-card: #ffffff;
+  /* Cartes dashboard (clair uniquement — le sombre garde ses fallbacks) */
+  --theme-dashboard-card-border: #e0dada;
+  --theme-dashboard-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --theme-bg-sidebar: #1a1a1a;
+  --theme-text: #1a1a1a;
+  --theme-text-muted: #555555;
+  --theme-accent: #7a3340;
+  --theme-on-accent: #ffffff;
+  --theme-border: #e8e8e8;
+  --theme-sidebar-text: #f0f0f0;
+  --theme-sidebar-text-muted: #a8a8a8;
+  --theme-bg-raised: #ffffff;
+  --theme-image-placeholder: #ececec;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.1);
+
+  /* Alias consommés par design-system.css */
+  --clr-surface: var(--theme-bg-page);
+  --clr-text: var(--theme-text);
+  --clr-text-muted: var(--theme-text-muted);
+  --clr-border: var(--theme-border);
+  --clr-accent: var(--theme-accent);
+  --clr-accent-light: color-mix(in srgb, var(--theme-accent) 12%, var(--theme-bg-page));
+  --clr-primary: var(--theme-text);
+
+  /* Badges : couleurs vives autorisées */
+  --clr-badge-new: var(--steel-blue-400);
+  --clr-badge-promo: var(--coral-400);
+  --clr-badge-limited: color-mix(in srgb, var(--dark-red-500) 45%, var(--steel-blue-400));
+  --clr-star: #b8962e;
+}
+
+/* ─── Thème sombre ─── */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --theme-bg-page: #121212;
+  --theme-bg-card: #1e1e1e;
+  --theme-bg-sidebar: #0a0a0a;
+  --theme-text: #f0f0f0;
+  --theme-text-muted: #a0a0a0;
+  --theme-accent: #8e3b46;
+  --theme-on-accent: #ffffff;
+  --theme-border: #2e2e2e;
+  --theme-sidebar-text: #f0f0f0;
+  --theme-sidebar-text-muted: #a0a0a0;
+  --theme-bg-raised: #2a2a2a;
+  --theme-image-placeholder: #2a2a2a;
+
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  --clr-surface: var(--theme-bg-page);
+  --clr-text: var(--theme-text);
+  --clr-text-muted: var(--theme-text-muted);
+  --clr-border: var(--theme-border);
+  --clr-accent: var(--theme-accent);
+  --clr-accent-light: color-mix(in srgb, var(--theme-accent) 22%, var(--theme-bg-page));
+  --clr-primary: var(--theme-text);
+
+  --clr-badge-new: var(--steel-blue-400);
+  --clr-badge-promo: var(--coral-400);
+  --clr-badge-limited: color-mix(in srgb, var(--dark-red-500) 45%, var(--steel-blue-400));
+  --clr-star: #c9a94a;
+}
