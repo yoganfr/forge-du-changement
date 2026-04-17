@@ -20,13 +20,18 @@ import {
 } from './themeStorage'
 
 const navItems = [
-  { id: 'sens', label: 'Sens', group: null },
-  { id: 'roles', label: 'Rôles & Rythmes', group: null },
   { id: 'fabrique', label: 'La Fabrique', group: null },
   { id: 'workspace', label: 'Mon Espace', group: 'fabrique' },
 ] as const
 
 const cards = [
+  {
+    id: 'fabrique',
+    title: 'La Fabrique',
+    description:
+      'Prototyper, itérer et industrialiser les leviers de transformation directement dans le produit.',
+    icon: '⚙',
+  },
   {
     id: 'sens',
     title: 'Sens',
@@ -40,13 +45,6 @@ const cards = [
     description:
       'Clarifier qui fait quoi, à quel rythme, et comment synchroniser les décisions sans friction.',
     icon: '◎',
-  },
-  {
-    id: 'fabrique',
-    title: 'La Fabrique',
-    description:
-      'Prototyper, itérer et industrialiser les leviers de transformation directement dans le produit.',
-    icon: '⚙',
   },
 ] as const
 

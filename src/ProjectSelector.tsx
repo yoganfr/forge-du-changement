@@ -1921,9 +1921,11 @@ const CSS = `
 .project-name-compact {
   flex: 1;
   min-width: 48px;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  word-spacing: normal;
   color: var(--theme-text);
   white-space: nowrap;
   overflow: hidden;
