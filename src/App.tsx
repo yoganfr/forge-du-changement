@@ -1,10 +1,10 @@
 import { useLayoutEffect, useState } from 'react'
 import './App.css'
 import ProjectSelector from './ProjectSelector'
-import WorkspaceCreation from './WorkspaceCreation'
 import MemberOnboarding from './MemberOnboarding'
 import OnboardingFlow from './OnboardingFlow'
 import CompanySheet from './CompanySheet'
+import ProfileSheet from './ProfileSheet.tsx'
 import type { OnboardingFlowProps } from './OnboardingFlow'
 import {
   applyThemeToDocument,
@@ -18,7 +18,6 @@ const navItems = [
   { id: 'roles', label: 'Rôles & Rythmes', group: null },
   { id: 'fabrique', label: 'La Fabrique', group: null },
   { id: 'workspace', label: 'Mon Espace', group: 'fabrique' },
-  { id: 'onboarding', label: 'Mon Profil', group: 'fabrique' },
 ] as const
 
 const cards = [
@@ -51,9 +50,19 @@ function App() {
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
   const [onboardingDone, setOnboardingDone] = useState(false)
   const [workspaceName, setWorkspaceName] = useState('La Forge')
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null)
+  const [userInitials, setUserInitials] = useState('?')
   const [activeNav, setActiveNav] = useState<string>('home')
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
-  const isFabriqueGroupActive = ['fabrique', 'workspace', 'onboarding'].includes(activeNav)
+  const isFabriqueGroupActive = ['fabrique', 'workspace'].includes(activeNav)
+  const storedProfile = (() => {
+    try {
+      const raw = localStorage.getItem('lfdc-member-onboarding')
+      return raw ? JSON.parse(raw) as { firstName?: string; lastName?: string; jobTitle?: string; directionName?: string; mission?: string; vision?: string } : null
+    } catch {
+      return null
+    }
+  })()
 
   useLayoutEffect(() => {
     applyThemeToDocument(theme)
@@ -66,6 +75,8 @@ function App() {
         onComplete={(data) => {
           setOnboardingDone(true)
           setWorkspaceName(data.companyName)
+          setCompanyLogo(data.companyLogo)
+          setUserInitials(`${storedProfile?.firstName?.[0] ?? ''}${storedProfile?.lastName?.[0] ?? ''}`.toUpperCase() || '?')
           setWorkspaceData(data)
         }}
       />
@@ -81,7 +92,14 @@ function App() {
           onClick={() => setActiveNav('home')}
           aria-label="Retour à l'accueil"
         >
-          <span className="dashboard__brand-mark" aria-hidden="true" />
+          <div className="dashboard__brand-mark">
+            {companyLogo
+              ? <img src={companyLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+              : <span style={{ color: 'white', fontSize: '0.7rem', fontWeight: 700 }}>
+                {workspaceName.slice(0, 2).toUpperCase()}
+              </span>
+            }
+          </div>
           <span className="dashboard__brand-text">{workspaceName}</span>
         </button>
         <nav className="dashboard__nav">
@@ -191,11 +209,21 @@ function App() {
               </span>
               <span className="company-badge-name">{workspaceName}</span>
             </button>
+            <button
+              type="button"
+              className="user-badge"
+              onClick={() => setActiveNav('profile')}
+              title="Mon profil"
+            >
+              <div className="user-badge-avatar">
+                {userInitials}
+              </div>
+            </button>
           </div>
         </header>
 
         <main className="dashboard__content">
-          {activeNav === 'home' || (!['fabrique', 'workspace', 'onboarding', 'sens', 'roles', 'company'].includes(activeNav)) ? (
+          {activeNav === 'home' || (!['fabrique', 'workspace', 'profile', 'sens', 'roles', 'company'].includes(activeNav)) ? (
             <>
               <p className="dashboard__intro">
                 Choisissez un module pour poursuivre votre parcours de transformation.
@@ -230,13 +258,21 @@ function App() {
             />
           ) : activeNav === 'workspace' ? (
             <MemberOnboarding
-              firstName={workspaceData?.profile?.firstName}
-              direction={workspaceData?.profile?.direction || 'votre direction'}
+              firstName={storedProfile?.firstName}
+              direction={storedProfile?.directionName || 'votre direction'}
               role="codir"
               onNavigate={setActiveNav}
             />
-          ) : activeNav === 'onboarding' ? (
-            <WorkspaceCreation />
+          ) : activeNav === 'profile' ? (
+            <ProfileSheet
+              firstName={storedProfile?.firstName ?? ''}
+              lastName={storedProfile?.lastName ?? ''}
+              jobTitle={storedProfile?.jobTitle ?? ''}
+              direction={storedProfile?.directionName ?? ''}
+              mission={storedProfile?.mission ?? ''}
+              vision={storedProfile?.vision ?? ''}
+              role="codir"
+            />
           ) : (
             <></>
           )}

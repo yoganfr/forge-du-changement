@@ -34,6 +34,8 @@ type Project = {
   selected_for_transfo: boolean
   planning: Record<string, boolean>
   pilote: string
+  gains_quantitatifs?: number
+  gains_qualitatifs?: string
 }
 
 type Perimetre = {
@@ -68,6 +70,51 @@ const CRITERIA_META = {
   investissement: { label: 'Investissement', desc: 'Coût capital', icon: '💰' },
 }
 
+const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
+  criticite: {
+    1: 'Conséquences mineures, insignifiantes',
+    2: 'Conséquences sans gravité (courte durée, faible coût)',
+    3: 'Impacts modérés nécessitant un investissement modéré',
+    4: 'Multiples impacts nécessitant un investissement conséquent',
+    5: 'Menace pour la viabilité du business model',
+  },
+  urgence: {
+    1: 'Dans plus de 2 ans',
+    2: 'Dans 1 à 2 ans',
+    3: 'Dans 6 mois à 1 an',
+    4: 'Dans 3 à 6 mois',
+    5: 'Dans moins de 3 mois',
+  },
+  recurrence: {
+    1: 'Pas de récurrence',
+    2: 'Faiblement récurrent',
+    3: 'Modérément récurrent',
+    4: 'Fortement récurrent',
+    5: 'Très fortement récurrent',
+  },
+  temps: {
+    1: 'Moins de 3 mois',
+    2: 'De 3 à 6 mois',
+    3: 'De 6 mois à 1 an',
+    4: 'De 1 an à 2 ans',
+    5: '2 ans et plus',
+  },
+  etp: {
+    1: 'Moins de 50 jours homme',
+    2: 'Entre 50 et 100 jours homme',
+    3: 'Entre 100 et 250 jours homme',
+    4: 'Entre 250 et 500 jours homme',
+    5: 'Plus de 500 jours homme',
+  },
+  investissement: {
+    1: 'Moins de 20 000€',
+    2: 'Entre 20 000€ et 30 000€',
+    3: 'Entre 30 000€ et 50 000€',
+    4: 'Entre 50 000€ et 200 000€',
+    5: 'Plus de 200 000€',
+  },
+}
+
 const PERIMETRE_COLORS = ['#8E3B46', '#4C86A8', '#477890', '#6B7280', '#7C3AED', '#059669']
 
 // ─── Calcul du score ────────────────────────────────────────────────────────
@@ -97,84 +144,22 @@ function computeScore(project: Project, coefs: Coefficients): number {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 76) return '#10B981'
-  if (score >= 56) return '#F59E0B'
-  if (score >= 31) return '#E0777D'
-  return '#6B7280'
+  if (score >= 75) return '#EF4444'
+  if (score >= 50) return '#F59E0B'
+  if (score >= 25) return '#4C86A8'
+  return '#10B981'
 }
 
 function getScoreLabel(score: number): string {
-  void score
-  return 'criticité'
+  if (score >= 75) return 'Critique'
+  if (score >= 50) return 'Élevé'
+  if (score >= 25) return 'Modéré'
+  return 'Faible'
 }
 
 // ─── Données de démo ─────────────────────────────────────────────────────────
 
-const DEMO_DATA: Perimetre[] = [
-  {
-    id: 'p1',
-    name: 'Direction Ressources Humaines',
-    color: PERIMETRE_COLORS[0],
-    mission: 'Attirer, développer et fidéliser les talents au service de la transformation de l\'entreprise.',
-    vision: 'Devenir la DRH de référence dans notre secteur en plaçant l\'humain au cœur de chaque décision stratégique.',
-    projects: [
-      {
-        id: 'pr1', name: 'Refonte SIRH', thematique: 'Digitalisation RH',
-        problematique: 'Système vieillissant, données fragmentées, reporting manuel chronophage',
-        description: 'Migration vers un SIRH unifié avec module de paie, formation et recrutement intégrés.',
-        type: 'BUILD', pilote: 'Marie Dupont',
-        scores: { criticite: 5, urgence: 3, recurrence: 4, temps: 4, etp: 3, investissement: 4 },
-        competences_dispo: true, selected_for_transfo: true,
-        planning: { jan: false, feb: false, mar: true, apr: true, may: true, jun: true, jul: true, aug: false, sep: false, oct: false, nov: false, dec: false },
-      },
-      {
-        id: 'pr2', name: 'Programme Onboarding', thematique: 'Intégration',
-        problematique: 'Turnover élevé à 6 mois — 34% des nouvelles recrues quittent l\'entreprise',
-        description: 'Parcours d\'intégration structuré sur 90 jours avec buddy system et suivi managérial.',
-        type: 'BUILD', pilote: 'Thomas Bernard',
-        scores: { criticite: 4, urgence: 5, recurrence: 5, temps: 2, etp: 2, investissement: 2 },
-        competences_dispo: true, selected_for_transfo: true,
-        planning: { jan: true, feb: true, mar: true, apr: false, may: false, jun: false, jul: false, aug: false, sep: false, oct: false, nov: false, dec: false },
-      },
-      {
-        id: 'pr3', name: 'Harmonisation grilles salariales', thematique: 'Rémunération',
-        problematique: 'Disparités internes créant des tensions et des risques légaux',
-        description: 'Audit complet + refonte de la politique de rémunération par famille métier.',
-        type: 'RUN', pilote: 'Sophie Martin',
-        scores: { criticite: 3, urgence: 2, recurrence: 3, temps: 3, etp: 2, investissement: 1 },
-        competences_dispo: false, selected_for_transfo: false,
-        planning: { jan: false, feb: false, mar: false, apr: false, may: true, jun: true, jul: true, aug: true, sep: false, oct: false, nov: false, dec: false },
-      },
-    ],
-  },
-  {
-    id: 'p2',
-    name: 'Direction des Systèmes d\'Information',
-    color: PERIMETRE_COLORS[1],
-    mission: 'Garantir la performance, la sécurité et l\'évolution du système d\'information au service des métiers.',
-    vision: 'Infrastructure 100% cloud-native et résiliente à horizon 3 ans, socle d\'innovation produit.',
-    projects: [
-      {
-        id: 'pr4', name: 'Migration Cloud AWS', thematique: 'Infrastructure',
-        problematique: 'Datacenter en fin de vie, coûts de maintenance exponentiels, obsolescence',
-        description: 'Migration de l\'ensemble des serveurs on-premise vers AWS avec plan de reprise d\'activité intégré.',
-        type: 'BUILD', pilote: 'Lucas Petit',
-        scores: { criticite: 5, urgence: 5, recurrence: 2, temps: 5, etp: 4, investissement: 5 },
-        competences_dispo: true, selected_for_transfo: true,
-        planning: { jan: false, feb: false, mar: false, apr: false, may: false, jun: true, jul: true, aug: true, sep: true, oct: true, nov: true, dec: false },
-      },
-      {
-        id: 'pr5', name: 'Sécurisation endpoints', thematique: 'Cybersécurité',
-        problematique: '40% des postes non conformes à la politique de sécurité — risque RGPD',
-        description: 'Déploiement EDR sur l\'ensemble du parc + formation sensibilisation collaborateurs.',
-        type: 'RUN', pilote: 'Camille Roux',
-        scores: { criticite: 4, urgence: 4, recurrence: 3, temps: 2, etp: 2, investissement: 3 },
-        competences_dispo: true, selected_for_transfo: false,
-        planning: { jan: true, feb: true, mar: true, apr: true, may: false, jun: false, jul: false, aug: false, sep: false, oct: false, nov: false, dec: false },
-      },
-    ],
-  },
-]
+const EMPTY_DATA: Perimetre[] = []
 
 function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Perimetre[] {
   return data.map((perimetre) => {
@@ -196,7 +181,7 @@ function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Per
   })
 }
 
-const INITIAL_DATA = autoSelectTopBuildProjects(DEMO_DATA, DEFAULT_COEFFICIENTS)
+const INITIAL_DATA = autoSelectTopBuildProjects(EMPTY_DATA, DEFAULT_COEFFICIENTS)
 
 function applyMemberDirectionPrefill(data: Perimetre[]): Perimetre[] {
   if (typeof window === 'undefined') return data
@@ -310,30 +295,31 @@ function CritereSlider({
   onChange: (v: number) => void
 }) {
   const meta = CRITERIA_META[criteriaKey]
+  const selectedDescription = CRITERIA_DESCRIPTIONS[criteriaKey][value]
   return (
-    <div className="critere-row">
+    <div className="critere-row critere-row--enhanced">
       <div className="critere-header">
         <span className="critere-icon">{meta.icon}</span>
-        <div>
-          <div className="critere-name">
-            {meta.label}
-            <span className="critere-coef">×{coef}</span>
-          </div>
-          <div className="critere-desc">{meta.desc}</div>
+        <div className="critere-title-block">
+          <div className="critere-name">{meta.label}</div>
+          <div className="critere-coef-inline">Coef ×{coef}</div>
         </div>
         <span className="critere-val">{value}/5</span>
       </div>
-      <div className="critere-dots">
+      <div className="critere-grid">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
-            className={`dot ${n <= value ? 'dot--active' : ''}`}
+            className={`critere-square ${n === value ? 'critere-square--active' : ''}`}
             onClick={() => onChange(n)}
             aria-label={`${meta.label} : ${n}`}
-          />
+          >
+            {n}
+          </button>
         ))}
       </div>
+      <div className="critere-level-desc">{selectedDescription || meta.desc}</div>
     </div>
   )
 }
@@ -346,24 +332,50 @@ function ProjectCard({
   perimColor,
   dgRank,
   onToggleTransfo,
-  onUpdateScore,
-  onTogglePlanning,
+  onSaveProject,
 }: {
   project: Project
   coefs: Coefficients
   perimColor: string
   dgRank?: number
   onToggleTransfo: () => void
-  onUpdateScore: (key: keyof Scores, v: number) => void
-  onTogglePlanning: (key: string) => void
+  onSaveProject: (updates: Partial<Project>) => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const score = computeScore(project, coefs)
+  const [draft, setDraft] = useState<Project>(project)
+  const score = computeScore(draft, coefs)
+
+  const updateDraftScore = (key: keyof Scores, v: number) => {
+    setDraft((prev) => ({ ...prev, scores: { ...prev.scores, [key]: v } }))
+  }
+
+  const toggleDraftPlanning = (key: string) => {
+    setDraft((prev) => ({ ...prev, planning: { ...prev.planning, [key]: !prev.planning[key] } }))
+  }
+
+  const formula = `${(Object.keys(coefs) as Array<keyof Coefficients>).map((k) => `${draft.scores[k]}×${coefs[k]}`).join(' + ')}`
+  const criteriaRows = (Object.keys(CRITERIA_META) as Array<keyof Scores>).map((key) => {
+    const level = draft.scores[key]
+    const description = CRITERIA_DESCRIPTIONS[key][level] ?? ''
+    const points = level * coefs[key]
+    return {
+      key,
+      label: CRITERIA_META[key].label,
+      level,
+      description: description.length > 30 ? `${description.slice(0, 30)}...` : description,
+      coef: coefs[key],
+      points,
+    }
+  })
+  const scoreMax = (Object.keys(coefs) as Array<keyof Coefficients>).reduce((acc, key) => acc + (5 * coefs[key]), 0)
+  const scoreRaw = criteriaRows.reduce((acc, row) => acc + row.points, 0)
+  const scoreBuild = draft.type === 'BUILD' ? Math.round(scoreRaw * 1.5) : scoreRaw
+  const scoreFinal = computeScore(draft, coefs)
 
   return (
     <div className={`project-card ${project.selected_for_transfo ? 'project-card--selected' : ''}`}
       style={{ '--perim-color': perimColor } as React.CSSProperties}>
-      <div className="project-card__header" onClick={() => setExpanded(!expanded)}>
+      <div className="project-card__header" onClick={() => { setDraft(project); setExpanded(!expanded) }}>
         <div className="project-card__meta">
           <div className="project-card__top">
             <span className={`type-badge type-badge--${project.type.toLowerCase()}`}>{project.type}</span>
@@ -376,7 +388,6 @@ function ProjectCard({
           <p className="project-problematique">{project.problematique}</p>
         </div>
         <div className="project-card__right">
-          <ScoreBadge score={score} />
           {project.type === 'BUILD' && (
             <button
               type="button"
@@ -393,41 +404,126 @@ function ProjectCard({
 
       {expanded && (
         <div className="project-card__body">
-          <p className="project-desc-full">{project.description}</p>
+          <div className="project-sections project-sections--editor">
+            <div className="project-editor-col">
+              <div className="section-title">Identification du projet</div>
+              <label className="project-field">
+                <span>Thématique *</span>
+                <input value={draft.thematique} onChange={(e) => setDraft((p) => ({ ...p, thematique: e.target.value }))} placeholder="Ex: Digitalisation RH" />
+              </label>
+              <label className="project-field">
+                <span>Sujet / Projet *</span>
+                <input value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} placeholder="Nom court du projet" />
+              </label>
+              <label className="project-field">
+                <span>Description / Problématique *</span>
+                <textarea rows={4} value={draft.problematique} onChange={(e) => setDraft((p) => ({ ...p, problematique: e.target.value }))} placeholder="Décrivez le problème que ce projet résout..." />
+              </label>
+              <div className="project-field">
+                <span>Type de projet *</span>
+                <div className="type-pills">
+                  <button type="button" className={draft.type === 'RUN' ? 'type-pill type-pill--active' : 'type-pill'} onClick={() => setDraft((p) => ({ ...p, type: 'RUN' }))}>RUN — Amélioration continue</button>
+                  <button type="button" className={draft.type === 'BUILD' ? 'type-pill type-pill--active' : 'type-pill'} onClick={() => setDraft((p) => ({ ...p, type: 'BUILD' }))}>BUILD — Projet transformant</button>
+                </div>
+                {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 DG</div>}
+              </div>
+              <label className="project-field">
+                <span>Pilote</span>
+                <input value={draft.pilote} onChange={(e) => setDraft((p) => ({ ...p, pilote: e.target.value }))} placeholder="Nom du pilote du projet" />
+              </label>
+              <label className="project-field">
+                <span>Gains quantitatifs (€)</span>
+                <div className="input-prefix-wrap">
+                  <span className="input-prefix">€</span>
+                  <input type="number" value={draft.gains_quantitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_quantitatifs: Number(e.target.value || 0) }))} placeholder="0" />
+                </div>
+              </label>
+              <label className="project-field">
+                <span>Gains qualitatifs</span>
+                <textarea rows={2} value={draft.gains_qualitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_qualitatifs: e.target.value }))} placeholder="Bénéfices non financiers attendus..." />
+              </label>
+            </div>
 
-          <div className="project-sections">
-            <div className="project-scoring">
-              <div className="section-title">Scoring</div>
+            <div className="project-editor-col">
+              <div className="project-scoring-head project-scoring-head--stack">
+                <div className="section-title section-title--score">Score de criticité</div>
+                <div className="score-badge-wrap">
+                  <ScoreBadge score={score} />
+                </div>
+              </div>
               {(Object.keys(CRITERIA_META) as Array<keyof Scores>).map((k) => (
                 <CritereSlider
                   key={k}
                   criteriaKey={k}
-                  value={project.scores[k]}
+                  value={draft.scores[k]}
                   coef={coefs[k]}
-                  onChange={(v) => onUpdateScore(k, v)}
+                  onChange={(v) => updateDraftScore(k, v)}
                 />
               ))}
-              <div className="scoring-formula">
-                Score = {(Object.keys(coefs) as Array<keyof Coefficients>).map(k =>
-                  `${project.scores[k]}×${coefs[k]}`).join(' + ')}
-                {project.type === 'BUILD' ? ' × 1.5 (BUILD)' : ''}
-                {!project.competences_dispo ? ' × 0.8 (compétences)' : ''}
-                {' = '}
-                <strong style={{ color: getScoreColor(score) }}>{score}/100</strong>
+
+              <div className="competence-toggle">
+                <span>Compétences disponibles en interne ?</span>
+                <div className="toggle-options">
+                  <button type="button" className={draft.competences_dispo ? 'toggle-pill toggle-pill--yes' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: true }))}>OUI</button>
+                  <button type="button" className={!draft.competences_dispo ? 'toggle-pill toggle-pill--no' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: false }))}>NON</button>
+                </div>
+                {!draft.competences_dispo && <div className="competence-impact">⚠ Impact ×0.8 sur le score</div>}
+              </div>
+
+              <div className="score-summary">
+                <div className="score-summary-formula">
+                  Score = ({formula}) normalisé
+                  {draft.type === 'BUILD' ? ' × 1.5 si BUILD' : ''}
+                  {!draft.competences_dispo ? ' × 0.8 si compétences NON' : ''}
+                </div>
+                <div className="score-summary-value" style={{ color: getScoreColor(score) }}>{score}/100</div>
               </div>
             </div>
+          </div>
 
-            <div className="project-planning">
-              <div className="section-title">Planning prévisionnel</div>
-              <GanttPilules
-                planning={project.planning}
-                color={perimColor}
-                editable
-                onChange={onTogglePlanning}
-              />
-              <div className="project-pilote">
-                <span>Pilote :</span> <strong>{project.pilote}</strong>
+          <div className="project-planning">
+            <div className="section-title">Planning prévisionnel</div>
+            <GanttPilules planning={draft.planning} color={perimColor} editable onChange={toggleDraftPlanning} />
+            <div className="recap-block">
+              <div className="recap-title">Récapitulatif de l&apos;évaluation</div>
+              <table className="recap-table">
+                <thead>
+                  <tr>
+                    <th>Dimension</th>
+                    <th>Niveau</th>
+                    <th>Description</th>
+                    <th>Coef</th>
+                    <th>Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {criteriaRows.map((row) => (
+                    <tr key={row.key}>
+                      <td>{row.label}</td>
+                      <td>{row.level}/5</td>
+                      <td>{row.description}</td>
+                      <td>×{row.coef}</td>
+                      <td className="recap-points">{row.points}</td>
+                    </tr>
+                  ))}
+                  <tr className="recap-total">
+                    <td>TOTAL</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td className="recap-points">{scoreRaw}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="recap-lines">
+                <div>Score brut : {scoreRaw} / {scoreMax} (max pondéré)</div>
+                <div>× 1.5 BUILD : {scoreBuild} / 100</div>
+                <div>Score final : <span className="recap-final-badge" style={{ background: getScoreColor(scoreFinal) }}>{scoreFinal} — {getScoreLabel(scoreFinal)}</span></div>
               </div>
+            </div>
+            <div className="project-form-actions">
+              <button type="button" className="project-btn project-btn--ghost" onClick={() => { setDraft(project); setExpanded(false) }}>Annuler</button>
+              <button type="button" className="project-btn project-btn--primary" onClick={() => { onSaveProject(draft); setExpanded(false) }}>Enregistrer les modifications</button>
             </div>
           </div>
         </div>
@@ -559,16 +655,7 @@ function PerimetreView({
                 if (!project.selected_for_transfo && selectedCount >= 5) return
                 onUpdateProject(perimetre.id, project.id, { selected_for_transfo: !project.selected_for_transfo })
               }}
-              onUpdateScore={(key, v) =>
-                onUpdateProject(perimetre.id, project.id, {
-                  scores: { ...project.scores, [key]: v },
-                })
-              }
-              onTogglePlanning={(key) =>
-                onUpdateProject(perimetre.id, project.id, {
-                  planning: { ...project.planning, [key]: !project.planning[key] },
-                })
-              }
+              onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
             />
           ))}
 
@@ -582,16 +669,7 @@ function PerimetreView({
               coefs={coefs}
               perimColor={perimetre.color}
               onToggleTransfo={() => {}}
-              onUpdateScore={(key, v) =>
-                onUpdateProject(perimetre.id, project.id, {
-                  scores: { ...project.scores, [key]: v },
-                })
-              }
-              onTogglePlanning={(key) =>
-                onUpdateProject(perimetre.id, project.id, {
-                  planning: { ...project.planning, [key]: !project.planning[key] },
-                })
-              }
+              onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
             />
           ))}
         </div>
@@ -645,11 +723,11 @@ function CoefPanel({ coefs, onChange, onClose }: {
 
 export default function ProjectSelector() {
   const [perimetres, setPerimetres] = useState<Perimetre[]>(() => applyMemberDirectionPrefill(INITIAL_DATA))
-  const [activeId, setActiveId] = useState<string>(INITIAL_DATA[0].id)
+  const [activeId, setActiveId] = useState<string | null>(INITIAL_DATA[0]?.id ?? null)
   const [coefs, setCoefs] = useState<Coefficients>(DEFAULT_COEFFICIENTS)
   const [showCoefs, setShowCoefs] = useState(false)
 
-  const active = perimetres.find((p) => p.id === activeId)!
+  const active = perimetres.find((p) => p.id === activeId) ?? null
 
   function updateProject(perimId: string, projId: string, updates: Partial<Project>) {
     setPerimetres((prev) =>
@@ -662,6 +740,19 @@ export default function ProjectSelector() {
         }
       )
     )
+  }
+
+  function createPerimetre() {
+    const newPerimetre: Perimetre = {
+      id: `p-${Date.now()}`,
+      name: `Nouveau périmètre ${perimetres.length + 1}`,
+      color: PERIMETRE_COLORS[perimetres.length % PERIMETRE_COLORS.length],
+      mission: '',
+      vision: '',
+      projects: [],
+    }
+    setPerimetres((prev) => [...prev, newPerimetre])
+    setActiveId(newPerimetre.id)
   }
 
   return (
@@ -689,14 +780,18 @@ export default function ProjectSelector() {
             )
           })}
 
-          <div className="ps-sidebar-divider" />
-          <button
-            type="button"
-            className="ps-coef-btn"
-            onClick={() => setShowCoefs(true)}
-          >
-            ⚙ Coefficients
-          </button>
+          {perimetres.length > 0 && (
+            <>
+              <div className="ps-sidebar-divider" />
+              <button
+                type="button"
+                className="ps-coef-btn"
+                onClick={() => setShowCoefs(true)}
+              >
+                ⚙ Coefficients
+              </button>
+            </>
+          )}
         </aside>
 
         {/* Contenu principal */}
@@ -714,11 +809,25 @@ export default function ProjectSelector() {
             </div>
           </div>
 
-          <PerimetreView
-            perimetre={active}
-            coefs={coefs}
-            onUpdateProject={updateProject}
-          />
+          {active ? (
+            <PerimetreView
+              perimetre={active}
+              coefs={coefs}
+              onUpdateProject={updateProject}
+            />
+          ) : (
+            <div className="ps-empty">
+              <svg className="ps-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <path d="M3 7h7l2 2h9v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <path d="M8 13h8" />
+              </svg>
+              <h3>Aucun projet pour le moment</h3>
+              <p>Commencez par créer votre premier périmètre et ajouter vos projets</p>
+              <button type="button" className="ps-empty-btn" onClick={createPerimetre}>
+                + Créer un périmètre
+              </button>
+            </div>
+          )}
         </main>
 
         {showCoefs && (
@@ -874,6 +983,50 @@ const CSS = `
   margin: 0;
 }
 
+.ps-empty {
+  min-height: 48svh;
+  border: 1px dashed var(--theme-border);
+  border-radius: var(--radius-lg);
+  background: var(--theme-bg-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.ps-empty-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--theme-text-muted);
+}
+
+.ps-empty h3 {
+  margin: 0;
+  color: var(--theme-text);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.ps-empty p {
+  margin: 0;
+  color: var(--theme-text-muted);
+  font-size: 0.85rem;
+}
+
+.ps-empty-btn {
+  margin-top: 4px;
+  border: 1px solid #8E3B46;
+  background: #8E3B46;
+  color: #fff;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
 .ps-legend {
   display: flex;
   gap: var(--space-md);
@@ -992,7 +1145,7 @@ const CSS = `
 }
 
 .projects-group-count {
-  color: var(--theme-accent);
+  color: var(--theme-text-muted);
 }
 
 .project-card {
@@ -1105,12 +1258,12 @@ const CSS = `
   align-items: center;
   gap: 2px;
   position: relative;
-  width: 64px;
+  width: 92px;
 }
 
 .score-ring {
-  width: 56px;
-  height: 56px;
+  width: 80px;
+  height: 80px;
 }
 
 .score-value {
@@ -1118,14 +1271,14 @@ const CSS = `
   top: 50%;
   left: 50%;
   transform: translate(-50%, -52%);
-  font-size: 1rem;
+  font-size: 24px;
   font-weight: 800;
   font-family: var(--font-display);
   line-height: 1;
 }
 
 .score-label {
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1179,6 +1332,94 @@ const CSS = `
   gap: var(--space-xl);
 }
 
+.project-sections--editor {
+  align-items: start;
+}
+
+.project-editor-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.project-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-field span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.project-field input,
+.project-field textarea {
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  height: 44px;
+  padding: 0 12px;
+  font-family: var(--font-body);
+  background: var(--theme-bg-page);
+  color: var(--theme-text);
+}
+
+.project-field textarea {
+  height: auto;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.project-field input:focus,
+.project-field textarea:focus {
+  outline: none;
+  border-color: #8E3B46;
+  box-shadow: 0 0 0 3px rgba(142,59,70,0.12);
+}
+
+.input-prefix-wrap {
+  position: relative;
+}
+
+.input-prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--theme-text-muted);
+}
+
+.input-prefix-wrap input {
+  padding-left: 28px;
+}
+
+.type-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.type-pill {
+  border: 1px solid var(--theme-border);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.type-pill--active {
+  background: #8E3B46;
+  border-color: #8E3B46;
+  color: #fff;
+}
+
+.eligible-note {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #10B981;
+}
+
 .section-title {
   font-size: 0.7rem;
   font-weight: 700;
@@ -1188,9 +1429,23 @@ const CSS = `
   margin-bottom: var(--space-md);
 }
 
+.section-title--score {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
 /* ── Critère Slider ── */
 .critere-row {
   margin-bottom: var(--space-md);
+}
+
+.critere-row--enhanced {
+  padding: 10px;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  background: var(--theme-bg-card);
 }
 
 .critere-header {
@@ -1201,26 +1456,30 @@ const CSS = `
 }
 
 .critere-icon {
-  font-size: 1rem;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
   flex-shrink: 0;
+  background: rgba(142,59,70,0.1);
+  border-radius: 8px;
 }
 
 .critere-name {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--theme-text);
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
-.critere-coef {
+.critere-title-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.critere-coef-inline {
   font-size: 0.68rem;
-  background: var(--theme-border);
   color: var(--theme-text-muted);
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-weight: 600;
 }
 
 .critere-desc {
@@ -1237,27 +1496,210 @@ const CSS = `
   text-align: right;
 }
 
-.critere-dots {
-  display: flex;
+.critere-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 32px);
   gap: 6px;
 }
 
-.dot {
-  width: 28px;
-  height: 8px;
-  border-radius: 999px;
-  border: none;
-  background: var(--theme-border);
+.critere-square {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-bg-page);
   cursor: pointer;
-  transition: background var(--transition), transform var(--transition);
+  transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+  color: var(--theme-text);
+  font-weight: 700;
 }
 
-.dot--active {
-  background: var(--theme-accent);
+.critere-square:hover {
+  background: rgba(142,59,70,0.1);
+  border-color: #8E3B46;
 }
 
-.dot:hover {
-  transform: scaleY(1.4);
+.critere-square--active {
+  background: #8E3B46;
+  color: #fff;
+  border-color: #8E3B46;
+  box-shadow: 0 2px 8px rgba(142,59,70,0.3);
+}
+
+.critere-level-desc {
+  font-size: 11px;
+  color: var(--theme-text-muted);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.project-scoring-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.project-scoring-head--stack {
+  align-items: center;
+  flex-direction: column;
+}
+
+.score-badge-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.competence-toggle {
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-options {
+  display: flex;
+  gap: 8px;
+}
+
+.toggle-pill {
+  border: 1px solid var(--theme-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.toggle-pill--yes {
+  background: rgba(16,185,129,0.12);
+  border-color: #10B981;
+  color: #10B981;
+}
+
+.toggle-pill--no {
+  background: rgba(245,158,11,0.14);
+  border-color: #F59E0B;
+  color: #F59E0B;
+}
+
+.competence-impact {
+  font-size: 12px;
+  color: #F59E0B;
+}
+
+.score-summary {
+  background: var(--theme-bg-page);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--theme-border);
+}
+
+.score-summary-formula {
+  font-size: 12px;
+  color: var(--theme-text-muted);
+  line-height: 1.45;
+}
+
+.score-summary-value {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.project-form-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.project-btn {
+  height: 40px;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.project-btn--ghost {
+  background: transparent;
+  border: 1px solid var(--theme-border);
+  color: var(--theme-text-muted);
+}
+
+.project-btn--primary {
+  background: #8E3B46;
+  border: 1px solid #8E3B46;
+  color: white;
+}
+
+.recap-block {
+  margin-top: 14px;
+  background: var(--theme-bg-page);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--theme-border);
+}
+
+.recap-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--theme-text);
+  margin-bottom: 10px;
+}
+
+.recap-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.recap-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--theme-text-muted);
+  padding: 6px 6px 8px;
+}
+
+.recap-table td {
+  font-size: 13px;
+  color: var(--theme-text);
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.recap-points {
+  font-weight: 700;
+  color: var(--theme-accent);
+}
+
+.recap-total td {
+  font-weight: 700;
+  border-top: 2px solid var(--theme-border);
+  border-bottom: none;
+}
+
+.recap-lines {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.recap-final-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  color: #fff;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .scoring-formula {
@@ -1537,6 +1979,36 @@ const CSS = `
   .project-sections {
     grid-template-columns: 1fr;
   }
+  .project-sections--editor {
+    grid-template-columns: 1fr;
+  }
+  .project-field input,
+  .project-field textarea {
+    font-size: 16px;
+  }
+  .project-scoring-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .type-pills {
+    flex-direction: column;
+  }
+  .type-pill {
+    width: 100%;
+    text-align: left;
+  }
+  .project-form-actions {
+    flex-direction: column;
+  }
+  .project-btn {
+    width: 100%;
+  }
+  .critere-grid {
+    grid-template-columns: repeat(5, minmax(32px, 1fr));
+  }
+  .score-summary-value {
+    font-size: 24px;
+  }
   .synthese-header {
     grid-template-columns: 1fr;
   }
@@ -1557,6 +2029,21 @@ const CSS = `
   }
   .ps-main {
     padding: var(--space-md);
+  }
+  .project-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .project-card__right {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .project-card__body {
+    padding: var(--space-md);
+  }
+  .gantt-month-label {
+    font-size: 0.52rem;
   }
 }
 `

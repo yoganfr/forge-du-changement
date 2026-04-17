@@ -239,6 +239,32 @@
   color: var(--theme-text);
 }
 
+.user-badge {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.user-badge-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #4C86A8;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--theme-border);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.user-badge-avatar:hover {
+  border-color: var(--theme-accent);
+}
+
 /* Toggle thème : bouton → accent */
 .dashboard__theme-toggle {
   display: inline-flex;
