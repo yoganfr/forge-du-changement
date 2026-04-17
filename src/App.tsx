@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import './App.css'
 import ProjectSelector from './ProjectSelector'
 import MemberOnboarding from './MemberOnboarding'
@@ -7,6 +7,7 @@ import CompanySheet from './CompanySheet'
 import ProfileSheet from './ProfileSheet'
 import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
+import { getWorkspace } from './lib/api'
 import {
   applyThemeToDocument,
   getStoredTheme,
@@ -48,8 +49,9 @@ const cards = [
 type OnboardingData = OnboardingFlowProps extends { onComplete: (data: infer T) => void } ? T : never
 
 function App() {
+  const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
-  const [onboardingDone, setOnboardingDone] = useState(false)
+  const [onboardingDone, setOnboardingDone] = useState(() => Boolean(localStorage.getItem('workspaceId')))
   const [workspaceName, setWorkspaceName] = useState('La Forge')
   const [companyLogo, setCompanyLogo] = useState<string | null>(null)
   const [userInitials, setUserInitials] = useState('?')
@@ -72,13 +74,45 @@ function App() {
     persistTheme(theme)
   }, [theme])
 
+  useEffect(() => {
+    if (!workspaceId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const workspace = await getWorkspace(workspaceId)
+        if (cancelled) return
+        setWorkspaceName(workspace.company_name)
+        setCompanyLogo(workspace.logo_url)
+        setWorkspaceData((prev) => ({
+          workspace,
+          companyName: workspace.company_name,
+          sector: workspace.sector ?? prev?.sector ?? 'Non renseigné',
+          size: workspace.size ?? prev?.size ?? 'Non renseigné',
+          companyLogo: workspace.logo_url,
+          members: prev?.members ?? [],
+        }))
+        setOnboardingDone(true)
+      } catch {
+        if (cancelled) return
+        localStorage.removeItem('workspaceId')
+        setWorkspaceId(null)
+        setOnboardingDone(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId])
+
   if (!onboardingDone) {
     return (
       <OnboardingFlow
         onComplete={(data) => {
+          localStorage.setItem('workspaceId', data.workspace.id)
+          setWorkspaceId(data.workspace.id)
           setOnboardingDone(true)
-          setWorkspaceName(data.companyName)
-          setCompanyLogo(data.companyLogo)
+          setWorkspaceName(data.workspace.company_name)
+          setCompanyLogo(data.workspace.logo_url)
           try {
             const raw = localStorage.getItem('lfdc-member-onboarding')
             const p = raw ? JSON.parse(raw) as StoredMemberProfile : {}
@@ -171,7 +205,11 @@ function App() {
           <button
             type="button"
             className="dashboard__reset-btn"
-            onClick={() => setOnboardingDone(false)}
+            onClick={() => {
+              localStorage.removeItem('workspaceId')
+              setWorkspaceId(null)
+              setOnboardingDone(false)
+            }}
           >
             ↺ Recommencer
           </button>
@@ -257,14 +295,28 @@ function App() {
               </div>
             </>
           ) : activeNav === 'fabrique' ? (
-            <ProjectSelector memberDirectionName={storedProfile?.directionName ?? 'Ma direction'} />
+            <ProjectSelector
+              memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
+              workspaceId={workspaceId}
+            />
           ) : activeNav === 'company' ? (
             <CompanySheet
+              workspaceId={workspaceId}
               companyName={workspaceData?.companyName ?? workspaceName}
               sector={workspaceData?.sector ?? 'Non renseigné'}
               size={workspaceData?.size ?? 'Non renseigné'}
               members={workspaceData?.members ?? []}
               currentUserRole="consultant"
+              companyLogo={companyLogo}
+              onCompanyUpdate={(data) => {
+                setCompanyLogo(data.logo)
+                setWorkspaceName(data.companyName)
+                setWorkspaceData((prev) =>
+                  prev
+                    ? { ...prev, companyName: data.companyName, sector: data.sector, size: data.size }
+                    : prev,
+                )
+              }}
             />
           ) : activeNav === 'workspace' ? (
             <MemberOnboarding
@@ -282,6 +334,7 @@ function App() {
       <ProfileSheet
         open={showProfile}
         onClose={() => setShowProfile(false)}
+        workspaceId={workspaceId}
         firstName={storedProfile?.firstName ?? ''}
         lastName={storedProfile?.lastName ?? ''}
         jobTitle={storedProfile?.jobTitle ?? ''}

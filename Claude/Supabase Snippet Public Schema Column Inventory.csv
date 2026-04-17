@@ -1,0 +1,86 @@
+table_name,column_name,data_type
+acteurs,id,uuid
+acteurs,mission_id,uuid
+acteurs,direction_id,uuid
+acteurs,prenom,text
+acteurs,nom,text
+acteurs,role,text
+acteurs,niveau,text
+acteurs,statut,text
+acteurs,created_at,timestamp without time zone
+actions_pae,id,uuid
+actions_pae,pae_id,uuid
+actions_pae,jalon_id,uuid
+actions_pae,description,text
+actions_pae,ressources_necessaires,text
+actions_pae,date_debut_prevue,date
+actions_pae,date_fin_prevue,date
+actions_pae,statut,text
+actions_pae,motif_abandon,text
+actions_pae,abandonne_valide_par,uuid
+actions_pae,created_at,timestamp without time zone
+directions,id,uuid
+directions,mission_id,uuid
+directions,nom,text
+directions,type,text
+directions,created_at,timestamp without time zone
+etapes_jalons,id,uuid
+etapes_jalons,jalon_id,uuid
+etapes_jalons,nom,text
+etapes_jalons,ordre,integer
+etapes_jalons,statut,text
+etapes_jalons,created_at,timestamp without time zone
+jalons,id,uuid
+jalons,projet_id,uuid
+jalons,direction_id,uuid
+jalons,axe,text
+jalons,nom,text
+jalons,description,text
+jalons,trimestre_cible,text
+jalons,ordre_sequentiel,integer
+jalons,statut,text
+jalons,created_at,timestamp without time zone
+missions,id,uuid
+missions,nom,text
+missions,client,text
+missions,date_debut,date
+missions,date_fin_prevue,date
+missions,statut,text
+missions,consultant_id,uuid
+missions,created_at,timestamp without time zone
+pae,id,uuid
+pae,acteur_id,uuid
+pae,mission_id,uuid
+pae,statut,text
+pae,valide_par,uuid
+pae,date_validation,date
+pae,created_at,timestamp without time zone
+plan_de_charge,id,uuid
+plan_de_charge,acteur_id,uuid
+plan_de_charge,mois,text
+plan_de_charge,capacite_totale_jours,integer
+plan_de_charge,run_jours,integer
+plan_de_charge,build_jours,integer
+plan_de_charge,transfo_jours,integer
+plan_de_charge,commentaire,text
+plan_de_charge,created_at,timestamp without time zone
+projets_transformants,id,uuid
+projets_transformants,mission_id,uuid
+projets_transformants,nom,text
+projets_transformants,situation_initiale,text
+projets_transformants,point_de_douleur,text
+projets_transformants,solution,text
+projets_transformants,priorite,text
+projets_transformants,statut,text
+projets_transformants,created_at,timestamp without time zone
+raci_jalons,id,uuid
+raci_jalons,jalon_id,uuid
+raci_jalons,direction_id,uuid
+raci_jalons,role_raci,text
+raci_jalons,created_at,timestamp without time zone
+users,id,uuid
+users,prenom,text
+users,nom,text
+users,email,text
+users,role,text
+users,created_at,timestamp without time zone

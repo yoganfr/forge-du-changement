@@ -1,4 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  createDirection,
+  createProjet,
+  getDirectionProjets,
+  getWorkspaceDirections,
+  updateProjet,
+} from './lib/api'
+import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -50,8 +58,37 @@ type Perimetre = {
 
 // ─── Constantes ─────────────────────────────────────────────────────────────
 
-const MONTHS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
-const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+export function generateGanttMonths() {
+  const today = new Date()
+  const months: Array<{
+    key: string
+    label: string
+    year: number
+    monthIndex: number
+  }> = []
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1)
+    months.push({
+      key: `${d.getMonth()}-${d.getFullYear()}`,
+      label: d.toLocaleString('fr-FR', { month: 'short' }).replace('.', '').slice(0, 3),
+      year: d.getFullYear(),
+      monthIndex: d.getMonth(),
+    })
+  }
+  return months
+}
+
+const GANTT_MONTHS = generateGanttMonths()
+
+function buildYearSpans(months: typeof GANTT_MONTHS) {
+  const spans: { year: number; count: number }[] = []
+  for (const m of months) {
+    const last = spans[spans.length - 1]
+    if (last && last.year === m.year) last.count++
+    else spans.push({ year: m.year, count: 1 })
+  }
+  return spans
+}
 
 const DEFAULT_COEFFICIENTS: Coefficients = {
   criticite: 3,
@@ -73,6 +110,7 @@ const CRITERIA_META = {
 
 const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
   criticite: {
+    0: 'Non évalué',
     1: 'Conséquences mineures, insignifiantes',
     2: 'Conséquences sans gravité (courte durée, faible coût)',
     3: 'Impacts modérés nécessitant un investissement modéré',
@@ -80,6 +118,7 @@ const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
     5: 'Menace pour la viabilité du business model',
   },
   urgence: {
+    0: 'Non évalué',
     1: 'Dans plus de 2 ans',
     2: 'Dans 1 à 2 ans',
     3: 'Dans 6 mois à 1 an',
@@ -87,6 +126,7 @@ const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
     5: 'Dans moins de 3 mois',
   },
   recurrence: {
+    0: 'Non évalué',
     1: 'Pas de récurrence',
     2: 'Faiblement récurrent',
     3: 'Modérément récurrent',
@@ -94,6 +134,7 @@ const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
     5: 'Très fortement récurrent',
   },
   temps: {
+    0: 'Non évalué',
     1: 'Moins de 3 mois',
     2: 'De 3 à 6 mois',
     3: 'De 6 mois à 1 an',
@@ -101,6 +142,7 @@ const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
     5: '2 ans et plus',
   },
   etp: {
+    0: 'Non évalué',
     1: 'Moins de 50 jours homme',
     2: 'Entre 50 et 100 jours homme',
     3: 'Entre 100 et 250 jours homme',
@@ -108,6 +150,7 @@ const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
     5: 'Plus de 500 jours homme',
   },
   investissement: {
+    0: 'Non évalué',
     1: 'Moins de 20 000€',
     2: 'Entre 20 000€ et 30 000€',
     3: 'Entre 30 000€ et 50 000€',
@@ -129,7 +172,7 @@ const SIMULATED_DIRECTIONS = [
 ] as const
 
 function emptyPlanning(): Record<string, boolean> {
-  return MONTH_KEYS.reduce((acc, k) => ({ ...acc, [k]: false }), {} as Record<string, boolean>)
+  return Object.fromEntries(GANTT_MONTHS.map((m) => [m.key, false])) as Record<string, boolean>
 }
 
 function createEmptyProject(): Project {
@@ -141,12 +184,12 @@ function createEmptyProject(): Project {
     description: '',
     type: 'RUN',
     scores: {
-      criticite: 3,
-      urgence: 3,
-      recurrence: 3,
-      temps: 3,
-      etp: 3,
-      investissement: 3,
+      criticite: 0,
+      urgence: 0,
+      recurrence: 0,
+      temps: 0,
+      etp: 0,
+      investissement: 0,
     },
     competences_dispo: true,
     selected_for_transfo: false,
@@ -180,9 +223,79 @@ function buildInitialPerimetres(directionLabel: string): Perimetre[] {
   ]
 }
 
+function mapDbProjetToProject(p: DbProjet): Project {
+  return {
+    id: p.id,
+    name: p.nom ?? '',
+    thematique: p.thematique ?? '',
+    problematique: p.problematique ?? '',
+    description: p.description ?? '',
+    type: p.type,
+    scores: {
+      criticite: p.score_criticite ?? 0,
+      urgence: p.score_urgence ?? 0,
+      recurrence: p.score_recurrence ?? 0,
+      temps: p.score_temps ?? 0,
+      etp: p.score_etp ?? 0,
+      investissement: p.score_investissement ?? 0,
+    },
+    competences_dispo: p.competences_dispo ?? true,
+    selected_for_transfo: p.selected_for_transfo ?? false,
+    planning: { ...emptyPlanning(), ...(p.planning ?? {}) },
+    pilote: p.pilote ?? '',
+    gains_quantitatifs: p.gains_quantitatifs ?? undefined,
+    gains_qualitatifs: p.gains_qualitatifs ?? '',
+    contributorDirections: p.directions_contributrices ?? [],
+  }
+}
+
+function mapProjectToDbProjet(
+  p: Project,
+  directionId: string,
+  workspaceId: string,
+): Partial<DbProjet> {
+  const withDefaults: Project = {
+    ...p,
+    planning: { ...emptyPlanning(), ...p.planning },
+  }
+  return {
+    direction_id: directionId,
+    workspace_id: workspaceId,
+    nom: withDefaults.name.trim() || 'Nouveau projet',
+    thematique: withDefaults.thematique || null,
+    problematique: withDefaults.problematique || null,
+    description: withDefaults.description || null,
+    type: withDefaults.type,
+    score_criticite: withDefaults.scores.criticite,
+    score_urgence: withDefaults.scores.urgence,
+    score_recurrence: withDefaults.scores.recurrence,
+    score_temps: withDefaults.scores.temps,
+    score_etp: withDefaults.scores.etp,
+    score_investissement: withDefaults.scores.investissement,
+    competences_dispo: withDefaults.competences_dispo,
+    selected_for_transfo: withDefaults.selected_for_transfo,
+    pilote: withDefaults.pilote || null,
+    gains_quantitatifs: withDefaults.gains_quantitatifs ?? null,
+    gains_qualitatifs: withDefaults.gains_qualitatifs || null,
+    planning: withDefaults.planning,
+    directions_contributrices: withDefaults.contributorDirections,
+    updated_at: new Date().toISOString(),
+  } as Partial<DbProjet>
+}
+
 // ─── Calcul du score ────────────────────────────────────────────────────────
 
-function computeScore(project: Project, coefs: Coefficients): number {
+export type ScoringOptions = {
+  applyBuildBonus?: boolean
+  applyCompetencesMalus?: boolean
+}
+
+function computeScore(project: Project, coefs: Coefficients, options: ScoringOptions = {}): number {
+  const applyBuildBonus = options.applyBuildBonus ?? true
+  const applyCompetencesMalus = options.applyCompetencesMalus ?? true
+
+  if (Object.values(project.scores).reduce((a, b) => a + b, 0) === 0) return 0
+
   const { scores, type, competences_dispo } = project
   const scoreMax =
     (5 * coefs.criticite) +
@@ -201,12 +314,13 @@ function computeScore(project: Project, coefs: Coefficients): number {
     (scores.investissement * coefs.investissement)
 
   let normalise = (scoreBrut / scoreMax) * 100
-  if (type === 'BUILD') normalise *= 1.5
-  if (!competences_dispo) normalise *= 0.8
+  if (applyBuildBonus && type === 'BUILD') normalise *= 1.5
+  if (applyCompetencesMalus && !competences_dispo) normalise *= 0.8
   return Math.min(100, Math.round(normalise))
 }
 
 function getScoreColor(score: number): string {
+  if (score === 0) return 'var(--theme-text-muted)'
   if (score >= 75) return '#EF4444'
   if (score >= 50) return '#F59E0B'
   if (score >= 25) return '#4C86A8'
@@ -214,6 +328,7 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number): string {
+  if (score === 0) return 'Non évalué'
   if (score >= 75) return 'Critique'
   if (score >= 50) return 'Élevé'
   if (score >= 25) return 'Modéré'
@@ -285,39 +400,58 @@ function GanttPilules({
   editable?: boolean
   onChange?: (key: string) => void
 }) {
+  const yearSpans = buildYearSpans(GANTT_MONTHS)
   return (
-    <div className="gantt-grid">
-      {MONTH_KEYS.map((key, i) => {
-        const active = planning[key]
-        const prevActive = i > 0 && planning[MONTH_KEYS[i - 1]]
-        const nextActive = i < 11 && planning[MONTH_KEYS[i + 1]]
-        const isStart = active && !prevActive
-        const isEnd = active && !nextActive
-
-        return (
-          <button
-            key={key}
-            type="button"
-            className={`gantt-cell ${active ? 'gantt-cell--active' : ''} ${editable ? 'gantt-cell--editable' : ''}`}
-            style={active ? {
-              background: color,
-              borderTopLeftRadius: isStart ? '999px' : '0',
-              borderBottomLeftRadius: isStart ? '999px' : '0',
-              borderTopRightRadius: isEnd ? '999px' : '0',
-              borderBottomRightRadius: isEnd ? '999px' : '0',
-            } : {}}
-            onClick={() => editable && onChange?.(key)}
-            title={MONTHS[i]}
+    <div className="gantt-chart-wrap">
+      <div className="gantt-head-years">
+        {yearSpans.map((s) => (
+          <div
+            key={s.year}
+            className="gantt-year-cell"
+            style={{ gridColumn: `span ${s.count}` }}
           >
-            <span className="gantt-month-label">{MONTHS[i]}</span>
-          </button>
-        )
-      })}
+            {s.year} ({s.count} mois)
+          </div>
+        ))}
+      </div>
+      <div className="gantt-head-months">
+        {GANTT_MONTHS.map((m) => (
+          <span key={m.key} className="gantt-month-short">{m.label}</span>
+        ))}
+      </div>
+      <div className="gantt-grid gantt-grid--24">
+        {GANTT_MONTHS.map((m, i) => {
+          const key = m.key
+          const active = planning[key] ?? false
+          const keys = GANTT_MONTHS.map((x) => x.key)
+          const prevActive = i > 0 && (planning[keys[i - 1]] ?? false)
+          const nextActive = i < 23 && (planning[keys[i + 1]] ?? false)
+          const isStart = active && !prevActive
+          const isEnd = active && !nextActive
+          const title = `${m.label} ${m.year}`
+          return (
+            <button
+              key={key}
+              type="button"
+              className={`gantt-cell gantt-cell--sm ${active ? 'gantt-cell--active' : ''} ${editable ? 'gantt-cell--editable' : ''}`}
+              style={active ? {
+                background: color,
+                borderTopLeftRadius: isStart ? '999px' : '0',
+                borderBottomLeftRadius: isStart ? '999px' : '0',
+                borderTopRightRadius: isEnd ? '999px' : '0',
+                borderBottomRightRadius: isEnd ? '999px' : '0',
+              } : {}}
+              onClick={() => editable && onChange?.(key)}
+              title={title}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }
 
-function MiniGantt12({
+function MiniGantt24({
   planning,
   color,
 }: {
@@ -325,24 +459,29 @@ function MiniGantt12({
   color: string
 }) {
   return (
-    <div className="mini-gantt-12" aria-hidden>
-      {MONTH_KEYS.map((key, i) => (
-        <span
-          key={key}
-          className={`mini-gantt-12__cell ${planning[key] ? 'mini-gantt-12__cell--on' : ''}`}
-          style={planning[key] ? { background: color } : undefined}
-          title={MONTHS[i]}
-        />
-      ))}
+    <div className="mini-gantt-24" aria-hidden>
+      {GANTT_MONTHS.map((m) => {
+        const on = planning[m.key] ?? false
+        const title = `${m.label} ${m.year}`
+        return (
+          <span
+            key={m.key}
+            className={`mini-gantt-24__cell ${on ? 'mini-gantt-24__cell--on' : ''}`}
+            style={on ? { background: color } : undefined}
+            title={title}
+          />
+        )
+      })}
     </div>
   )
 }
 
 function ScoreRing40({ score }: { score: number }) {
-  const color = getScoreColor(score)
+  const isZero = score === 0
   const c = 100.53
+  const dash = isZero ? '0 94.2' : `${(score / 100) * c} ${c}`
   return (
-    <div className="score-ring-40">
+    <div className="score-ring-40 score-ring-40--header">
       <svg className="score-ring-40__svg" viewBox="0 0 40 40">
         <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeOpacity="0.12" strokeWidth="3" />
         <circle
@@ -350,14 +489,16 @@ function ScoreRing40({ score }: { score: number }) {
           cy="20"
           r="16"
           fill="none"
-          stroke={color}
+          stroke={isZero ? 'var(--theme-border)' : getScoreColor(score)}
           strokeWidth="3"
-          strokeDasharray={`${(score / 100) * c} ${c}`}
+          strokeDasharray={dash}
           strokeLinecap="round"
           transform="rotate(-90 20 20)"
         />
       </svg>
-      <span className="score-ring-40__val" style={{ color }}>{score}</span>
+      <span className="score-ring-40__val" style={{ color: isZero ? 'var(--theme-text-muted)' : getScoreColor(score) }}>
+        {isZero ? '—' : score}
+      </span>
     </div>
   )
 }
@@ -365,7 +506,9 @@ function ScoreRing40({ score }: { score: number }) {
 // ─── Score Badge ─────────────────────────────────────────────────────────────
 
 function ScoreBadge({ score }: { score: number }) {
-  const color = getScoreColor(score)
+  const isZero = score === 0
+  const color = isZero ? 'var(--theme-border)' : getScoreColor(score)
+  const dash = isZero ? '0 94.2' : `${(score / 100) * 94.2} 94.2`
   return (
     <div className="score-badge" style={{ '--score-color': color } as React.CSSProperties}>
       <svg className="score-ring" viewBox="0 0 36 36">
@@ -373,13 +516,13 @@ function ScoreBadge({ score }: { score: number }) {
         <circle
           cx="18" cy="18" r="15" fill="none"
           stroke={color} strokeWidth="3"
-          strokeDasharray={`${(score / 100) * 94.2} 94.2`}
+          strokeDasharray={dash}
           strokeLinecap="round"
           transform="rotate(-90 18 18)"
         />
       </svg>
-      <span className="score-value" style={{ color }}>{score}</span>
-      <span className="score-label" style={{ color }}>criticité</span>
+      <span className="score-value" style={{ color: isZero ? 'var(--theme-text-muted)' : color }}>{isZero ? '—' : score}</span>
+      <span className="score-label" style={{ color: isZero ? 'var(--theme-text-muted)' : color }}>Indice de criticité</span>
     </div>
   )
 }
@@ -409,8 +552,8 @@ function CritereSlider({
         </div>
         <span className="critere-val">{value}/5</span>
       </div>
-      <div className="critere-grid">
-        {[1, 2, 3, 4, 5].map((n) => (
+      <div className="critere-grid critere-grid--six">
+        {[0, 1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
@@ -439,6 +582,8 @@ function ProjectCard({
   onToggleExpand,
   onToggleTransfo,
   onSaveProject,
+  onPatchProject,
+  scoringOptions,
 }: {
   project: Project
   coefs: Coefficients
@@ -449,6 +594,8 @@ function ProjectCard({
   onToggleExpand: () => void
   onToggleTransfo: () => void
   onSaveProject: (updates: Partial<Project>) => void
+  onPatchProject: (updates: Partial<Project>) => void
+  scoringOptions: ScoringOptions
 }) {
   const [draft, setDraft] = useState<Project>(project)
   const [pilotageError, setPilotageError] = useState(false)
@@ -460,15 +607,21 @@ function ProjectCard({
     }
   }, [expanded, project])
 
-  const displayScoreCollapsed = computeScore(project, coefs)
-  const score = computeScore(draft, coefs)
+  const applyBuildBonus = scoringOptions.applyBuildBonus ?? true
+  const applyCompetencesMalus = scoringOptions.applyCompetencesMalus ?? true
+
+  const displayScoreCollapsed = computeScore(project, coefs, scoringOptions)
+  const score = computeScore(draft, coefs, scoringOptions)
 
   const updateDraftScore = (key: keyof Scores, v: number) => {
     setDraft((prev) => ({ ...prev, scores: { ...prev.scores, [key]: v } }))
   }
 
   const toggleDraftPlanning = (key: string) => {
-    setDraft((prev) => ({ ...prev, planning: { ...prev.planning, [key]: !prev.planning[key] } }))
+    setDraft((prev) => {
+      const merged = { ...emptyPlanning(), ...prev.planning }
+      return { ...prev, planning: { ...merged, [key]: !merged[key] } }
+    })
   }
 
   const toggleContributor = (label: string) => {
@@ -498,8 +651,8 @@ function ProjectCard({
   })
   const scoreMax = (Object.keys(coefs) as Array<keyof Coefficients>).reduce((acc, key) => acc + (5 * coefs[key]), 0)
   const scoreRaw = criteriaRows.reduce((acc, row) => acc + row.points, 0)
-  const scoreBuild = draft.type === 'BUILD' ? Math.round(scoreRaw * 1.5) : scoreRaw
-  const scoreFinal = computeScore(draft, coefs)
+  const scoreBuild = draft.type === 'BUILD' && applyBuildBonus ? Math.round(scoreRaw * 1.5) : scoreRaw
+  const scoreFinal = computeScore(draft, coefs, scoringOptions)
 
   const titleLine = project.name.trim() || 'Nouveau projet'
 
@@ -508,7 +661,10 @@ function ProjectCard({
       setPilotageError(true)
       return
     }
-    onSaveProject(draft)
+    onSaveProject({
+      ...draft,
+      planning: { ...emptyPlanning(), ...draft.planning },
+    })
     onToggleExpand()
   }
 
@@ -541,25 +697,29 @@ function ProjectCard({
           }
         }}
       >
-        <span className={`type-badge type-badge--${project.type.toLowerCase()}`}>{project.type}</span>
-        <span className="project-name-compact">{titleLine}</span>
-        <MiniGantt12 planning={project.planning} color={perimColor} />
-        <ScoreRing40 score={displayScoreCollapsed} />
-        <div className="project-card__header-actions">
-          {project.type === 'BUILD' && (
-            <button
-              type="button"
-              className={`transfo-toggle ${project.selected_for_transfo ? 'transfo-toggle--on' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleTransfo()
-              }}
-              title="Retenir pour le DG"
-            >
-              {project.selected_for_transfo ? `★ #${dgRank} DG` : '☆ Retenir'}
-            </button>
-          )}
-          <span className="expand-icon">{expanded ? '▲' : '▼'}</span>
+        <div className="project-card__header-main">
+          <span className={`type-badge type-badge--${project.type.toLowerCase()}`}>{project.type}</span>
+          <span className="project-name-compact">{titleLine}</span>
+          <MiniGantt24 planning={project.planning} color={perimColor} />
+        </div>
+        <div className="project-card__header-right">
+          <ScoreRing40 score={displayScoreCollapsed} />
+          <div className="project-card__header-actions">
+            {project.type === 'BUILD' && (
+              <button
+                type="button"
+                className={`transfo-toggle ${project.selected_for_transfo ? 'transfo-toggle--on' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleTransfo()
+                }}
+                title="Retenir pour le DG"
+              >
+                {project.selected_for_transfo ? `★ #${dgRank} DG` : '☆ Retenir'}
+              </button>
+            )}
+            <span className="expand-icon">{expanded ? '▲' : '▼'}</span>
+          </div>
         </div>
       </div>
 
@@ -574,7 +734,15 @@ function ProjectCard({
               </label>
               <label className="project-field">
                 <span>Sujet / Projet *</span>
-                <input value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} placeholder="Nom court du projet" />
+                <input
+                  value={draft.name}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setDraft((p) => ({ ...p, name: v }))
+                    onPatchProject({ name: v })
+                  }}
+                  placeholder="Nom court du projet"
+                />
               </label>
               <label className="project-field">
                 <span>Description / Problématique *</span>
@@ -603,7 +771,7 @@ function ProjectCard({
 
             <div className="project-editor-col">
               <div className="project-scoring-head project-scoring-head--stack">
-                <div className="section-title section-title--score">Score de criticité</div>
+                <div className="section-title section-title--score">Indice de criticité</div>
                 <div className="score-badge-wrap">
                   <ScoreBadge score={score} />
                 </div>
@@ -630,8 +798,8 @@ function ProjectCard({
               <div className="score-summary">
                 <div className="score-summary-formula">
                   Score = ({formula}) normalisé
-                  {draft.type === 'BUILD' ? ' × 1.5 si BUILD' : ''}
-                  {!draft.competences_dispo ? ' × 0.8 si compétences NON' : ''}
+                  {draft.type === 'BUILD' && applyBuildBonus ? ' × 1.5 si BUILD' : ''}
+                  {applyCompetencesMalus && !draft.competences_dispo ? ' × 0.8 si compétences NON' : ''}
                 </div>
                 <div className="score-summary-value" style={{ color: getScoreColor(score) }}>{score}/100</div>
               </div>
@@ -674,8 +842,10 @@ function ProjectCard({
               </table>
               <div className="recap-lines">
                 <div>Score brut : {scoreRaw} / {scoreMax} (max pondéré)</div>
-                <div>× 1.5 BUILD : {scoreBuild} / 100</div>
-                <div>Score final : <span className="recap-final-badge" style={{ background: getScoreColor(scoreFinal) }}>{scoreFinal} — {getScoreLabel(scoreFinal)}</span></div>
+                {draft.type === 'BUILD' && applyBuildBonus && (
+                  <div>× 1.5 BUILD : {scoreBuild} / 100</div>
+                )}
+                <div>Score final : <span className="recap-final-badge" style={{ background: scoreFinal === 0 ? '#9CA3AF' : getScoreColor(scoreFinal) }}>{scoreFinal} — {getScoreLabel(scoreFinal)}</span></div>
               </div>
             </div>
           </div>
@@ -688,7 +858,7 @@ function ProjectCard({
               </div>
             )}
             <label className="project-field">
-              <span>Pilote du projet</span>
+              <span>Pilote pressenti du projet</span>
               <input value={draft.pilote} onChange={(e) => setDraft((p) => ({ ...p, pilote: e.target.value }))} placeholder="Nom du pilote" />
             </label>
             <div className="project-field">
@@ -726,11 +896,11 @@ function ProjectCard({
 
 // ─── Vue Synthèse ─────────────────────────────────────────────────────────────
 
-function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coefficients }) {
+function SyntheseView({ perimetre, coefs, scoringOptions }: { perimetre: Perimetre; coefs: Coefficients; scoringOptions: ScoringOptions }) {
   const selected = perimetre.projects
     .filter((p) => p.type === 'BUILD')
     .filter((p) => p.selected_for_transfo)
-    .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
+    .sort((a, b) => computeScore(b, coefs, scoringOptions) - computeScore(a, coefs, scoringOptions))
     .slice(0, 5)
 
   return (
@@ -756,7 +926,7 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
 
       <div className="synthese-projects">
         {selected.map((project, i) => {
-          const score = computeScore(project, coefs)
+          const score = computeScore(project, coefs, scoringOptions)
           return (
             <div key={project.id} className="synthese-project-row">
               <div className="synthese-rank" style={{ color: perimetre.color }}>#{i + 1}</div>
@@ -765,7 +935,7 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
                   <span className={`type-badge type-badge--${project.type.toLowerCase()}`}>{project.type}</span>
                   <strong className="synthese-project-name">{project.name}</strong>
                   <span className="synthese-thematique">{project.thematique}</span>
-                  <span className="synthese-score" style={{ color: getScoreColor(score) }}>{score}pts</span>
+                  <span className="synthese-score" style={{ color: getScoreColor(score) }}>{score === 0 ? '—' : score}pts</span>
                 </div>
                 <p className="synthese-problematique">{project.problematique}</p>
                 <GanttPilules planning={project.planning} color={perimetre.color} />
@@ -787,6 +957,8 @@ function PerimetreView({
   expandedProjectId,
   onExpandedChange,
   onUpdateProject,
+  onPatchProject,
+  scoringOptions,
 }: {
   perimetre: Perimetre
   coefs: Coefficients
@@ -794,14 +966,16 @@ function PerimetreView({
   expandedProjectId: string | null
   onExpandedChange: (id: string | null) => void
   onUpdateProject: (perimId: string, projId: string, updates: Partial<Project>) => void
+  onPatchProject: (perimId: string, projId: string, updates: Partial<Project>) => void
+  scoringOptions: ScoringOptions
 }) {
   const [mode, setMode] = useState<'edition' | 'synthese'>('edition')
   const buildProjects = perimetre.projects
     .filter((p) => p.type === 'BUILD')
-    .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
+    .sort((a, b) => computeScore(b, coefs, scoringOptions) - computeScore(a, coefs, scoringOptions))
   const runProjects = perimetre.projects
     .filter((p) => p.type === 'RUN')
-    .sort((a, b) => computeScore(b, coefs) - computeScore(a, coefs))
+    .sort((a, b) => computeScore(b, coefs, scoringOptions) - computeScore(a, coefs, scoringOptions))
   const selectedBuilds = buildProjects.filter((p) => p.selected_for_transfo)
   const selectedCount = selectedBuilds.length
   const dgRanks = new Map(selectedBuilds.map((project, index) => [project.id, index + 1]))
@@ -835,7 +1009,7 @@ function PerimetreView({
       {mode === 'edition' ? (
         <div className="projects-list">
           <div className="projects-group-header">
-            <span>Projets BUILD — classés par score de criticité</span>
+            <span>Projets BUILD — classés par indice de criticité</span>
             <span className="projects-group-count">{selectedCount}/5 retenus</span>
           </div>
           {buildProjects.map((project) => (
@@ -853,6 +1027,8 @@ function PerimetreView({
                 onUpdateProject(perimetre.id, project.id, { selected_for_transfo: !project.selected_for_transfo })
               }}
               onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
+              onPatchProject={(updates) => onPatchProject(perimetre.id, project.id, updates)}
+              scoringOptions={scoringOptions}
             />
           ))}
 
@@ -870,11 +1046,13 @@ function PerimetreView({
               onToggleExpand={() => onExpandedChange(expandedProjectId === project.id ? null : project.id)}
               onToggleTransfo={() => {}}
               onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
+              onPatchProject={(updates) => onPatchProject(perimetre.id, project.id, updates)}
+              scoringOptions={scoringOptions}
             />
           ))}
         </div>
       ) : (
-        <SyntheseView perimetre={perimetre} coefs={coefs} />
+        <SyntheseView perimetre={perimetre} coefs={coefs} scoringOptions={scoringOptions} />
       )}
     </div>
   )
@@ -882,20 +1060,32 @@ function PerimetreView({
 
 // ─── Panneau Coefficients ──────────────────────────────────────────────────────
 
-function CoefPanel({ coefs, onChange, onClose }: {
+function CoefPanel({
+  coefs,
+  onChange,
+  onClose,
+  applyBuildBonus,
+  applyCompetencesMalus,
+  onApplyBuildBonus,
+  onApplyCompetencesMalus,
+}: {
   coefs: Coefficients
   onChange: (k: keyof Coefficients, v: number) => void
   onClose: () => void
+  applyBuildBonus: boolean
+  applyCompetencesMalus: boolean
+  onApplyBuildBonus: (v: boolean) => void
+  onApplyCompetencesMalus: (v: boolean) => void
 }) {
   return (
     <div className="coef-overlay" onClick={onClose}>
-      <div className="coef-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="coef-panel coef-panel--wide" onClick={(e) => e.stopPropagation()}>
         <div className="coef-panel-header">
           <h3>Coefficients de scoring</h3>
           <button type="button" className="close-btn" onClick={onClose}>✕</button>
         </div>
         <p className="coef-panel-hint">
-          Adaptez les poids selon le contexte client. La Criticité est pondérée ×3 par défaut car c'est le critère stratégique central.
+          Adaptez les poids selon le contexte client. La dimension « Criticité » est pondérée ×3 par défaut car c&apos;est le critère stratégique central.
         </p>
         {(Object.keys(coefs) as Array<keyof Coefficients>).map((k) => (
           <div key={k} className="coef-row">
@@ -914,6 +1104,37 @@ function CoefPanel({ coefs, onChange, onClose }: {
             </div>
           </div>
         ))}
+        <div className="coef-panel-sep" />
+        <div className="coef-toggle-row">
+          <div>
+            <div className="coef-toggle-title">Bonus BUILD × 1.5</div>
+            <p className="coef-toggle-desc">Les projets transformants bénéficient d&apos;un multiplicateur ×1.5</p>
+          </div>
+          <button
+            type="button"
+            className={`coef-switch ${applyBuildBonus ? 'coef-switch--on' : ''}`}
+            onClick={() => onApplyBuildBonus(!applyBuildBonus)}
+            aria-pressed={applyBuildBonus}
+            aria-label="Bonus BUILD"
+          >
+            <span className="coef-switch-knob" />
+          </button>
+        </div>
+        <div className="coef-toggle-row">
+          <div>
+            <div className="coef-toggle-title">Malus compétences indisponibles × 0.8</div>
+            <p className="coef-toggle-desc">Les projets sans compétences disponibles sont pénalisés ×0.8</p>
+          </div>
+          <button
+            type="button"
+            className={`coef-switch ${applyCompetencesMalus ? 'coef-switch--on' : ''}`}
+            onClick={() => onApplyCompetencesMalus(!applyCompetencesMalus)}
+            aria-pressed={applyCompetencesMalus}
+            aria-label="Malus compétences"
+          >
+            <span className="coef-switch-knob" />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -923,9 +1144,10 @@ function CoefPanel({ coefs, onChange, onClose }: {
 
 export interface ProjectSelectorProps {
   memberDirectionName?: string
+  workspaceId?: string | null
 }
 
-export default function ProjectSelector({ memberDirectionName = 'Ma direction' }: ProjectSelectorProps) {
+export default function ProjectSelector({ memberDirectionName = 'Ma direction', workspaceId = null }: ProjectSelectorProps) {
   const [perimetres, setPerimetres] = useState<Perimetre[]>(() =>
     applyMemberDirectionPrefill(
       autoSelectTopBuildProjects(buildInitialPerimetres(memberDirectionName), DEFAULT_COEFFICIENTS),
@@ -935,18 +1157,91 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction' }
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null)
   const [coefs, setCoefs] = useState<Coefficients>(DEFAULT_COEFFICIENTS)
   const [showCoefs, setShowCoefs] = useState(false)
+  const [applyBuildBonus, setApplyBuildBonus] = useState(true)
+  const [applyCompetencesMalus, setApplyCompetencesMalus] = useState(true)
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const scoringOptions = useMemo<ScoringOptions>(
+    () => ({ applyBuildBonus, applyCompetencesMalus }),
+    [applyBuildBonus, applyCompetencesMalus],
+  )
 
   useEffect(() => {
     const name = memberDirectionName.trim() || 'Ma direction'
     setPerimetres((prev) => prev.map((p) => (p.id === DIR_PERIM_ID ? { ...p, name } : p)))
   }, [memberDirectionName])
 
+  useEffect(() => {
+    if (!workspaceId) return
+    let cancelled = false
+    void (async () => {
+      setSyncLoading(true)
+      setSyncError(null)
+      try {
+        let directions = await getWorkspaceDirections(workspaceId)
+
+        if (directions.length === 0) {
+          const createdDirection = await createDirection({
+            workspace_id: workspaceId,
+            nom: memberDirectionName.trim() || 'Ma direction',
+            type: 'Fonctionnel',
+            mission: null,
+            vision: null,
+            color: PERIMETRE_COLORS[0],
+            is_transverse: false,
+          })
+          const createdTransverse = await createDirection({
+            workspace_id: workspaceId,
+            nom: 'Projets transverses',
+            type: null,
+            mission: null,
+            vision: null,
+            color: PERIMETRE_COLORS[1],
+            is_transverse: true,
+          })
+          directions = [createdDirection as DbDirection, createdTransverse as DbDirection]
+        }
+
+        const hydrated = await Promise.all(
+          directions.map(async (d, idx) => {
+            const projets = await getDirectionProjets(d.id)
+            return {
+              id: d.id,
+              name: d.nom,
+              color: d.color || PERIMETRE_COLORS[idx % PERIMETRE_COLORS.length],
+              mission: d.mission ?? '',
+              vision: d.vision ?? '',
+              projects: projets.map(mapDbProjetToProject),
+            } as Perimetre
+          }),
+        )
+
+        if (cancelled) return
+        setPerimetres(hydrated)
+        if (!hydrated.find((p) => p.id === activeId)) {
+          setActiveId(hydrated[0]?.id ?? DIR_PERIM_ID)
+        }
+      } catch (error) {
+        if (cancelled) return
+        const message = typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: unknown }).message ?? '')
+          : ''
+        setSyncError(message || 'Erreur de synchronisation Supabase')
+      } finally {
+        if (!cancelled) setSyncLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId, memberDirectionName])
+
   const active = perimetres.find((p) => p.id === activeId) ?? perimetres[0]
   const directionPerimetre = perimetres.find((p) => p.id === DIR_PERIM_ID)
   const transPerimetre = perimetres.find((p) => p.id === TRANS_PERIM_ID)
   const isTransverse = activeId === TRANS_PERIM_ID
 
-  function updateProject(perimId: string, projId: string, updates: Partial<Project>) {
+  function updateProjectLocal(perimId: string, projId: string, updates: Partial<Project>) {
     setPerimetres((prev) =>
       prev.map((p) =>
         p.id !== perimId ? p : {
@@ -957,6 +1252,48 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction' }
         },
       ),
     )
+  }
+
+  async function persistProject(perimId: string, projId: string, updates: Partial<Project>) {
+    updateProjectLocal(perimId, projId, updates)
+    if (!workspaceId) return
+
+    const perimetre = perimetres.find((p) => p.id === perimId)
+    const current = perimetre?.projects.find((pr) => pr.id === projId)
+    const merged = current ? { ...current, ...updates } as Project : null
+    if (!merged) return
+
+    try {
+      if (merged.id.startsWith('proj-')) {
+        const created = await createProjet(mapProjectToDbProjet(merged, perimId, workspaceId))
+        const hydrated = mapDbProjetToProject(created as DbProjet)
+        setPerimetres((prev) =>
+          prev.map((p) =>
+            p.id !== perimId ? p : {
+              ...p,
+              projects: p.projects.map((pr) => (pr.id === projId ? hydrated : pr)),
+            },
+          ),
+        )
+        setExpandedProjectId(hydrated.id)
+      } else {
+        const updated = await updateProjet(merged.id, mapProjectToDbProjet(merged, perimId, workspaceId))
+        const hydrated = mapDbProjetToProject(updated as DbProjet)
+        setPerimetres((prev) =>
+          prev.map((p) =>
+            p.id !== perimId ? p : {
+              ...p,
+              projects: p.projects.map((pr) => (pr.id === merged.id ? hydrated : pr)),
+            },
+          ),
+        )
+      }
+    } catch (error) {
+      const message = typeof error === 'object' && error && 'message' in error
+        ? String((error as { message?: unknown }).message ?? '')
+        : ''
+      setSyncError(message || 'Erreur lors de la sauvegarde du projet')
+    }
   }
 
   function addProject() {
@@ -983,7 +1320,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction' }
           <div className="ps-page-header">
             <div>
               <h1 className="ps-page-title">Sélection de projets transformants</h1>
-              <p className="ps-page-sub">Les projets BUILD sont classés par score de criticité — le top 5 est soumis au DG</p>
+              <p className="ps-page-sub">Les projets BUILD sont classés par indice de criticité — le top 5 est soumis au DG</p>
             </div>
             <div className="ps-legend">
               <span className="legend-item"><span className="legend-dot" style={{ background: '#EF4444' }} />≥75</span>
@@ -1033,9 +1370,13 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction' }
               isTransverse={isTransverse}
               expandedProjectId={expandedProjectId}
               onExpandedChange={setExpandedProjectId}
-              onUpdateProject={updateProject}
+              onUpdateProject={persistProject}
+              onPatchProject={updateProjectLocal}
+              scoringOptions={scoringOptions}
             />
           )}
+          {syncLoading && <p className="ps-sync-note">Synchronisation en cours...</p>}
+          {syncError && <p className="ps-sync-err">{syncError}</p>}
         </main>
 
         {showCoefs && (
@@ -1043,6 +1384,10 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction' }
             coefs={coefs}
             onChange={(k, v) => setCoefs((c) => ({ ...c, [k]: v }))}
             onClose={() => setShowCoefs(false)}
+            applyBuildBonus={applyBuildBonus}
+            applyCompetencesMalus={applyCompetencesMalus}
+            onApplyBuildBonus={setApplyBuildBonus}
+            onApplyCompetencesMalus={setApplyCompetencesMalus}
           />
         )}
       </div>
@@ -1190,6 +1535,18 @@ const CSS = `
   font-size: 0.9rem;
   color: var(--theme-text-muted);
   margin: 0;
+}
+
+.ps-sync-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.ps-sync-err {
+  margin: 0;
+  font-size: 12px;
+  color: #B91C1C;
 }
 
 .ps-empty {
@@ -1384,6 +1741,15 @@ const CSS = `
   gap: 12px;
   padding: 12px 16px;
   align-items: center;
+  justify-content: space-between;
+}
+
+.project-card__header-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .project-card__header--compact .type-badge {
@@ -1392,7 +1758,7 @@ const CSS = `
 
 .project-name-compact {
   flex: 1;
-  min-width: 80px;
+  min-width: 48px;
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
@@ -1402,6 +1768,13 @@ const CSS = `
   text-overflow: ellipsis;
 }
 
+.project-card__header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .project-card__header-actions {
   display: flex;
   align-items: center;
@@ -1409,18 +1782,24 @@ const CSS = `
   flex-shrink: 0;
 }
 
-.mini-gantt-12 {
+.mini-gantt-24 {
   display: flex;
   flex-direction: row;
-  gap: 2px;
-  flex-shrink: 0;
+  gap: 1px;
+  flex-shrink: 1;
+  min-width: 0;
   align-items: center;
+  max-width: min(280px, 42vw);
+  overflow: hidden;
 }
 
-.mini-gantt-12__cell {
-  width: 14px;
-  height: 8px;
-  border-radius: 2px;
+.mini-gantt-24__cell {
+  width: 4px;
+  min-width: 3px;
+  flex: 1 0 3px;
+  max-width: 6px;
+  height: 6px;
+  border-radius: 1px;
   background: var(--theme-border);
   flex-shrink: 0;
 }
@@ -1430,6 +1809,7 @@ const CSS = `
   width: 40px;
   height: 40px;
   flex-shrink: 0;
+  align-self: center;
 }
 
 .score-ring-40__svg {
@@ -1870,9 +2250,15 @@ const CSS = `
   gap: 6px;
 }
 
+.critere-grid--six {
+  grid-template-columns: repeat(6, minmax(28px, 1fr));
+  max-width: 100%;
+}
+
 .critere-square {
   width: 32px;
   height: 32px;
+  max-width: 100%;
   border-radius: 8px;
   border: 1px solid var(--theme-border);
   background: var(--theme-bg-page);
@@ -2088,10 +2474,52 @@ const CSS = `
   gap: var(--space-md);
 }
 
-.gantt-grid {
+.gantt-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.gantt-head-years {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 3px;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.gantt-year-cell {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--theme-text-muted);
+  text-align: center;
+  border-bottom: 1px solid var(--theme-border);
+  padding-bottom: 2px;
+  min-width: 0;
+}
+
+.gantt-head-months {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.gantt-month-short {
+  font-size: 9px;
+  color: var(--theme-text-muted);
+  text-align: center;
+  padding: 2px 0 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gantt-grid--24 {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  min-width: 480px;
 }
 
 .gantt-cell {
@@ -2106,23 +2534,18 @@ const CSS = `
   padding: 0;
 }
 
+.gantt-cell--sm {
+  height: 10px;
+  border-radius: 2px;
+  min-width: 0;
+}
+
 .gantt-cell--active {
   border-radius: 0;
 }
 
 .gantt-cell--editable:hover {
   filter: brightness(1.15);
-}
-
-.gantt-month-label {
-  position: absolute;
-  bottom: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.58rem;
-  color: var(--theme-text-muted);
-  white-space: nowrap;
-  pointer-events: none;
 }
 
 .project-pilote {
@@ -2268,6 +2691,76 @@ const CSS = `
   box-shadow: var(--shadow-lg);
 }
 
+.coef-panel--wide {
+  width: min(480px, 95vw);
+}
+
+.coef-panel-sep {
+  height: 1px;
+  background: var(--theme-border);
+  margin: var(--space-md) 0;
+}
+
+.coef-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.coef-toggle-row:last-of-type {
+  border-bottom: none;
+}
+
+.coef-toggle-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.coef-toggle-desc {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--theme-text-muted);
+  line-height: 1.4;
+  max-width: 320px;
+}
+
+.coef-switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: var(--theme-border);
+  transition: background 0.2s;
+}
+
+.coef-switch--on {
+  background: var(--theme-accent);
+}
+
+.coef-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.coef-switch--on .coef-switch-knob {
+  transform: translateX(16px);
+}
+
 .coef-panel-header {
   display: flex;
   align-items: center;
@@ -2401,16 +2894,20 @@ const CSS = `
   .project-card__header--compact {
     flex-wrap: wrap;
   }
-  .mini-gantt-12 {
-    order: 10;
+  .project-card__header-main {
+    flex-wrap: wrap;
     width: 100%;
-    justify-content: flex-start;
+  }
+  .mini-gantt-24 {
+    order: 3;
+    width: 100%;
+    max-width: none;
+  }
+  .project-card__header-right {
+    margin-left: auto;
   }
   .project-card__body {
     padding: var(--space-md);
-  }
-  .gantt-month-label {
-    font-size: 0.52rem;
   }
 }
 `

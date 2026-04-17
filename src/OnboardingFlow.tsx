@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
+import { createInvitation, createWorkspace } from './lib/api'
+import type { Workspace } from './lib/types'
 
 type MemberRole = 'Membre CODIR' | 'Pilote de projet' | 'Contributeur'
 
 export interface OnboardingFlowProps {
   onComplete: (data: {
+    workspace: Workspace
     companyName: string
     sector: string
     size: string
@@ -32,6 +35,20 @@ function roleColor(role: MemberRole) {
   return '#6B7280'
 }
 
+function toInvitationRole(role: MemberRole): 'codir' | 'pilote' | 'contributeur' {
+  if (role === 'Membre CODIR') return 'codir'
+  if (role === 'Pilote de projet') return 'pilote'
+  return 'contributeur'
+}
+
+function getApiErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = String((error as { message?: unknown }).message ?? '').trim()
+    if (message) return message
+  }
+  return 'Une erreur est survenue, veuillez réessayer'
+}
+
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState(1)
   const [prevStep, setPrevStep] = useState(1)
@@ -45,24 +62,46 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [memberEmail, setMemberEmail] = useState('')
   const [memberRole, setMemberRole] = useState<MemberRole>('Contributeur')
   const [members, setMembers] = useState<Array<{ email: string; role: MemberRole }>>([])
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [submittingStep1, setSubmittingStep1] = useState(false)
+  const [submittingStep2, setSubmittingStep2] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const stepDirectionClass = step >= prevStep ? 'of-step--forward' : 'of-step--backward'
   const completedCount = Math.min(step - 1, 1)
-
-  const canSubmitMembers = useMemo(() => true, [])
 
   function goTo(nextStep: number) {
     setPrevStep(step)
     setStep(nextStep)
   }
 
-  function validateStep1() {
+  async function validateStep1() {
     const nextErrors: Errors = {}
     if (!companyName.trim()) nextErrors.companyName = 'Ce champ est obligatoire'
     if (!sector.trim()) nextErrors.sector = 'Ce champ est obligatoire'
     if (!size.trim()) nextErrors.size = 'Ce champ est obligatoire'
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length === 0) goTo(2)
+    if (Object.keys(nextErrors).length !== 0) return
+
+    setApiError(null)
+    setSubmittingStep1(true)
+    try {
+      const logoUrlForDb = companyLogo && companyLogo.startsWith('http')
+        ? companyLogo
+        : null
+      const workspace = await createWorkspace({
+        company_name: companyName.trim(),
+        sector,
+        size,
+        logo_url: logoUrlForDb,
+      })
+      setWorkspaceId(workspace.id)
+      goTo(2)
+    } catch (error) {
+      setApiError(getApiErrorMessage(error))
+    } finally {
+      setSubmittingStep1(false)
+    }
   }
 
   function addMember() {
@@ -96,6 +135,43 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     reader.readAsDataURL(file)
   }
 
+  async function submitInvitations() {
+    if (!workspaceId) {
+      setApiError('Une erreur est survenue, veuillez réessayer')
+      return
+    }
+    setApiError(null)
+    setSubmittingStep2(true)
+    try {
+      for (const member of members) {
+        await createInvitation({
+          workspace_id: workspaceId,
+          email: member.email,
+          role: toInvitationRole(member.role),
+        })
+      }
+      onComplete({
+        workspace: {
+          id: workspaceId,
+          company_name: companyName.trim(),
+          sector,
+          size,
+          logo_url: companyLogo,
+          created_at: new Date().toISOString(),
+        },
+        companyName: companyName.trim(),
+        sector,
+        size,
+        companyLogo,
+        members: members.map((member) => ({ email: member.email, role: member.role })),
+      })
+    } catch (error) {
+      setApiError(getApiErrorMessage(error))
+    } finally {
+      setSubmittingStep2(false)
+    }
+  }
+
   return (
     <div className="of-page">
       <style>{CSS}</style>
@@ -121,6 +197,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </div>
 
         <section className="of-card">
+          {apiError && (
+            <div className="of-api-error">
+              {apiError}
+            </div>
+          )}
           {step === 1 && (
             <div className={`of-step ${stepDirectionClass}`} key="step-1">
               <div className="of-icon">{ICON_FORGE}</div>
@@ -177,8 +258,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <input className="of-input of-input-file" type="file" accept="image/*" onChange={(e) => onLogoChange(e.target.files?.[0] ?? null)} />
               </label>
 
-              <button type="button" className="of-primary-btn" onClick={validateStep1}>
-                Créer l&apos;espace →
+              <button
+                type="button"
+                className={`of-primary-btn ${submittingStep1 ? 'of-primary-btn--loading' : ''}`}
+                onClick={() => { void validateStep1() }}
+                disabled={submittingStep1}
+              >
+                {submittingStep1 ? 'Création en cours...' : "Créer l'espace →"}
               </button>
             </div>
           )}
@@ -232,25 +318,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 ))}
               </div>
 
-              <button type="button" className="of-link-btn" onClick={() => goTo(3)}>
-                Passer cette étape →
-              </button>
-
               <button
                 type="button"
-                className="of-primary-btn"
-                onClick={() => {
-                  if (!canSubmitMembers) return
-                  onComplete({
-                    companyName: companyName.trim(),
-                    sector,
-                    size,
-                    companyLogo,
-                    members: members.map((member) => ({ email: member.email, role: member.role })),
-                  })
-                }}
+                className={`of-primary-btn ${submittingStep2 ? 'of-primary-btn--loading' : ''}`}
+                onClick={() => { void submitInvitations() }}
+                disabled={submittingStep2}
               >
-                {members.length > 0 ? 'Envoyer les invitations →' : 'Continuer →'}
+                {submittingStep2 ? 'Création en cours...' : members.length > 0 ? 'Envoyer les invitations →' : 'Continuer →'}
               </button>
             </div>
           )}
@@ -375,6 +449,17 @@ const CSS = `
   box-shadow: 0 24px 64px rgba(0,0,0,0.12);
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.of-api-error {
+  margin-bottom: 16px;
+  border: 1px solid rgba(239,68,68,0.4);
+  background: rgba(239,68,68,0.12);
+  color: #B91C1C;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .of-step {
@@ -581,6 +666,14 @@ const CSS = `
 }
 
 .of-primary-btn:active { transform: translateY(0); }
+
+.of-primary-btn:disabled,
+.of-primary-btn--loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
 @media (max-width: 760px) {
   .of-card { padding: 28px 18px; }

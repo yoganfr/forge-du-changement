@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createUser, getWorkspaceUsers, updateUser } from './lib/api'
+import type { User } from './lib/types'
 
 export type DirectionType = 'fonctionnel' | 'metier' | 'geographique'
 
@@ -20,6 +22,7 @@ export interface StoredMemberProfile {
 export interface ProfileSheetProps {
   open: boolean
   onClose: () => void
+  workspaceId?: string | null
   firstName: string
   lastName: string
   jobTitle: string
@@ -190,6 +193,7 @@ function InlineNumberField({
 export default function ProfileSheet({
   open,
   onClose,
+  workspaceId = null,
   firstName: firstNameProp,
   lastName: lastNameProp,
   jobTitle: jobTitleProp,
@@ -215,6 +219,7 @@ export default function ProfileSheet({
   const [managedCount, setManagedCount] = useState(managedCountProp)
   const [totalEffectif, setTotalEffectif] = useState(totalEffectifProp)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(avatarUrlProp)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem('lfdc-user-id'))
   useEffect(() => {
     if (!open) return
     const s = loadStored()
@@ -229,9 +234,37 @@ export default function ProfileSheet({
     setDirty(false)
   }, [open, firstNameProp, lastNameProp, jobTitleProp, directionProp, directionTypeProp, managedCountProp, totalEffectifProp, avatarUrlProp])
 
+  useEffect(() => {
+    if (!open || !workspaceId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const users = await getWorkspaceUsers(workspaceId)
+        if (cancelled || users.length === 0) return
+        const storedId = localStorage.getItem('lfdc-user-id')
+        const selected = users.find((u) => u.id === storedId) ?? users[0]
+        if (cancelled || !selected) return
+        setCurrentUserId(selected.id)
+        localStorage.setItem('lfdc-user-id', selected.id)
+        setFirstName(selected.prenom ?? firstNameProp)
+        setLastName(selected.nom ?? lastNameProp)
+        setJobTitle(selected.job_title ?? jobTitleProp)
+        setDirectionName(selected.direction_nom ?? directionProp)
+        setManagedCount(selected.managed_count ?? managedCountProp)
+        setTotalEffectif(selected.total_effectif ?? totalEffectifProp)
+        setAvatarUrl(selected.avatar_url ?? avatarUrlProp ?? null)
+      } catch {
+        // Keep local fallback if Supabase fetch fails
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, workspaceId, firstNameProp, lastNameProp, jobTitleProp, directionProp, managedCountProp, totalEffectifProp, avatarUrlProp])
+
   const initials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.toUpperCase() || '?'
 
-  function persistAll() {
+  async function persistAll() {
     const prev = loadStored()
     const payload: StoredMemberProfile = {
       ...prev,
@@ -247,6 +280,49 @@ export default function ProfileSheet({
       avatar: avatarUrl,
     }
     saveStored(payload)
+    if (workspaceId) {
+      try {
+        const roleDb: User['role'] = role.toLowerCase().includes('consultant')
+          ? 'consultant'
+          : role.toLowerCase().includes('pilote')
+            ? 'pilote'
+            : role.toLowerCase().includes('contributeur')
+              ? 'contributeur'
+              : 'codir'
+
+        if (currentUserId) {
+          await updateUser(currentUserId, {
+            prenom: firstName || null,
+            nom: lastName || null,
+            job_title: jobTitle || null,
+            avatar_url: avatarUrl,
+            direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
+            direction_nom: directionName || null,
+            managed_count: managedCount,
+            total_effectif: totalEffectif,
+          })
+        } else {
+          const created = await createUser({
+            workspace_id: workspaceId,
+            email: `user-${Date.now()}@local.lfdc`,
+            prenom: firstName || null,
+            nom: lastName || null,
+            job_title: jobTitle || null,
+            avatar_url: avatarUrl,
+            role: roleDb,
+            direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
+            direction_nom: directionName || null,
+            managed_count: managedCount,
+            total_effectif: totalEffectif,
+            status: 'actif',
+          })
+          setCurrentUserId(created.id)
+          localStorage.setItem('lfdc-user-id', created.id)
+        }
+      } catch {
+        // Keep UX resilient even if backend update fails
+      }
+    }
     onSaved?.(payload)
     setDirty(false)
     onClose()
