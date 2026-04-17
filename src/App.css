@@ -42,9 +42,9 @@
 
 /* Icône de marque : accent autorisé (zone icône) */
 .dashboard__brand-mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
   background: var(--theme-accent);
   display: grid;
   place-items: center;

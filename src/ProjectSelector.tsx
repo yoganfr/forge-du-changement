@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createDirection,
+  deleteProjet,
   createProjet,
   getDirectionProjets,
   getWorkspaceDirections,
@@ -100,12 +101,12 @@ const DEFAULT_COEFFICIENTS: Coefficients = {
 }
 
 const CRITERIA_META = {
-  criticite: { label: 'Criticité', desc: 'Impact si non réalisé', icon: '⚡' },
-  urgence: { label: 'Urgence', desc: 'Délai avant problème', icon: '⏱' },
-  recurrence: { label: 'Récurrence', desc: 'Fréquence du problème', icon: '🔁' },
-  temps: { label: 'Temps', desc: 'Durée de réalisation', icon: '📅' },
-  etp: { label: 'ETP', desc: 'Ressources humaines', icon: '👥' },
-  investissement: { label: 'Investissement', desc: 'Coût capital', icon: '💰' },
+  criticite: { label: 'Criticité', desc: 'Impact si non réalisé' },
+  urgence: { label: 'Urgence', desc: 'Délai avant problème' },
+  recurrence: { label: 'Récurrence', desc: 'Fréquence du problème' },
+  temps: { label: 'Temps', desc: 'Durée de réalisation' },
+  etp: { label: 'ETP', desc: 'Ressources humaines' },
+  investissement: { label: 'Investissement', desc: 'Coût capital' },
 }
 
 const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
@@ -401,8 +402,34 @@ function GanttPilules({
   onChange?: (key: string) => void
 }) {
   const yearSpans = buildYearSpans(GANTT_MONTHS)
+  const timeMarkers = [
+    { index: 0, prefix: 'M0' },
+    { index: 5, prefix: 'M6' },
+    { index: 11, prefix: 'M12' },
+    { index: 17, prefix: 'M18' },
+    { index: 23, prefix: 'M24' },
+  ].map((m) => {
+    const ref = GANTT_MONTHS[m.index]
+    return {
+      key: `${m.prefix}-${ref.key}`,
+      label: `${m.prefix} · ${ref.label} ${String(ref.year).slice(-2)}`,
+      colStart: m.index + 1,
+    }
+  })
+
   return (
     <div className="gantt-chart-wrap">
+      <div className="gantt-time-markers">
+        {timeMarkers.map((m) => (
+          <span
+            key={m.key}
+            className="gantt-time-marker"
+            style={{ gridColumnStart: m.colStart }}
+          >
+            {m.label}
+          </span>
+        ))}
+      </div>
       <div className="gantt-head-years">
         {yearSpans.map((s) => (
           <div
@@ -458,20 +485,48 @@ function MiniGantt24({
   planning: Record<string, boolean>
   color: string
 }) {
+  const markers = [
+    { idx: 0 },
+    { idx: 5 },
+    { idx: 11 },
+    { idx: 17 },
+    { idx: 23 },
+  ]
   return (
-    <div className="mini-gantt-24" aria-hidden>
-      {GANTT_MONTHS.map((m) => {
-        const on = planning[m.key] ?? false
-        const title = `${m.label} ${m.year}`
-        return (
-          <span
-            key={m.key}
-            className={`mini-gantt-24__cell ${on ? 'mini-gantt-24__cell--on' : ''}`}
-            style={on ? { background: color } : undefined}
-            title={title}
-          />
-        )
-      })}
+    <div className="mini-gantt-24-wrap" aria-hidden>
+      <div className="mini-gantt-24__markers">
+        {markers.map((marker) => {
+          const refMonth = GANTT_MONTHS[marker.idx]
+          const markerLabel = `${refMonth.label} ${String(refMonth.year).slice(-2)}`
+          const markerTitle = `${refMonth.label} ${refMonth.year}`
+          const left = `${(marker.idx / 23) * 100}%`
+          const isLast = marker.idx === 23
+          return (
+            <span
+              key={`marker-${refMonth.key}`}
+              className={`mini-gantt-24__marker ${isLast ? 'mini-gantt-24__marker--end' : ''}`}
+              style={{ left }}
+              title={markerTitle}
+            >
+              {markerLabel}
+            </span>
+          )
+        })}
+      </div>
+      <div className="mini-gantt-24">
+        {GANTT_MONTHS.map((m) => {
+          const on = planning[m.key] ?? false
+          const title = `${m.label} ${m.year}`
+          return (
+            <span
+              key={m.key}
+              className={`mini-gantt-24__cell ${on ? 'mini-gantt-24__cell--on' : ''}`}
+              style={on ? { background: color } : undefined}
+              title={title}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -522,7 +577,6 @@ function ScoreBadge({ score }: { score: number }) {
         />
       </svg>
       <span className="score-value" style={{ color: isZero ? 'var(--theme-text-muted)' : color }}>{isZero ? '—' : score}</span>
-      <span className="score-label" style={{ color: isZero ? 'var(--theme-text-muted)' : color }}>Indice de criticité</span>
     </div>
   )
 }
@@ -542,28 +596,81 @@ function CritereSlider({
 }) {
   const meta = CRITERIA_META[criteriaKey]
   const selectedDescription = CRITERIA_DESCRIPTIONS[criteriaKey][value]
+  const scoreBand =
+    value >= 5 ? 'critical' : value >= 4 ? 'high' : value >= 3 ? 'medium' : value >= 1 ? 'low' : 'none'
+
+  function renderIcon() {
+    const commonFill = { width: 38, height: 38, viewBox: '0 0 24 24', fill: 'currentColor' }
+    const commonStroke = { width: 38, height: 38, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+    if (criteriaKey === 'criticite') {
+      return (
+        <svg {...commonFill}>
+          <path d="M13 2L4 14h6l-1 8 9-12h-6z" />
+        </svg>
+      )
+    }
+    if (criteriaKey === 'urgence') {
+      return (
+        <svg {...commonFill}>
+          <path d="M13.2 2.2c1.4 1.8 2.6 4 2.6 6.1 0 1.7-.8 3.3-2.2 4.2.1-.7-.1-1.5-.6-2.1-.9 1.1-1.9 2.6-1.9 4.2 0 1.5.9 2.8 2.2 3.4-3.4.9-6.8-1.6-6.8-5.2 0-3.1 2.3-5.1 3.9-7.2.7-.9 1.3-2.1 1.6-3.4.4 0 .8 0 1.2.1z" />
+        </svg>
+      )
+    }
+    if (criteriaKey === 'recurrence') {
+      return (
+        <svg {...commonStroke}>
+          <path d="M5 5l7 7 7-7" />
+          <path d="M5 12l7 7 7-7" />
+        </svg>
+      )
+    }
+    if (criteriaKey === 'temps') {
+      return (
+        <svg {...commonFill}>
+          <path d="M7 2h2v2h6V2h2v2h1.5A2.5 2.5 0 0 1 21 6.5v13A2.5 2.5 0 0 1 18.5 22h-13A2.5 2.5 0 0 1 3 19.5v-13A2.5 2.5 0 0 1 5.5 4H7V2zm12 7H5v10.5c0 .3.2.5.5.5h13c.3 0 .5-.2.5-.5V9z" />
+        </svg>
+      )
+    }
+    if (criteriaKey === 'etp') {
+      return (
+        <svg {...commonFill}>
+          <path d="M8 7a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zm8 1a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM2 21c0-3.3 2.8-5.5 6.2-5.5S14.4 17.7 14.4 21H2zm13.2 0c.3-2.4 2.1-4 4.8-4H22v2h-2v2h-2v-2h-2.8z" />
+        </svg>
+      )
+    }
+    return (
+      <svg {...commonFill}>
+        <path d="M8.6 2h6.8l1.6 2.2-2.1 2.6H9.1L7 4.2 8.6 2zm.9 6.4h5c2.8 0 5 2.3 5 5v3.7c0 2.7-2.2 4.9-5 4.9h-5c-2.8 0-5-2.2-5-4.9v-3.7c0-2.7 2.2-5 5-5zm2.4 1.8v2h-1.7v1.7h1.7v1.9h1.7v-1.9h1.7v-1.7h-1.7v-2h-1.7z" />
+        </svg>
+      )
+  }
+
   return (
-    <div className="critere-row critere-row--enhanced">
-      <div className="critere-header">
-        <span className="critere-icon">{meta.icon}</span>
-        <div className="critere-title-block">
-          <div className="critere-name">{meta.label}</div>
-          <div className="critere-coef-inline">Coef ×{coef}</div>
+    <div className={`critere-row critere-row--enhanced critere-row--bar critere-row--${criteriaKey}`} title={`Coefficient: ×${coef}`}>
+      <div className="critere-title-above">{meta.label}</div>
+      <div className="critere-bar">
+        <div className="critere-icon-pane" aria-hidden>
+          <span className="critere-icon">{renderIcon()}</span>
         </div>
-        <span className="critere-val">{value}/5</span>
-      </div>
-      <div className="critere-grid critere-grid--six">
-        {[0, 1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            className={`critere-square ${n === value ? 'critere-square--active' : ''}`}
-            onClick={() => onChange(n)}
-            aria-label={`${meta.label} : ${n}`}
-          >
-            {n}
-          </button>
-        ))}
+        <div className="critere-middle-pane">
+          <div className="critere-title-row" />
+          <div className="critere-grid critere-grid--six">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={`critere-square ${n === value ? `critere-square--active critere-square--level-${n}` : ''}`}
+                onClick={() => onChange(n)}
+                aria-label={`${meta.label} : ${n}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={`critere-value-pane critere-value-pane--${scoreBand}`}>
+          <span className="critere-val">{value}/5</span>
+        </div>
       </div>
       <div className="critere-level-desc">{selectedDescription || meta.desc}</div>
     </div>
@@ -582,6 +689,7 @@ function ProjectCard({
   onToggleExpand,
   onToggleTransfo,
   onSaveProject,
+  onDeleteProject,
   onPatchProject,
   scoringOptions,
 }: {
@@ -594,18 +702,47 @@ function ProjectCard({
   onToggleExpand: () => void
   onToggleTransfo: () => void
   onSaveProject: (updates: Partial<Project>) => void
+  onDeleteProject: () => void
   onPatchProject: (updates: Partial<Project>) => void
   scoringOptions: ScoringOptions
 }) {
   const [draft, setDraft] = useState<Project>(project)
   const [pilotageError, setPilotageError] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const hasMountedRef = useRef(false)
 
   useEffect(() => {
     if (expanded) {
       setDraft(project)
       setPilotageError(false)
+      setConfirmDelete(false)
     }
   }, [expanded, project])
+
+  useEffect(() => {
+    if (!expanded) return
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true
+      return
+    }
+
+    const same =
+      JSON.stringify({ ...project, planning: { ...emptyPlanning(), ...project.planning } }) ===
+      JSON.stringify({ ...draft, planning: { ...emptyPlanning(), ...draft.planning } })
+    if (same) return
+
+    const timer = window.setTimeout(() => {
+      if (isTransverse && draft.contributorDirections.length === 0) return
+      onSaveProject({
+        ...draft,
+        planning: { ...emptyPlanning(), ...draft.planning },
+      })
+    }, 700)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [draft, expanded, isTransverse, onSaveProject, project])
 
   const applyBuildBonus = scoringOptions.applyBuildBonus ?? true
   const applyCompetencesMalus = scoringOptions.applyCompetencesMalus ?? true
@@ -653,23 +790,18 @@ function ProjectCard({
   const scoreRaw = criteriaRows.reduce((acc, row) => acc + row.points, 0)
   const scoreBuild = draft.type === 'BUILD' && applyBuildBonus ? Math.round(scoreRaw * 1.5) : scoreRaw
   const scoreFinal = computeScore(draft, coefs, scoringOptions)
+  const evalLevels = [1, 2, 3, 4, 5] as const
 
   const titleLine = project.name.trim() || 'Nouveau projet'
 
-  function handleSave() {
-    if (isTransverse && draft.contributorDirections.length === 0) {
-      setPilotageError(true)
-      return
-    }
-    onSaveProject({
-      ...draft,
-      planning: { ...emptyPlanning(), ...draft.planning },
-    })
+  function handleCancel() {
+    setDraft(project)
     onToggleExpand()
   }
 
-  function handleCancel() {
-    setDraft(project)
+  function handleDelete() {
+    setConfirmDelete(false)
+    onDeleteProject()
     onToggleExpand()
   }
 
@@ -726,81 +858,119 @@ function ProjectCard({
       {expanded && (
         <div className="project-card__body">
           <div className="project-sections project-sections--editor">
-            <div className="project-editor-col">
+            <div className="project-editor-col project-editor-col--full">
               <div className="section-title">Identification du projet</div>
-              <label className="project-field">
-                <span>Thématique *</span>
-                <input value={draft.thematique} onChange={(e) => setDraft((p) => ({ ...p, thematique: e.target.value }))} placeholder="Ex: Digitalisation RH" />
-              </label>
-              <label className="project-field">
-                <span>Sujet / Projet *</span>
-                <input
-                  value={draft.name}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setDraft((p) => ({ ...p, name: v }))
-                    onPatchProject({ name: v })
-                  }}
-                  placeholder="Nom court du projet"
-                />
-              </label>
-              <label className="project-field">
-                <span>Description / Problématique *</span>
-                <textarea rows={4} value={draft.problematique} onChange={(e) => setDraft((p) => ({ ...p, problematique: e.target.value }))} placeholder="Décrivez le problème que ce projet résout..." />
-              </label>
-              <div className="project-field">
-                <span>Type de projet *</span>
-                <div className="type-pills">
-                  <button type="button" className={draft.type === 'RUN' ? 'type-pill type-pill--active' : 'type-pill'} onClick={() => setDraft((p) => ({ ...p, type: 'RUN' }))}>RUN — Amélioration continue</button>
-                  <button type="button" className={draft.type === 'BUILD' ? 'type-pill type-pill--active' : 'type-pill'} onClick={() => setDraft((p) => ({ ...p, type: 'BUILD' }))}>BUILD — Projet transformant</button>
+              <div className="identification-grid">
+                <div className="identification-cell">
+                  <label className="project-field">
+                    <span>Thématique *</span>
+                    <input value={draft.thematique} onChange={(e) => setDraft((p) => ({ ...p, thematique: e.target.value }))} placeholder="Ex: Digitalisation RH" />
+                  </label>
                 </div>
-                {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 DG</div>}
+                <div className="identification-cell">
+                  <div className="project-field">
+                    <span>Type de projet *</span>
+                    <div className="type-pills">
+                      <button type="button" className={draft.type === 'RUN' ? 'type-pill type-pill--active' : 'type-pill'} onClick={() => setDraft((p) => ({ ...p, type: 'RUN' }))}>RUN — Amélioration continue</button>
+                      <button type="button" className={draft.type === 'BUILD' ? 'type-pill type-pill--active' : 'type-pill'} onClick={() => setDraft((p) => ({ ...p, type: 'BUILD' }))}>BUILD — Projet transformant</button>
+                    </div>
+                    {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 DG</div>}
+                  </div>
+                </div>
+
+                <div className="identification-cell">
+                  <label className="project-field">
+                    <span>Sujet / Projet *</span>
+                    <input
+                      value={draft.name}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setDraft((p) => ({ ...p, name: v }))
+                        onPatchProject({ name: v })
+                      }}
+                      placeholder="Nom court du projet"
+                    />
+                  </label>
+                </div>
+                <div className="identification-cell">
+                  <label className="project-field">
+                    <span>Gains quantitatifs (€)</span>
+                    <div className="input-prefix-wrap">
+                      <span className="input-prefix">€</span>
+                      <input type="number" value={draft.gains_quantitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_quantitatifs: Number(e.target.value || 0) }))} placeholder="0" />
+                    </div>
+                  </label>
+                </div>
+
+                <div className="identification-cell">
+                  <label className="project-field">
+                    <span>Description / Problématique *</span>
+                    <textarea rows={4} value={draft.problematique} onChange={(e) => setDraft((p) => ({ ...p, problematique: e.target.value }))} placeholder="Décrivez le problème que ce projet résout..." />
+                  </label>
+                </div>
+                <div className="identification-cell">
+                  <label className="project-field">
+                    <span>Gains qualitatifs</span>
+                    <textarea rows={2} value={draft.gains_qualitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_qualitatifs: e.target.value }))} placeholder="Bénéfices non financiers attendus..." />
+                  </label>
+                </div>
               </div>
-              <label className="project-field">
-                <span>Gains quantitatifs (€)</span>
-                <div className="input-prefix-wrap">
-                  <span className="input-prefix">€</span>
-                  <input type="number" value={draft.gains_quantitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_quantitatifs: Number(e.target.value || 0) }))} placeholder="0" />
-                </div>
-              </label>
-              <label className="project-field">
-                <span>Gains qualitatifs</span>
-                <textarea rows={2} value={draft.gains_qualitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_qualitatifs: e.target.value }))} placeholder="Bénéfices non financiers attendus..." />
-              </label>
             </div>
 
-            <div className="project-editor-col">
-              <div className="project-scoring-head project-scoring-head--stack">
-                <div className="score-badge-wrap">
+            <div className="eval-section-opener">Indice de criticité</div>
+
+            <div className="project-eval-layout">
+              <div className="project-eval-header">
+                <div className="section-title">Tables d&apos;évaluation (1 à 5)</div>
+                <div className="score-badge-wrap score-badge-wrap--side">
                   <ScoreBadge score={score} />
                 </div>
               </div>
               {(Object.keys(CRITERIA_META) as Array<keyof Scores>).map((k) => (
-                <CritereSlider
-                  key={k}
-                  criteriaKey={k}
-                  value={draft.scores[k]}
-                  coef={coefs[k]}
-                  onChange={(v) => updateDraftScore(k, v)}
-                />
+                <div key={`eval-row-${k}`} className="project-eval-row">
+                  <div className="eval-legend-card">
+                    <div className="eval-legend-title">{CRITERIA_META[k].label}</div>
+                    <table className="eval-legend-table">
+                      <tbody>
+                        {evalLevels.map((lvl) => (
+                          <tr key={`${k}-${lvl}`}>
+                            <td className="eval-legend-level">{lvl}</td>
+                            <td>{CRITERIA_DESCRIPTIONS[k][lvl]}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <CritereSlider
+                    key={k}
+                    criteriaKey={k}
+                    value={draft.scores[k]}
+                    coef={coefs[k]}
+                    onChange={(v) => updateDraftScore(k, v)}
+                  />
+                </div>
               ))}
 
-              <div className="competence-toggle">
-                <span>Compétences disponibles en interne ?</span>
-                <div className="toggle-options">
-                  <button type="button" className={draft.competences_dispo ? 'toggle-pill toggle-pill--yes' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: true }))}>OUI</button>
-                  <button type="button" className={!draft.competences_dispo ? 'toggle-pill toggle-pill--no' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: false }))}>NON</button>
+              <div className="project-eval-extras">
+                <div className="competence-toggle">
+                  <span>Compétences disponibles en interne ?</span>
+                  <div className="toggle-options">
+                    <button type="button" className={draft.competences_dispo ? 'toggle-pill toggle-pill--yes' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: true }))}>OUI</button>
+                    <button type="button" className={!draft.competences_dispo ? 'toggle-pill toggle-pill--no' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: false }))}>NON</button>
+                  </div>
+                  {applyCompetencesMalus && !draft.competences_dispo && (
+                    <div className="competence-impact">⚠ Impact ×0.8 sur le score</div>
+                  )}
                 </div>
-                {!draft.competences_dispo && <div className="competence-impact">⚠ Impact ×0.8 sur le score</div>}
-              </div>
 
-              <div className="score-summary">
-                <div className="score-summary-formula">
-                  Score = ({formula}) normalisé
-                  {draft.type === 'BUILD' && applyBuildBonus ? ' × 1.5 si BUILD' : ''}
-                  {applyCompetencesMalus && !draft.competences_dispo ? ' × 0.8 si compétences NON' : ''}
+                <div className="score-summary">
+                  <div className="score-summary-formula">
+                    Score = ({formula}) normalisé
+                    {draft.type === 'BUILD' && applyBuildBonus ? ' × 1.5 si BUILD' : ''}
+                    {applyCompetencesMalus && !draft.competences_dispo ? ' × 0.8 si compétences NON' : ''}
+                  </div>
+                  <div className="score-summary-value" style={{ color: getScoreColor(score) }}>{score}/100</div>
                 </div>
-                <div className="score-summary-value" style={{ color: getScoreColor(score) }}>{score}/100</div>
               </div>
             </div>
           </div>
@@ -885,8 +1055,21 @@ function ProjectCard({
 
           <div className="project-form-actions project-form-actions--footer">
             <button type="button" className="project-btn project-btn--ghost" onClick={handleCancel}>Annuler</button>
-            <button type="button" className="project-btn project-btn--primary" onClick={handleSave}>Enregistrer</button>
+            <button type="button" className="project-btn project-btn--danger" onClick={() => setConfirmDelete(true)}>Supprimer</button>
           </div>
+
+          {confirmDelete && (
+            <div className="project-delete-popin-backdrop" onClick={() => setConfirmDelete(false)}>
+              <div className="project-delete-popin" onClick={(e) => e.stopPropagation()}>
+                <h4>Supprimer ce projet ?</h4>
+                <p>Cette action est définitive. Voulez-vous continuer ?</p>
+                <div className="project-delete-popin-actions">
+                  <button type="button" className="project-btn project-btn--ghost" onClick={() => setConfirmDelete(false)}>Annuler</button>
+                  <button type="button" className="project-btn project-btn--danger" onClick={handleDelete}>Supprimer définitivement</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -956,6 +1139,7 @@ function PerimetreView({
   expandedProjectId,
   onExpandedChange,
   onUpdateProject,
+  onDeleteProject,
   onPatchProject,
   scoringOptions,
 }: {
@@ -964,7 +1148,8 @@ function PerimetreView({
   isTransverse: boolean
   expandedProjectId: string | null
   onExpandedChange: (id: string | null) => void
-  onUpdateProject: (perimId: string, projId: string, updates: Partial<Project>) => void
+  onUpdateProject: (perimId: string, projId: string, updates: Partial<Project>) => Promise<void> | void
+  onDeleteProject: (perimId: string, projId: string) => Promise<void> | void
   onPatchProject: (perimId: string, projId: string, updates: Partial<Project>) => void
   scoringOptions: ScoringOptions
 }) {
@@ -1026,6 +1211,7 @@ function PerimetreView({
                 onUpdateProject(perimetre.id, project.id, { selected_for_transfo: !project.selected_for_transfo })
               }}
               onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
+              onDeleteProject={() => onDeleteProject(perimetre.id, project.id)}
               onPatchProject={(updates) => onPatchProject(perimetre.id, project.id, updates)}
               scoringOptions={scoringOptions}
             />
@@ -1045,6 +1231,7 @@ function PerimetreView({
               onToggleExpand={() => onExpandedChange(expandedProjectId === project.id ? null : project.id)}
               onToggleTransfo={() => {}}
               onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
+              onDeleteProject={() => onDeleteProject(perimetre.id, project.id)}
               onPatchProject={(updates) => onPatchProject(perimetre.id, project.id, updates)}
               scoringOptions={scoringOptions}
             />
@@ -1088,7 +1275,7 @@ function CoefPanel({
         </p>
         {(Object.keys(coefs) as Array<keyof Coefficients>).map((k) => (
           <div key={k} className="coef-row">
-            <span className="coef-key">{CRITERIA_META[k].icon} {CRITERIA_META[k].label}</span>
+            <span className="coef-key">{CRITERIA_META[k].label}</span>
             <div className="coef-dots">
               {[1, 2, 3].map((v) => (
                 <button
@@ -1160,6 +1347,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
   const [applyCompetencesMalus, setApplyCompetencesMalus] = useState(true)
   const [syncLoading, setSyncLoading] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const pendingCreateRef = useRef<Record<string, Promise<string>>>({})
   const scoringOptions = useMemo<ScoringOptions>(
     () => ({ applyBuildBonus, applyCompetencesMalus }),
     [applyBuildBonus, applyCompetencesMalus],
@@ -1264,17 +1452,35 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
 
     try {
       if (merged.id.startsWith('proj-')) {
-        const created = await createProjet(mapProjectToDbProjet(merged, perimId, workspaceId))
-        const hydrated = mapDbProjetToProject(created as DbProjet)
+        if (!pendingCreateRef.current[projId]) {
+          pendingCreateRef.current[projId] = (async () => {
+            const created = await createProjet(mapProjectToDbProjet(merged, perimId, workspaceId))
+            const hydrated = mapDbProjetToProject(created as DbProjet)
+            setPerimetres((prev) =>
+              prev.map((p) =>
+                p.id !== perimId ? p : {
+                  ...p,
+                  projects: p.projects.map((pr) => (pr.id === projId ? hydrated : pr)),
+                },
+              ),
+            )
+            setExpandedProjectId(hydrated.id)
+            return hydrated.id
+          })().finally(() => {
+            delete pendingCreateRef.current[projId]
+          })
+        }
+        const realId = await pendingCreateRef.current[projId]
+        const updated = await updateProjet(realId, mapProjectToDbProjet(merged, perimId, workspaceId))
+        const hydrated = mapDbProjetToProject(updated as DbProjet)
         setPerimetres((prev) =>
           prev.map((p) =>
             p.id !== perimId ? p : {
               ...p,
-              projects: p.projects.map((pr) => (pr.id === projId ? hydrated : pr)),
+              projects: p.projects.map((pr) => (pr.id === realId || pr.id === projId ? hydrated : pr)),
             },
           ),
         )
-        setExpandedProjectId(hydrated.id)
       } else {
         const updated = await updateProjet(merged.id, mapProjectToDbProjet(merged, perimId, workspaceId))
         const hydrated = mapDbProjetToProject(updated as DbProjet)
@@ -1292,6 +1498,24 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
         ? String((error as { message?: unknown }).message ?? '')
         : ''
       setSyncError(message || 'Erreur lors de la sauvegarde du projet')
+    }
+  }
+
+  async function removeProject(perimId: string, projId: string) {
+    setPerimetres((prev) =>
+      prev.map((p) =>
+        p.id !== perimId ? p : { ...p, projects: p.projects.filter((pr) => pr.id !== projId) },
+      ),
+    )
+    if (!workspaceId) return
+    if (projId.startsWith('proj-')) return
+    try {
+      await deleteProjet(projId)
+    } catch (error) {
+      const message = typeof error === 'object' && error && 'message' in error
+        ? String((error as { message?: unknown }).message ?? '')
+        : ''
+      setSyncError(message || 'Erreur lors de la suppression du projet')
     }
   }
 
@@ -1370,6 +1594,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
               expandedProjectId={expandedProjectId}
               onExpandedChange={setExpandedProjectId}
               onUpdateProject={persistProject}
+              onDeleteProject={removeProject}
               onPatchProject={updateProjectLocal}
               scoringOptions={scoringOptions}
             />
@@ -1781,24 +2006,58 @@ const CSS = `
   flex-shrink: 0;
 }
 
+.mini-gantt-24-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: min(360px, 55vw);
+  margin-right: 14px;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
+
+.mini-gantt-24__markers {
+  position: relative;
+  height: 12px;
+  min-width: 180px;
+}
+
+.mini-gantt-24__marker {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--theme-text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mini-gantt-24__marker--end {
+  transform: translateX(-100%);
+}
+
 .mini-gantt-24 {
   display: flex;
   flex-direction: row;
-  gap: 1px;
+  gap: 2px;
   flex-shrink: 1;
   min-width: 0;
   align-items: center;
-  max-width: min(280px, 42vw);
+  max-width: min(360px, 55vw);
   overflow: hidden;
 }
 
 .mini-gantt-24__cell {
-  width: 4px;
-  min-width: 3px;
-  flex: 1 0 3px;
-  max-width: 6px;
-  height: 6px;
-  border-radius: 1px;
+  width: 10px;
+  min-width: 9px;
+  flex: 1 0 9px;
+  max-width: 12px;
+  height: 18px;
+  border-radius: 2px;
   background: var(--theme-border);
   flex-shrink: 0;
 }
@@ -2098,6 +2357,104 @@ const CSS = `
   gap: var(--space-md);
 }
 
+.project-editor-col--full {
+  grid-column: 1 / -1;
+}
+
+.identification-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+}
+
+.identification-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.eval-section-opener {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+  margin-top: 2px;
+}
+
+.project-eval-layout {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.project-eval-header {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
+  gap: var(--space-xl);
+  align-items: center;
+}
+
+.project-eval-header .section-title {
+  margin-bottom: 0;
+}
+
+.project-eval-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
+  gap: var(--space-xl);
+  align-items: center;
+}
+
+.project-eval-extras {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.eval-legend-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eval-legend-card {
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--theme-bg-card) 88%, var(--theme-bg-page));
+  overflow: hidden;
+}
+
+.eval-legend-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--theme-text);
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--theme-border) 45%, transparent);
+}
+
+.eval-legend-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.eval-legend-table td {
+  padding: 7px 10px;
+  font-size: 0.74rem;
+  color: var(--theme-text-muted);
+  border-top: 1px solid color-mix(in srgb, var(--theme-border) 70%, transparent);
+}
+
+.eval-legend-level {
+  width: 32px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--theme-text);
+}
+
 .project-field {
   display: flex;
   flex-direction: column;
@@ -2204,38 +2561,96 @@ const CSS = `
   background: var(--theme-bg-card);
 }
 
-.critere-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-xs);
+.critere-row--bar {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.critere-bar {
+  display: grid;
+  grid-template-columns: 116px 1fr 120px;
+  min-height: 104px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.critere-icon-pane {
+  background: #0a0a07;
+  display: grid;
+  place-items: center;
+  color: #f4f4f4;
 }
 
 .critere-icon {
-  width: 40px;
-  height: 40px;
+  width: 86px;
+  height: 86px;
   display: grid;
   place-items: center;
-  font-size: 24px;
-  flex-shrink: 0;
-  background: rgba(142,59,70,0.1);
-  border-radius: 8px;
+}
+
+.critere-middle-pane {
+  background: #55636c;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.critere-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.critere-title-above {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--theme-text);
+  text-align: center;
+  margin: 0 0 8px;
+}
+
+.critere-value-pane {
+  background: color-mix(in srgb, var(--theme-border) 76%, var(--theme-bg-card));
+  display: grid;
+  place-items: center;
+}
+
+.critere-value-pane--none {
+  background: color-mix(in srgb, var(--theme-border) 76%, var(--theme-bg-card));
+}
+
+.critere-value-pane--low {
+  background: #10B981;
+}
+
+.critere-value-pane--medium {
+  background: #4C86A8;
+}
+
+.critere-value-pane--high {
+  background: #F59E0B;
+}
+
+.critere-value-pane--critical {
+  background: #EF4444;
 }
 
 .critere-name {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--theme-text);
-}
-
-.critere-title-block {
-  display: flex;
-  flex-direction: column;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--theme-on-accent);
+  text-align: center;
 }
 
 .critere-coef-inline {
-  font-size: 0.68rem;
-  color: var(--theme-text-muted);
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--theme-on-accent) 90%, transparent);
+  font-weight: 700;
+  text-align: center;
 }
 
 .critere-desc {
@@ -2244,56 +2659,95 @@ const CSS = `
 }
 
 .critere-val {
-  margin-left: auto;
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--theme-accent);
-  min-width: 24px;
-  text-align: right;
+  font-size: 2.25rem;
+  font-family: var(--font-display);
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
 .critere-grid {
   display: grid;
   grid-template-columns: repeat(5, 40px);
   gap: 8px;
+  justify-content: center;
 }
 
 .critere-grid--six {
-  grid-template-columns: repeat(6, minmax(40px, 1fr));
+  grid-template-columns: repeat(5, minmax(42px, 1fr));
   max-width: 100%;
 }
 
 .critere-square {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   max-width: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--theme-border);
-  background: var(--theme-bg-page);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: #050709;
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
-  color: var(--theme-text);
-  font-weight: 700;
+  color: #ffffff;
+  font-weight: 800;
   font-size: 1.05rem;
 }
 
 .critere-square:hover {
-  background: rgba(142,59,70,0.1);
-  border-color: #8E3B46;
+  background: #0b0e12;
+  border-color: rgba(255,255,255,0.24);
 }
 
 .critere-square--active {
-  background: #8E3B46;
-  color: #fff;
-  border-color: #8E3B46;
-  box-shadow: 0 2px 8px rgba(142,59,70,0.3);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.34);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+}
+
+.critere-square--level-1 {
+  color: #20d8ac;
+}
+
+.critere-square--level-2 {
+  color: #20d8ac;
+}
+
+.critere-square--level-3 {
+  color: #7cb6e6;
+}
+
+.critere-square--level-4 {
+  color: #f67c15;
+}
+
+.critere-square--level-5 {
+  color: #ff4a4a;
+}
+
+.critere-value-pane--low .critere-val,
+.critere-value-pane--medium .critere-val,
+.critere-value-pane--high .critere-val,
+.critere-value-pane--critical .critere-val {
+  color: #0a0a0a;
+}
+
+.critere-row--urgence .critere-icon,
+.critere-row--etp .critere-icon,
+.critere-row--investissement .critere-icon {
+  color: #f3dde0;
+}
+
+.critere-row--criticite .critere-icon,
+.critere-row--recurrence .critere-icon,
+.critere-row--temps .critere-icon {
+  color: #f8f8f8;
 }
 
 .critere-level-desc {
   font-size: 11px;
   color: var(--theme-text-muted);
   font-style: italic;
-  margin-top: 4px;
+  margin: 8px 12px 10px;
 }
 
 .project-scoring-head {
@@ -2312,6 +2766,10 @@ const CSS = `
   width: 100%;
   display: flex;
   justify-content: center;
+}
+
+.score-badge-wrap--side {
+  justify-content: flex-start;
 }
 
 .competence-toggle {
@@ -2397,6 +2855,53 @@ const CSS = `
   background: #8E3B46;
   border: 1px solid #8E3B46;
   color: white;
+}
+
+.project-btn--danger {
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.5);
+  color: #EF4444;
+}
+
+.project-btn--danger:hover {
+  background: rgba(239,68,68,0.18);
+}
+
+.project-delete-popin-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: grid;
+  place-items: center;
+  z-index: 120;
+}
+
+.project-delete-popin {
+  width: min(92vw, 420px);
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: var(--shadow-lg);
+}
+
+.project-delete-popin h4 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  color: var(--theme-text);
+}
+
+.project-delete-popin p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--theme-text-muted);
+}
+
+.project-delete-popin-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .recap-block {
@@ -2487,6 +2992,22 @@ const CSS = `
   width: 100%;
   overflow-x: auto;
   padding-bottom: 4px;
+}
+
+.gantt-time-markers {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.gantt-time-marker {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--theme-text-muted);
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
 }
 
 .gantt-head-years {
@@ -2852,6 +3373,20 @@ const CSS = `
   .project-sections--editor {
     grid-template-columns: 1fr;
   }
+  .project-editor-col--full {
+    grid-column: auto;
+  }
+  .identification-grid {
+    grid-template-columns: 1fr;
+  }
+  .project-eval-layout {
+    grid-column: auto;
+  }
+  .project-eval-header,
+  .project-eval-row,
+  .project-eval-extras {
+    grid-template-columns: 1fr;
+  }
   .project-field input,
   .project-field textarea {
     font-size: 16px;
@@ -2874,12 +3409,22 @@ const CSS = `
     width: 100%;
   }
   .critere-grid {
-    grid-template-columns: repeat(6, minmax(34px, 1fr));
+    grid-template-columns: repeat(5, minmax(34px, 1fr));
   }
   .critere-square {
     width: 100%;
     height: 38px;
     font-size: 1rem;
+  }
+  .critere-bar {
+    grid-template-columns: 96px 1fr 96px;
+  }
+  .critere-icon {
+    width: 72px;
+    height: 72px;
+  }
+  .critere-val {
+    font-size: 1.9rem;
   }
   .score-summary-value {
     font-size: 24px;
@@ -2912,7 +3457,27 @@ const CSS = `
     flex-wrap: wrap;
     width: 100%;
   }
-  .mini-gantt-24 {
+  .critere-bar {
+    grid-template-columns: 78px 1fr 80px;
+    min-height: 84px;
+  }
+  .critere-middle-pane {
+    padding: 8px;
+  }
+  .critere-name {
+    font-size: 0.8rem;
+  }
+  .critere-coef-inline {
+    font-size: 0.68rem;
+  }
+  .critere-val {
+    font-size: 1.55rem;
+  }
+  .critere-icon {
+    width: 58px;
+    height: 58px;
+  }
+  .mini-gantt-24-wrap {
     order: 3;
     width: 100%;
     max-width: none;
