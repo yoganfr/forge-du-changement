@@ -10,6 +10,12 @@ import Login from './pages/Login'
 import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
 import { getWorkspace } from './lib/api'
+import type { Workspace } from './lib/types'
+import {
+  clearWorkspaceSnapshot,
+  readWorkspaceSnapshot,
+  writeWorkspaceSnapshot,
+} from './lib/workspaceSnapshot'
 import { getCurrentUser, isSuperAdmin, signOut } from './lib/auth'
 import { supabase } from './lib/supabase'
 import {
@@ -142,20 +148,54 @@ function App() {
       try {
         const workspace = await getWorkspace(workspaceId)
         if (cancelled) return
+        const snap = readWorkspaceSnapshot()
+        const logoFromApi = workspace.logo_url
+        const logoMerged =
+          logoFromApi
+          || (snap?.id === workspace.id && snap?.logo_url?.startsWith('http') ? snap.logo_url : null)
         setWorkspaceName(workspace.company_name)
-        setCompanyLogo(workspace.logo_url)
+        setCompanyLogo(logoMerged)
+        writeWorkspaceSnapshot({
+          id: workspace.id,
+          company_name: workspace.company_name,
+          sector: workspace.sector,
+          size: workspace.size,
+          logo_url: logoMerged,
+        })
         setWorkspaceData((prev) => ({
-          workspace,
+          workspace: { ...workspace, logo_url: logoMerged },
           companyName: workspace.company_name,
           sector: workspace.sector ?? prev?.sector ?? 'Non renseigné',
           size: workspace.size ?? prev?.size ?? 'Non renseigné',
-          companyLogo: workspace.logo_url,
+          companyLogo: logoMerged,
           members: prev?.members ?? [],
         }))
       } catch {
         if (cancelled) return
-        localStorage.removeItem('workspaceId')
-        setWorkspaceId(null)
+        const snap = readWorkspaceSnapshot()
+        if (snap && snap.id === workspaceId) {
+          setWorkspaceName(snap.company_name)
+          setCompanyLogo(snap.logo_url)
+          setWorkspaceData((prev) => ({
+            workspace: prev?.workspace ?? {
+              id: snap.id,
+              company_name: snap.company_name,
+              sector: snap.sector,
+              size: snap.size as Workspace['size'],
+              logo_url: snap.logo_url,
+              created_at: prev?.workspace?.created_at ?? '',
+            },
+            companyName: snap.company_name,
+            sector: snap.sector ?? 'Non renseigné',
+            size: snap.size ?? 'Non renseigné',
+            companyLogo: snap.logo_url,
+            members: prev?.members ?? [],
+          }))
+        } else {
+          localStorage.removeItem('workspaceId')
+          clearWorkspaceSnapshot()
+          setWorkspaceId(null)
+        }
       }
     })()
     return () => {
@@ -198,6 +238,13 @@ function App() {
           setWorkspaceId(data.workspace.id)
           setWorkspaceName(data.workspace.company_name)
           setCompanyLogo(data.workspace.logo_url)
+          writeWorkspaceSnapshot({
+            id: data.workspace.id,
+            company_name: data.workspace.company_name,
+            sector: data.workspace.sector,
+            size: data.workspace.size,
+            logo_url: data.workspace.logo_url,
+          })
           try {
             const raw = localStorage.getItem('lfdc-member-onboarding')
             const p = raw ? JSON.parse(raw) as StoredMemberProfile : {}
@@ -334,6 +381,7 @@ function App() {
               onClick={() => {
                 void signOut()
                 localStorage.removeItem('workspaceId')
+                clearWorkspaceSnapshot()
                 localStorage.removeItem('lfdc-member-onboarding')
                 setWorkspaceId(null)
                 setWorkspaceData(null)
@@ -404,9 +452,36 @@ function App() {
                 setWorkspaceName(data.companyName)
                 setWorkspaceData((prev) =>
                   prev
-                    ? { ...prev, companyName: data.companyName, sector: data.sector, size: data.size }
+                    ? {
+                        ...prev,
+                        companyName: data.companyName,
+                        sector: data.sector,
+                        size: data.size,
+                        companyLogo: data.logo,
+                        workspace: prev.workspace
+                          ? {
+                              ...prev.workspace,
+                              company_name: data.companyName,
+                              sector: data.sector === 'Non renseigné' ? null : data.sector,
+                              size:
+                                data.size === 'Non renseigné'
+                                  ? null
+                                  : (data.size as Workspace['size']),
+                              logo_url: data.logo,
+                            }
+                          : prev.workspace,
+                      }
                     : prev,
                 )
+                if (workspaceId) {
+                  writeWorkspaceSnapshot({
+                    id: workspaceId,
+                    company_name: data.companyName,
+                    sector: data.sector === 'Non renseigné' ? null : data.sector,
+                    size: data.size === 'Non renseigné' ? null : data.size,
+                    logo_url: data.logo,
+                  })
+                }
               }}
             />
           ) : activeNav === 'workspace' ? (

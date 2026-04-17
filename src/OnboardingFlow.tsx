@@ -70,6 +70,7 @@ export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowP
   const [memberRole, setMemberRole] = useState<MemberRole>('Contributeur')
   const [members, setMembers] = useState<Array<{ email: string; role: MemberRole }>>([])
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [createdWorkspace, setCreatedWorkspace] = useState<Workspace | null>(null)
   const [submittingStep1, setSubmittingStep1] = useState(false)
   const [submittingStep2, setSubmittingStep2] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -119,7 +120,8 @@ export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowP
         size,
         logo_url: logoUrlForDb,
       })
-      setCompanyLogo(logoUrlForDb)
+      setCreatedWorkspace(workspace)
+      setCompanyLogo(workspace.logo_url ?? logoUrlForDb)
       setWorkspaceId(workspace.id)
       goTo(2)
     } catch (error) {
@@ -177,19 +179,17 @@ export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowP
           role: toInvitationRole(member.role),
         })
       }
+      const ws = createdWorkspace
+      if (!ws) {
+        setApiError('Une erreur est survenue, veuillez réessayer')
+        return
+      }
       onComplete({
-        workspace: {
-          id: workspaceId,
-          company_name: companyName.trim(),
-          sector,
-          size,
-          logo_url: companyLogo && companyLogo.startsWith('http') ? companyLogo : null,
-          created_at: new Date().toISOString(),
-        },
+        workspace: ws,
         companyName: companyName.trim(),
         sector,
         size,
-        companyLogo,
+        companyLogo: ws.logo_url,
         members: members.map((member) => ({ email: member.email, role: member.role })),
       })
     } catch (error) {

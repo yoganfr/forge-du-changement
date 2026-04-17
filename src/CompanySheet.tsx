@@ -150,8 +150,15 @@ export default function CompanySheet({
     setSaveError(null)
     setSaving(true)
     try {
-      let logoForDb = logoUrl && logoUrl.startsWith('http') ? logoUrl : null
-      if (workspaceId && logoFile) {
+      const remoteBefore =
+        (companyLogoProp?.startsWith('http') ? companyLogoProp : null)
+        ?? (logoUrl?.startsWith('http') ? logoUrl : null)
+
+      let logoForDb: string | null = remoteBefore
+
+      if (logoUrl === null && !logoFile) {
+        logoForDb = null
+      } else if (workspaceId && logoFile) {
         try {
           logoForDb = await uploadImageToStorage({
             file: logoFile,
@@ -161,18 +168,27 @@ export default function CompanySheet({
         } catch (uploadError) {
           if (isStorageBucketNotFound(uploadError)) {
             setSaveError("Bucket Storage introuvable (assets). Le logo n'a pas été uploadé, mais les autres modifications seront enregistrées.")
+            logoForDb = remoteBefore
           } else {
             throw uploadError
           }
         }
+      } else if (!logoFile && logoUrl?.startsWith('http')) {
+        logoForDb = logoUrl
       }
+
       if (workspaceId) {
-        const updated = await updateWorkspace(workspaceId, {
+        let updated = await updateWorkspace(workspaceId, {
           company_name: draftName.trim() || companyName,
           sector: draftSector || null,
           size: (draftSize || null) as 'PME' | 'ETI' | 'Grand groupe' | null,
           logo_url: logoForDb,
         })
+        if (logoForDb && !updated.logo_url) {
+          updated = await updateWorkspace(workspaceId, { logo_url: logoForDb })
+        }
+        setLogoFile(null)
+        setLogoUrl(updated.logo_url ?? null)
         onCompanyUpdate?.({
           companyName: updated.company_name,
           sector: updated.sector ?? 'Non renseigné',
