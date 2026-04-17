@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState } from 'react'
 import './App.css'
+import ProjectSelector from './ProjectSelector'
 import {
   applyThemeToDocument,
   getStoredTheme,
@@ -101,26 +102,32 @@ function App() {
         </header>
 
         <main className="dashboard__content">
-          <p className="dashboard__intro">
-            Choisissez un module pour poursuivre votre parcours de transformation.
-          </p>
-          <div className="dashboard__cards" role="list">
-            {cards.map((card) => (
-              <button
-                key={card.id}
-                type="button"
-                className="dashboard__card"
-                role="listitem"
-                onClick={() => setActiveNav(card.id)}
-              >
-                <span className="dashboard__card-icon" aria-hidden="true">
-                  {card.icon}
-                </span>
-                <span className="dashboard__card-title">{card.title}</span>
-                <span className="dashboard__card-desc">{card.description}</span>
-              </button>
-            ))}
-          </div>
+          {activeNav === 'fabrique' ? (
+            <ProjectSelector />
+          ) : (
+            <>
+              <p className="dashboard__intro">
+                Choisissez un module pour poursuivre votre parcours de transformation.
+              </p>
+              <div className="dashboard__cards" role="list">
+                {cards.map((card) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    className="dashboard__card"
+                    role="listitem"
+                    onClick={() => setActiveNav(card.id)}
+                  >
+                    <span className="dashboard__card-icon" aria-hidden="true">
+                      {card.icon}
+                    </span>
+                    <span className="dashboard__card-title">{card.title}</span>
+                    <span className="dashboard__card-desc">{card.description}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>
