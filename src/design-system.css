@@ -197,8 +197,8 @@ a {
   gap: var(--space-sm);
   font-size: 0.85rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-transform: none;
   color: var(--clr-text-muted);
 }
 
@@ -530,8 +530,8 @@ a {
   border-radius: 20px;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-transform: none;
   color: var(--theme-on-accent);
 }
 
@@ -558,8 +558,8 @@ a {
 .card__category {
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-transform: none;
   color: var(--clr-text-muted);
 }
 

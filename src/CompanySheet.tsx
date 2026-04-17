@@ -422,7 +422,7 @@ const CSS = `
 .cs-section h3 {
   margin: 0 0 12px;
   font-size: 12px;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: .08em;
   color: var(--theme-text-muted);
 }

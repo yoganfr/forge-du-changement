@@ -2232,7 +2232,7 @@ const CSS = `
 .score-label {
   font-size: 0.72rem;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.05em;
   position: static;
   transform: none;
@@ -2323,7 +2323,7 @@ const CSS = `
   font-size: 0.86rem;
   font-weight: 800;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--theme-text-muted);
   margin-top: 2px;
 }
@@ -2378,7 +2378,7 @@ const CSS = `
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--theme-text-muted);
   padding: 0 4px 12px;
   background: transparent;
@@ -2497,7 +2497,7 @@ const CSS = `
   font-size: var(--fs-small);
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--theme-text-muted);
   margin-bottom: var(--space-md);
 }
@@ -2505,7 +2505,7 @@ const CSS = `
 .section-title--score {
   font-size: 0.75rem;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--theme-text-muted);
 }
 
@@ -2891,7 +2891,7 @@ const CSS = `
 .recap-table th {
   text-align: left;
   font-size: 11px;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.08em;
   color: var(--theme-text-muted);
   padding: 6px 6px 8px;
@@ -3076,7 +3076,7 @@ const CSS = `
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--theme-text-muted);
   margin-bottom: var(--space-sm);
 }

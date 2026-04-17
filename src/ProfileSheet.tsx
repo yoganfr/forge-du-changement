@@ -603,7 +603,7 @@ const CSS = `
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--theme-text-muted);
   margin: 0 0 12px;
 }

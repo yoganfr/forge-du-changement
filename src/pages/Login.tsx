@@ -294,11 +294,11 @@ const CSS = `
 
 .login-brand-kicker {
   margin: 0 0 14px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, #470000 58%, #f1872a);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: none;
+  color: color-mix(in srgb, #470000 72%, #bf651a);
 }
 
 .login-brand-mark {
@@ -400,9 +400,9 @@ const CSS = `
   color: #fff;
   font-family: var(--font-body);
   font-size: var(--text-sm);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
   transition: transform .15s, box-shadow .2s, filter .2s;
 }
 
