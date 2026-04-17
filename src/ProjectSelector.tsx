@@ -771,7 +771,6 @@ function ProjectCard({
 
             <div className="project-editor-col">
               <div className="project-scoring-head project-scoring-head--stack">
-                <div className="section-title section-title--score">Indice de criticité</div>
                 <div className="score-badge-wrap">
                   <ScoreBadge score={score} />
                 </div>
@@ -2004,9 +2003,11 @@ const CSS = `
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   position: relative;
-  width: 92px;
+  width: 110px;
+  min-height: 120px;
+  justify-content: flex-start;
 }
 
 .score-ring {
@@ -2016,25 +2017,32 @@ const CSS = `
 
 .score-value {
   position: absolute;
-  top: 50%;
+  width: 80px;
+  height: 80px;
+  top: 0;
   left: 50%;
-  transform: translate(-50%, -52%);
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
   font-size: 24px;
   font-weight: 800;
   font-family: var(--font-display);
   line-height: 1;
+  pointer-events: none;
+  text-align: center;
 }
 
 .score-label {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
+  margin-top: 14px;
   white-space: nowrap;
+  line-height: 1.2;
+  text-align: center;
 }
 
 /* ── Transfo Toggle ── */
@@ -2246,18 +2254,18 @@ const CSS = `
 
 .critere-grid {
   display: grid;
-  grid-template-columns: repeat(5, 32px);
-  gap: 6px;
+  grid-template-columns: repeat(5, 40px);
+  gap: 8px;
 }
 
 .critere-grid--six {
-  grid-template-columns: repeat(6, minmax(28px, 1fr));
+  grid-template-columns: repeat(6, minmax(40px, 1fr));
   max-width: 100%;
 }
 
 .critere-square {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   max-width: 100%;
   border-radius: 8px;
   border: 1px solid var(--theme-border);
@@ -2266,6 +2274,7 @@ const CSS = `
   transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
   color: var(--theme-text);
   font-weight: 700;
+  font-size: 1.05rem;
 }
 
 .critere-square:hover {
@@ -2865,7 +2874,12 @@ const CSS = `
     width: 100%;
   }
   .critere-grid {
-    grid-template-columns: repeat(5, minmax(32px, 1fr));
+    grid-template-columns: repeat(6, minmax(34px, 1fr));
+  }
+  .critere-square {
+    width: 100%;
+    height: 38px;
+    font-size: 1rem;
   }
   .score-summary-value {
     font-size: 24px;

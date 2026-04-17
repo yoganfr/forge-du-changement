@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createUser, getWorkspaceUsers, updateUser } from './lib/api'
+import {
+  createUser,
+  getWorkspaceUsers,
+  isStorageBucketNotFound,
+  updateUser,
+  uploadImageToStorage,
+} from './lib/api'
 import type { User } from './lib/types'
 
 export type DirectionType = 'fonctionnel' | 'metier' | 'geographique'
@@ -219,6 +225,7 @@ export default function ProfileSheet({
   const [managedCount, setManagedCount] = useState(managedCountProp)
   const [totalEffectif, setTotalEffectif] = useState(totalEffectifProp)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(avatarUrlProp)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem('lfdc-user-id'))
   useEffect(() => {
     if (!open) return
@@ -231,6 +238,7 @@ export default function ProfileSheet({
     setManagedCount(s.managedCount ?? managedCountProp)
     setTotalEffectif(s.totalEffectif ?? totalEffectifProp)
     setAvatarUrl(s.avatar ?? avatarUrlProp ?? null)
+    setAvatarFile(null)
     setDirty(false)
   }, [open, firstNameProp, lastNameProp, jobTitleProp, directionProp, directionTypeProp, managedCountProp, totalEffectifProp, avatarUrlProp])
 
@@ -265,6 +273,24 @@ export default function ProfileSheet({
   const initials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.toUpperCase() || '?'
 
   async function persistAll() {
+    let avatarUrlToPersist = avatarUrl
+    if (workspaceId && avatarFile) {
+      try {
+        avatarUrlToPersist = await uploadImageToStorage({
+          file: avatarFile,
+          folder: 'users/avatars',
+          filenamePrefix: `${firstName || 'user'}-${lastName || ''}`.trim() || 'user',
+        })
+      } catch (uploadError) {
+        if (isStorageBucketNotFound(uploadError)) {
+          // Storage bucket missing: keep current avatar value and continue saving profile fields.
+          avatarUrlToPersist = avatarUrl
+        } else {
+          avatarUrlToPersist = avatarUrl
+        }
+      }
+    }
+
     const prev = loadStored()
     const payload: StoredMemberProfile = {
       ...prev,
@@ -277,7 +303,7 @@ export default function ProfileSheet({
       directionType,
       managedCount,
       totalEffectif,
-      avatar: avatarUrl,
+      avatar: avatarUrlToPersist,
     }
     saveStored(payload)
     if (workspaceId) {
@@ -295,7 +321,7 @@ export default function ProfileSheet({
             prenom: firstName || null,
             nom: lastName || null,
             job_title: jobTitle || null,
-            avatar_url: avatarUrl,
+            avatar_url: avatarUrlToPersist,
             direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
             direction_nom: directionName || null,
             managed_count: managedCount,
@@ -308,7 +334,7 @@ export default function ProfileSheet({
             prenom: firstName || null,
             nom: lastName || null,
             job_title: jobTitle || null,
-            avatar_url: avatarUrl,
+            avatar_url: avatarUrlToPersist,
             role: roleDb,
             direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
             direction_nom: directionName || null,
@@ -330,6 +356,7 @@ export default function ProfileSheet({
 
   function onAvatarFile(f: File | null) {
     if (!f) return
+    setAvatarFile(f)
     const reader = new FileReader()
     reader.onload = () => {
       const url = typeof reader.result === 'string' ? reader.result : null

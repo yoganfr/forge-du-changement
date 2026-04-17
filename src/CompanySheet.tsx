@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   getWorkspaceInvitations,
   getWorkspaceUsers,
+  isStorageBucketNotFound,
   updateWorkspace,
+  uploadImageToStorage,
 } from './lib/api'
 
 export interface CompanyMember {
@@ -71,12 +73,14 @@ export default function CompanySheet({
   const [draftSector, setDraftSector] = useState(sector)
   const [draftSize, setDraftSize] = useState(size)
   const [logoUrl, setLogoUrl] = useState<string | null>(companyLogoProp ?? null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [remoteMembers, setRemoteMembers] = useState<CompanyMember[] | null>(null)
 
   useEffect(() => {
     setLogoUrl(companyLogoProp ?? null)
+    setLogoFile(null)
   }, [companyLogoProp])
 
   useEffect(() => {
@@ -94,8 +98,10 @@ export default function CompanySheet({
   function onLogoFile(file: File | null) {
     if (!file) {
       setLogoUrl(null)
+      setLogoFile(null)
       return
     }
+    setLogoFile(file)
     const reader = new FileReader()
     reader.onload = () => setLogoUrl(typeof reader.result === 'string' ? reader.result : null)
     reader.readAsDataURL(file)
@@ -144,7 +150,22 @@ export default function CompanySheet({
     setSaveError(null)
     setSaving(true)
     try {
-      const logoForDb = logoUrl && logoUrl.startsWith('http') ? logoUrl : null
+      let logoForDb = logoUrl && logoUrl.startsWith('http') ? logoUrl : null
+      if (workspaceId && logoFile) {
+        try {
+          logoForDb = await uploadImageToStorage({
+            file: logoFile,
+            folder: 'workspaces/logos',
+            filenamePrefix: draftName.trim() || 'workspace',
+          })
+        } catch (uploadError) {
+          if (isStorageBucketNotFound(uploadError)) {
+            setSaveError("Bucket Storage introuvable (assets). Le logo n'a pas été uploadé, mais les autres modifications seront enregistrées.")
+          } else {
+            throw uploadError
+          }
+        }
+      }
       if (workspaceId) {
         const updated = await updateWorkspace(workspaceId, {
           company_name: draftName.trim() || companyName,

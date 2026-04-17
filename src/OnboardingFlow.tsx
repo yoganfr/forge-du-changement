@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { createInvitation, createWorkspace } from './lib/api'
+import {
+  createInvitation,
+  createWorkspace,
+  isStorageBucketNotFound,
+  uploadImageToStorage,
+} from './lib/api'
 import type { Workspace } from './lib/types'
 
 type MemberRole = 'Membre CODIR' | 'Pilote de projet' | 'Contributeur'
@@ -58,6 +63,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [sector, setSector] = useState(SECTORS[0])
   const [size, setSize] = useState<(typeof SIZES)[number]>('PME')
   const [companyLogo, setCompanyLogo] = useState<string | null>(null)
+  const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null)
 
   const [memberEmail, setMemberEmail] = useState('')
   const [memberRole, setMemberRole] = useState<MemberRole>('Contributeur')
@@ -86,15 +92,33 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setApiError(null)
     setSubmittingStep1(true)
     try {
-      const logoUrlForDb = companyLogo && companyLogo.startsWith('http')
-        ? companyLogo
-        : null
+      let logoUrlForDb: string | null = null
+      if (companyLogoFile) {
+        try {
+          logoUrlForDb = await uploadImageToStorage({
+            file: companyLogoFile,
+            folder: 'workspaces/logos',
+            filenamePrefix: companyName.trim() || 'workspace',
+          })
+        } catch (uploadError) {
+          if (isStorageBucketNotFound(uploadError)) {
+            // Keep flow working even if storage bucket is missing.
+            logoUrlForDb = null
+            setApiError("Bucket Storage introuvable (assets). L'espace sera créé sans logo.")
+          } else {
+            throw uploadError
+          }
+        }
+      } else if (companyLogo && companyLogo.startsWith('http')) {
+        logoUrlForDb = companyLogo
+      }
       const workspace = await createWorkspace({
         company_name: companyName.trim(),
         sector,
         size,
         logo_url: logoUrlForDb,
       })
+      setCompanyLogo(logoUrlForDb)
       setWorkspaceId(workspace.id)
       goTo(2)
     } catch (error) {
@@ -128,8 +152,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   function onLogoChange(file: File | null) {
     if (!file) {
       setCompanyLogo(null)
+      setCompanyLogoFile(null)
       return
     }
+    setCompanyLogoFile(file)
     const reader = new FileReader()
     reader.onload = () => setCompanyLogo(typeof reader.result === 'string' ? reader.result : null)
     reader.readAsDataURL(file)
@@ -156,7 +182,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           company_name: companyName.trim(),
           sector,
           size,
-          logo_url: companyLogo,
+          logo_url: companyLogo && companyLogo.startsWith('http') ? companyLogo : null,
           created_at: new Date().toISOString(),
         },
         companyName: companyName.trim(),

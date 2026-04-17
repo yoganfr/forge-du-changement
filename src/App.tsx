@@ -139,7 +139,7 @@ function App() {
           <div className="dashboard__brand-mark">
             {companyLogo
               ? <img src={companyLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-              : <span style={{ color: 'white', fontSize: '0.7rem', fontWeight: 700 }}>
+              : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
                 {workspaceName.slice(0, 2).toUpperCase()}
               </span>
             }
@@ -264,7 +264,9 @@ function App() {
               title="Mon profil"
             >
               <div className="user-badge-avatar">
-                {userInitials}
+                {storedProfile?.avatar
+                  ? <img src={storedProfile.avatar} alt="" />
+                  : userInitials}
               </div>
             </button>
           </div>
