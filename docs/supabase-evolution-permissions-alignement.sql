@@ -55,7 +55,7 @@ UPDATE public.users
 SET is_platform_superadmin = true
 WHERE lower(email) IN ('yoganhedef@yahoo.fr', 'yoganhedef@gmail.com');
 
--- Super admin plateforme : priorité au flag en base ; repli sur emails le temps de la migration
+-- Super admin plateforme : uniquement le flag en base (aligné avec l’app via RPC).
 CREATE OR REPLACE FUNCTION public.is_platform_superadmin()
 RETURNS boolean
 LANGUAGE sql
@@ -67,10 +67,7 @@ AS $$
     SELECT 1
     FROM public.users u
     WHERE lower(u.email) = public.jwt_email()
-      AND (
-        u.is_platform_superadmin = true
-        OR lower(u.email) IN ('yoganhedef@yahoo.fr', 'yoganhedef@gmail.com')
-      )
+      AND u.is_platform_superadmin = true
   )
 $$;
 
@@ -698,6 +695,7 @@ COMMIT;
 --    (workspace_id, user_id, 'collaborator', 'active') en étant connecté comme owner.
 -- 3) Mettre à jour l’app : listWorkspaces() = SELECT workspaces visibles via RLS (plus besoin
 --    de lister « tous » les workspaces pour tout consultant).
--- 4) Retirer les emails en dur dans is_platform_superadmin() une fois is_platform_superadmin rempli.
+-- 4) Fonction is_platform_superadmin : uniquement le flag (repli emails retiré). Patch one-shot prod :
+--    docs/supabase-patch-superadmin-rpc-only-flag.sql
 -- 5) Si trigger AFTER INSERT sur workspaces pose souci (imports service_role), désactiver le trigger
 --    sur les chemins d’administration ou utiliser service_role pour les migrations bulk.

@@ -17,7 +17,7 @@ import {
   listWorkspaces,
   markInvitationsAcceptedForWorkspaceEmail,
 } from './lib/api'
-import type { Invitation, Workspace } from './lib/types'
+import type { Workspace } from './lib/types'
 import {
   clearWorkspaceSnapshot,
   readInitialCompanyLogo,
@@ -27,7 +27,8 @@ import {
   writeWorkspaceLogoUrl,
   writeWorkspaceSnapshot,
 } from './lib/workspaceSnapshot'
-import { getCurrentUser, isSuperAdmin, signOut } from './lib/auth'
+import { appRoleFromDbUser, invitationRoleToStoredRole, type AppUserRole } from './lib/appRole'
+import { getCurrentUser, isPlatformSuperadmin, signOut } from './lib/auth'
 import { supabase } from './lib/supabase'
 import {
   applyThemeToDocument,
@@ -66,14 +67,6 @@ const cards = [
 ] as const
 
 type OnboardingData = OnboardingFlowProps extends { onComplete: (data: infer T) => void } ? T : never
-type AppUserRole = 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
-
-function invitationRoleToStoredRole(role: Invitation['role']): Exclude<AppUserRole, 'admin'> {
-  if (role === 'consultant') return 'consultant'
-  if (role === 'pilote') return 'pilote'
-  if (role === 'contributeur') return 'contributeur'
-  return 'codir'
-}
 
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
@@ -99,6 +92,7 @@ function App() {
   const [workspacesCatalog, setWorkspacesCatalog] = useState<Workspace[]>([])
   const [workspacesLoading, setWorkspacesLoading] = useState(false)
   const [workspacesError, setWorkspacesError] = useState<string | null>(null)
+  /* lfdc-user-role : cache UI seulement ; les écritures sensibles restent soumises à la RLS Supabase. */
   const storedRole = localStorage.getItem('lfdc-user-role') as AppUserRole | null
   const currentUserRole: AppUserRole = storedRole ?? 'consultant'
   /** Paramètres globaux de l’espace : consultants et administrateurs. */
@@ -149,25 +143,25 @@ function App() {
     const email = user.email ?? ''
     const emailNorm = email.trim().toLowerCase()
     const invitedUser = await getCurrentUser()
-    const skipInvFetch = Boolean(invitedUser) || isSuperAdmin(email)
+    const platformSuper = await isPlatformSuperadmin()
+    const skipInvFetch = Boolean(invitedUser) || platformSuper
     const pendingInv = skipInvFetch ? null : await getLatestPendingInvitationForEmail(emailNorm)
     const acceptedInv = skipInvFetch ? null : await getAcceptedInvitationAwaitingUserRow(emailNorm)
     const invBootstrap = pendingInv ?? acceptedInv
 
-    if (isSuperAdmin(email) || invitedUser) {
+    if (platformSuper || invitedUser) {
       setAuthUser(user)
       if (invitedUser?.workspace_id) {
         const isConsultantMember = invitedUser.role === 'consultant'
         if (!isConsultantMember) {
           localStorage.setItem('workspaceId', invitedUser.workspace_id)
           setWorkspaceId(invitedUser.workspace_id)
-          localStorage.setItem(
-            'lfdc-user-role',
-            invitationRoleToStoredRole(invitedUser.role as Invitation['role']),
-          )
+          localStorage.setItem('lfdc-user-role', appRoleFromDbUser(invitedUser))
         } else {
-          localStorage.setItem('lfdc-user-role', 'consultant')
+          localStorage.setItem('lfdc-user-role', appRoleFromDbUser(invitedUser))
         }
+      } else if (invitedUser) {
+        localStorage.setItem('lfdc-user-role', appRoleFromDbUser(invitedUser))
       }
       try {
         if (invitedUser?.workspace_id && invitedUser.email) {

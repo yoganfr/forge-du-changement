@@ -1,20 +1,43 @@
 import { useEffect } from 'react'
+import { userCanAccessApp, signOut } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 
 export default function AuthCallback() {
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+    let cancelled = false
+    let unsubscribe: (() => void) | undefined
+
+    async function allowThenRedirect(sessionUserEmail: string) {
+      const ok = await userCanAccessApp(sessionUserEmail)
+      if (cancelled) return
+      if (!ok) {
+        await signOut()
         window.location.replace('/')
         return
       }
-      // Traiter le hash fragment OAuth
-      supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          window.location.replace('/')
-        }
+      window.location.replace('/')
+    }
+
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cancelled) return
+      if (session?.user?.email) {
+        await allowThenRedirect(session.user.email)
+        return
+      }
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+        if (cancelled || event !== 'SIGNED_IN' || !nextSession?.user?.email) return
+        subscription.unsubscribe()
+        await allowThenRedirect(nextSession.user.email)
       })
+      unsubscribe = () => subscription.unsubscribe()
     })
+
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
   }, [])
 
   return (

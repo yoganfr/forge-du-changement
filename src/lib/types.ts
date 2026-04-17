@@ -22,6 +22,8 @@ export type User = {
   total_effectif: number
   status: 'invite' | 'actif' | 'inactif'
   created_at: string
+  /** Super-admin plateforme (RLS + RPC `is_platform_superadmin`) */
+  is_platform_superadmin?: boolean
 }
 
 export type Direction = {

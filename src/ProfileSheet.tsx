@@ -326,16 +326,20 @@ export default function ProfileSheet({
                 : 'codir'
 
         if (currentUserId) {
-          await updateUser(currentUserId, {
-            prenom: firstName || null,
-            nom: lastName || null,
-            job_title: jobTitle || null,
-            avatar_url: avatarUrlToPersist,
-            direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
-            direction_nom: directionName || null,
-            managed_count: managedCount,
-            total_effectif: totalEffectif,
-          })
+          await updateUser(
+            currentUserId,
+            {
+              prenom: firstName || null,
+              nom: lastName || null,
+              job_title: jobTitle || null,
+              avatar_url: avatarUrlToPersist,
+              direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
+              direction_nom: directionName || null,
+              managed_count: managedCount,
+              total_effectif: totalEffectif,
+            },
+            workspaceId ? { workspace_id: workspaceId } : undefined,
+          )
         } else {
           const {
             data: { session },

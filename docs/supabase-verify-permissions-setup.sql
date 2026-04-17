@@ -2,6 +2,9 @@
 -- La Forge — Vérifications lecture seule après migrations permissions
 -- À exécuter dans Supabase SQL Editor (aucune modification de données).
 --
+-- Voir aussi : docs/supabase-verify-rls-all-public-tables.sql (toutes les tables public),
+-- docs/security-quick-wins.md (MFA, rate limits, secrets).
+--
 -- Comment lancer :
 --   • Bouton **Run** (ou raccourci) sur tout le fichier : plusieurs SELECT
 --     s’enchaînent et tu obtiens plusieurs onglets / blocs de résultats.

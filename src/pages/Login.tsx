@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import {
-  isSuperAdmin,
+  isPlatformSuperadmin,
   sendMagicLink,
   signInWithEmail,
   signInWithGoogle,
@@ -37,7 +37,7 @@ export default function Login({ onAuthenticated }: LoginProps) {
 
   async function ensureInvitedAccess(userEmail: string | undefined) {
     if (!userEmail) throw new Error('Cet email n\'est pas invité dans l\'application')
-    if (isSuperAdmin(userEmail)) return
+    if (await isPlatformSuperadmin()) return
 
     const allowed = await userCanAccessApp(userEmail)
     if (!allowed) {

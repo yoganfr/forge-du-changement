@@ -3,6 +3,39 @@ import type { Workspace, User, Direction, Projet, Invitation } from './types'
 
 const STORAGE_BUCKET = 'assets'
 
+async function resolveAuditActorUserId(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const email = session?.user?.email?.trim().toLowerCase()
+  if (!email) return null
+  const { data } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
+  return data?.id ?? null
+}
+
+/** Écrit une ligne dans `audit_events` (best-effort : échecs silencieux en prod, log en dev). */
+export async function insertAuditEvent(params: {
+  workspace_id: string | null
+  action: string
+  payload?: Record<string, unknown>
+}): Promise<void> {
+  const actor_user_id = await resolveAuditActorUserId()
+  const { error } = await supabase.from('audit_events').insert({
+    workspace_id: params.workspace_id,
+    actor_user_id,
+    action: params.action,
+    payload: params.payload ?? null,
+  })
+  if (error && import.meta.env.DEV) {
+    console.warn('[audit_events]', params.action, error.message)
+  }
+}
+
+/**
+ * Upload vers le bucket Storage `assets` + URL publique.
+ * Les URLs retournées sont lisibles par quiconque connaît le lien (bucket typiquement public en lecture).
+ * Pour des pièces sensibles : bucket privé + `createSignedUrl` + voir `docs/supabase-storage-assets-hardening.sql`.
+ */
 export function isStorageBucketNotFound(error: unknown): boolean {
   const msg = typeof error === 'object' && error && 'message' in error
     ? String((error as { message?: unknown }).message ?? '').toLowerCase()
@@ -42,7 +75,13 @@ export async function createWorkspace(data: {
     .select()
     .single()
   if (error) throw error
-  return workspace as Workspace
+  const w = workspace as Workspace
+  void insertAuditEvent({
+    workspace_id: w.id,
+    action: 'workspace_created',
+    payload: { company_name: w.company_name },
+  })
+  return w
 }
 
 export async function getWorkspace(id: string): Promise<Workspace> {
@@ -76,6 +115,11 @@ export async function updateWorkspace(
     .select()
     .single()
   if (error) throw error
+  void insertAuditEvent({
+    workspace_id: id,
+    action: 'workspace_updated',
+    payload: { fields: Object.keys(data) },
+  })
   return workspace as Workspace
 }
 
@@ -87,16 +131,31 @@ export async function createUser(data: Partial<User>): Promise<User> {
     .select()
     .single()
   if (error) throw error
-  return user as User
+  const u = user as User
+  if (u.workspace_id) {
+    void insertAuditEvent({
+      workspace_id: u.workspace_id,
+      action: 'user_created',
+      payload: { email: u.email, role: u.role },
+    })
+  }
+  return u
 }
 
-export async function updateUser(id: string, data: Partial<User>): Promise<User> {
-  const { data: user, error } = await supabase
-    .from('users')
-    .update(data)
-    .eq('id', id)
-    .select()
-    .single()
+/**
+ * Mise à jour d’un `users` par id. Si `scope.workspace_id` est fourni, l’update ne matche que si la ligne
+ * appartient à ce workspace (défense en profondeur ; la RLS reste la barrière principale).
+ */
+export async function updateUser(
+  id: string,
+  data: Partial<User>,
+  scope?: { workspace_id: string },
+): Promise<User> {
+  let q = supabase.from('users').update(data).eq('id', id)
+  if (scope?.workspace_id) {
+    q = q.eq('workspace_id', scope.workspace_id)
+  }
+  const { data: user, error } = await q.select().single()
   if (error) throw error
   return user as User
 }
@@ -189,7 +248,13 @@ export async function createInvitation(data: Partial<Invitation>): Promise<Invit
     .select()
     .single()
   if (error) throw error
-  return invitation as Invitation
+  const inv = invitation as Invitation
+  void insertAuditEvent({
+    workspace_id: inv.workspace_id,
+    action: 'invitation_created',
+    payload: { email: inv.email, role: inv.role },
+  })
+  return inv
 }
 
 export async function getWorkspaceInvitations(workspaceId: string): Promise<Invitation[]> {
@@ -246,4 +311,9 @@ export async function markInvitationsAcceptedForWorkspaceEmail(
     .eq('email', normalized)
     .eq('status', 'en_attente')
   if (error) throw error
+  void insertAuditEvent({
+    workspace_id: workspaceId,
+    action: 'invitations_marked_accepted',
+    payload: { email: normalized },
+  })
 }
