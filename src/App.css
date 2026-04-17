@@ -14,19 +14,22 @@
   min-height: 100svh;
   font-family: var(--font-body);
   font-size: var(--fs-base);
-  background: var(--theme-bg-page);
+  background: transparent;
   color: var(--theme-text);
 }
 
 .dashboard__sidebar {
   width: 260px;
   flex-shrink: 0;
-  background: var(--theme-bg-sidebar);
+  background: var(--glass-bg-sidebar);
   color: var(--theme-sidebar-text);
   display: flex;
   flex-direction: column;
   padding: var(--space-xl) var(--space-lg) var(--space-lg);
-  box-shadow: var(--shadow-md);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 .dashboard__brand {
@@ -46,7 +49,7 @@
   width: 56px;
   height: 56px;
   border-radius: 14px;
-  background: var(--theme-accent);
+  background: var(--brand-bordeaux, #8e3b46);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -176,11 +179,13 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--space-md) var(--space-xl);
-  padding: var(--space-lg) var(--space-xl);
-  background: var(--theme-bg-page);
-  border-bottom: 1px solid var(--theme-border);
-  box-shadow: var(--shadow-sm);
+  gap: var(--space-lg) var(--space-2xl);
+  padding: var(--space-2xl) var(--space-2xl) var(--space-xl);
+  background: var(--glass-bg-header);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 .dashboard__header-main {
@@ -208,21 +213,24 @@
 }
 
 .dashboard__admin-btn {
-  border: 1px solid var(--theme-accent);
-  background: color-mix(in srgb, var(--theme-accent) 18%, var(--theme-bg-card));
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 55%, var(--glass-border));
+  background: color-mix(in srgb, var(--glass-bg-chip) 88%, var(--theme-accent) 12%);
   color: var(--theme-text);
   border-radius: 999px;
   padding: 8px 14px;
   font-size: var(--fs-small);
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  box-shadow: var(--glass-highlight);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s, border-color 0.2s;
 }
 
 .dashboard__admin-btn:hover {
-  background: color-mix(in srgb, var(--theme-accent) 18%, var(--theme-bg-card));
+  background: color-mix(in srgb, var(--glass-bg-chip) 78%, var(--theme-accent) 22%);
   transform: translateY(-1px);
-  box-shadow: 0 0 0 3px rgba(142, 59, 70, 0.08);
+  box-shadow: var(--glass-highlight), 0 4px 20px color-mix(in srgb, var(--theme-accent) 18%, transparent);
 }
 
 .company-badge {
@@ -231,16 +239,19 @@
   gap: 8px;
   padding: 6px 14px 6px 6px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--theme-border) 92%, var(--theme-text));
-  background: var(--theme-bg-card);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-chip);
   cursor: pointer;
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  box-shadow: var(--glass-highlight);
   transition: border-color 0.2s, box-shadow 0.2s;
   font-family: var(--font-body);
 }
 
 .company-badge:hover {
-  border-color: var(--theme-accent);
-  box-shadow: 0 0 0 3px rgba(142, 59, 70, 0.1);
+  border-color: color-mix(in srgb, var(--theme-accent) 45%, var(--glass-border));
+  box-shadow: var(--glass-highlight), 0 4px 24px color-mix(in srgb, var(--theme-accent) 12%, transparent);
 }
 
 .company-badge-initials {
@@ -272,17 +283,20 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #4C86A8;
+  background: color-mix(in srgb, var(--brand-bordeaux, #8e3b46) 72%, var(--glass-bg-chip));
   color: white;
   font-size: 12px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--theme-border);
+  border: 1px solid var(--glass-border-soft);
+  box-shadow: var(--glass-highlight);
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   overflow: hidden;
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
 }
 
 .user-badge-avatar:hover {
@@ -297,7 +311,7 @@
   display: block;
 }
 
-/* Toggle thème : bouton → accent */
+/* Toggle thème : accent marque + léger relief vitré */
 .dashboard__theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -305,10 +319,14 @@
   width: 42px;
   height: 42px;
   border-radius: var(--radius-md);
-  background: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 92%, var(--glass-bg-chip));
   color: var(--theme-on-accent);
   font-size: 1.1rem;
   line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, var(--glass-border));
+  box-shadow: var(--glass-highlight), 0 4px 16px color-mix(in srgb, var(--theme-accent) 22%, transparent);
+  backdrop-filter: blur(10px) saturate(1.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
   transition:
     background var(--transition),
     transform var(--transition),
@@ -316,13 +334,13 @@
 }
 
 .dashboard__theme-toggle:hover {
-  background: var(--coral-400);
+  background: color-mix(in srgb, var(--brand-bordeaux, #8e3b46) 88%, #1a0a0c);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
 
 .dashboard__theme-toggle:focus-visible {
-  outline: 2px solid var(--coral-400);
+  outline: 2px solid color-mix(in srgb, var(--brand-bordeaux, #8e3b46) 70%, transparent);
   outline-offset: 3px;
 }
 
@@ -333,13 +351,16 @@
   color: var(--theme-text-muted);
   padding: var(--space-sm) var(--space-md);
   border-radius: 999px;
-  background: var(--theme-bg-card);
-  border: 1px solid var(--theme-border);
+  background: var(--glass-bg-chip);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
 }
 
 .dashboard__content {
   flex: 1;
-  padding: var(--space-xl);
+  padding: var(--space-2xl) var(--space-2xl) var(--space-3xl);
   max-width: var(--max-width);
   width: 100%;
   box-sizing: border-box;
@@ -355,10 +376,10 @@
 .dashboard__cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-lg);
+  gap: var(--space-2xl);
 }
 
-/* Fond carte = token thème ; bordure / ombre renforcées en clair via themes.css */
+/* Cartes accueil — glass + teinte module (multicouche) */
 .dashboard__card {
   appearance: none;
   border: none;
@@ -367,25 +388,124 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-md);
-  padding: var(--space-xl) var(--space-lg);
+  gap: var(--space-lg);
+  padding: var(--space-2xl) var(--space-xl);
   border-radius: var(--radius-lg);
-  background: var(--theme-bg-card);
-  border: 1px solid var(--theme-dashboard-card-border, var(--theme-border));
-  box-shadow: var(--theme-dashboard-card-shadow, var(--shadow-sm));
+  isolation: isolate;
+  background: var(--glass-bg-card);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow), var(--shadow-card-long);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   cursor: pointer;
   font-family: var(--font-body);
   color: var(--theme-text);
+  position: relative;
+  overflow: hidden;
   transition:
     transform var(--transition),
     box-shadow var(--transition),
     border-color var(--transition);
 }
 
+/* Micro-identité par module : barre gauche + teinte pastel sur le verre */
+.dashboard__card::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  opacity: 0.9;
+  transition: width 0.25s ease, opacity 0.25s ease;
+}
+
+.dashboard__card--sens::before {
+  background: linear-gradient(
+    180deg,
+    var(--brand-bordeaux, #8e3b46),
+    color-mix(in srgb, var(--brand-bordeaux, #8e3b46) 65%, var(--score-caramel-3, #a67d48))
+  );
+}
+
+.dashboard__card--roles::before {
+  background: linear-gradient(
+    180deg,
+    var(--score-caramel-3, #a67d48),
+    color-mix(in srgb, var(--score-caramel-2, #c4a574) 72%, var(--brand-bordeaux, #8e3b46))
+  );
+}
+
+.dashboard__card--fabrique::before {
+  background: linear-gradient(
+    180deg,
+    var(--score-caramel-4, #8f5f32),
+    color-mix(in srgb, var(--brand-bordeaux, #8e3b46) 45%, var(--score-caramel-1, #d4c4a8))
+  );
+}
+
+.dashboard__card--sens {
+  background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--brand-bordeaux, #8e3b46) 16%, transparent) 0%,
+      transparent 58%
+    ),
+    var(--glass-bg-card);
+}
+
+.dashboard__card--roles {
+  background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--score-caramel-3, #a67d48) 18%, transparent) 0%,
+      transparent 58%
+    ),
+    var(--glass-bg-card);
+}
+
+.dashboard__card--fabrique {
+  background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--score-caramel-2, #c4a574) 20%, transparent) 0%,
+      transparent 58%
+    ),
+    var(--glass-bg-card);
+}
+
 .dashboard__card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--theme-dashboard-card-border, var(--theme-border));
+  transform: translateY(-4px);
+  box-shadow: var(--glass-highlight), var(--glass-shadow), var(--shadow-card-long);
+  border-color: color-mix(in srgb, var(--theme-accent) 32%, var(--glass-border));
+}
+
+.dashboard__card:hover::before {
+  width: 5px;
+  opacity: 1;
+}
+
+/* Contenu au-dessus des couches vitreuses */
+.dashboard__card > * {
+  position: relative;
+  z-index: 2;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .dashboard__sidebar,
+  .dashboard__header,
+  .dashboard__card,
+  .company-badge,
+  .dashboard__header-badge,
+  .dashboard__admin-btn {
+    background: var(--theme-bg-card);
+  }
+
+  .dashboard__sidebar {
+    background: var(--theme-bg-sidebar);
+  }
 }
 
 .dashboard__card:focus-visible {

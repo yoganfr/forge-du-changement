@@ -5,6 +5,9 @@
 ═══════════════════════════════════════════════════ */
 
 :root {
+  /* Signature marque — constant clair / sombre */
+  --brand-bordeaux: #8e3b46;
+
   /* Palette fondamentale (mode clair) */
   --caramel-candy-50: #ffeeb3;
   --caramel-candy-100: #fdd284;
@@ -62,6 +65,9 @@
   --transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   --max-width: 1280px;
   --card-min: 240px;
+
+  /* Grain (référencé par index.css) */
+  --theme-noise-opacity: 0.028;
 }
 
 /* ─── Thème clair ─── */
@@ -70,14 +76,21 @@
 
   /* Couples fond/texte choisis pour un contraste élevé */
   --theme-bg-page: #fffaf0;
+  --theme-page-gradient: linear-gradient(
+    180deg,
+    #fffdf8 0%,
+    #fffaf0 42%,
+    color-mix(in srgb, var(--theme-bg-page) 94%, #f0dcc4) 100%
+  );
   --theme-bg-card: #ffffff;
   /* Cartes dashboard (clair uniquement — le sombre garde ses fallbacks) */
   --theme-dashboard-card-border: #e8d7b2;
-  --theme-dashboard-card-shadow: 0 6px 18px rgba(45, 26, 31, 0.12);
+  --theme-dashboard-card-shadow: 0 30px 60px -28px rgba(45, 26, 31, 0.14);
   --theme-bg-sidebar: #1a1a1a;
   --theme-text: var(--caramel-candy-800);
   --theme-text-muted: var(--caramel-candy-700);
-  --theme-accent: var(--caramel-candy-600);
+  /* Accent UI = bordeaux signature (pas de dérive orange en dark) */
+  --theme-accent: var(--brand-bordeaux);
   --theme-on-accent: #ffffff;
   --theme-border: #bea779;
   --theme-sidebar-text: #f0f0f0;
@@ -88,6 +101,26 @@
   --shadow-sm: 0 4px 12px rgba(42, 25, 30, 0.09);
   --shadow-md: 0 10px 28px rgba(42, 25, 30, 0.12);
   --shadow-lg: 0 18px 44px rgba(42, 25, 30, 0.16);
+  --shadow-card-long: 0 30px 60px -30px rgba(42, 26, 31, 0.18);
+
+  /* Glassmorphism — vitre multicouche, bordure 1px, flou (accessibilité : fond lisible) */
+  --glass-blur: 20px;
+  --glass-saturate: 1.4;
+  --glass-bg-header: color-mix(in srgb, rgba(255, 253, 248) 70%, transparent);
+  --glass-bg-card: color-mix(in srgb, #ffffff 76%, transparent);
+  --glass-bg-chip: color-mix(in srgb, #ffffff 82%, transparent);
+  --glass-bg-sidebar: color-mix(in srgb, rgba(26, 26, 26) 78%, transparent);
+  --glass-border: color-mix(in srgb, var(--theme-border) 28%, rgba(255, 255, 255, 0.65));
+  --glass-border-soft: rgba(255, 255, 255, 0.42);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --glass-shadow: 0 8px 32px rgba(45, 26, 31, 0.1);
+
+  /* Scores : échelle monochrome caramel + seul le palier critique en bordeaux */
+  --score-caramel-1: #d4c4a8;
+  --score-caramel-2: #c4a574;
+  --score-caramel-3: #a67d48;
+  --score-caramel-4: #8f5f32;
+  --score-critical: var(--brand-bordeaux);
 
   /* Alias consommés par design-system.css */
   --clr-surface: var(--theme-bg-page);
@@ -108,6 +141,8 @@
 /* ─── Thème sombre ─── */
 [data-theme='dark'] {
   color-scheme: dark;
+
+  --theme-noise-opacity: 0.04;
 
   /* Inversion palette fondamentale (mode sombre) */
   --caramel-candy-50: #470000;
@@ -141,11 +176,17 @@
   --muted-yellow-green-800: #f3ffc7;
 
   --theme-bg-page: #190f0e;
+  --theme-page-gradient: linear-gradient(
+    180deg,
+    #1c1210 0%,
+    #190f0e 50%,
+    color-mix(in srgb, #190f0e 88%, #3d2418) 100%
+  );
   --theme-bg-card: #261816;
   --theme-bg-sidebar: #0a0a0a;
   --theme-text: var(--orecchiette-800);
   --theme-text-muted: #eadbbf;
-  --theme-accent: var(--caramel-candy-600);
+  --theme-accent: var(--brand-bordeaux);
   --theme-on-accent: #ffffff;
   --theme-border: #6a4338;
   --theme-sidebar-text: #f0f0f0;
@@ -156,6 +197,24 @@
   --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --shadow-card-long: 0 30px 60px -28px rgba(0, 0, 0, 0.55);
+
+  --glass-blur: 22px;
+  --glass-saturate: 1.35;
+  --glass-bg-header: color-mix(in srgb, rgba(28, 18, 16) 72%, transparent);
+  --glass-bg-card: color-mix(in srgb, #2a1f1c 68%, transparent);
+  --glass-bg-chip: color-mix(in srgb, #302420 74%, transparent);
+  --glass-bg-sidebar: color-mix(in srgb, rgba(8, 8, 8) 82%, transparent);
+  --glass-border: color-mix(in srgb, var(--theme-border) 45%, rgba(255, 255, 255, 0.1));
+  --glass-border-soft: rgba(255, 255, 255, 0.1);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+
+  --score-caramel-1: #5a4a40;
+  --score-caramel-2: #7a6048;
+  --score-caramel-3: #9a7342;
+  --score-caramel-4: #b88952;
+  --score-critical: var(--brand-bordeaux);
 
   --clr-surface: var(--theme-bg-page);
   --clr-text: var(--theme-text);

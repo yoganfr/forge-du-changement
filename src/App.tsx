@@ -388,7 +388,7 @@ function App() {
                   <button
                     key={card.id}
                     type="button"
-                    className="dashboard__card"
+                    className={`dashboard__card dashboard__card--${card.id}`}
                     role="listitem"
                     onClick={() => setActiveNav(card.id)}
                   >

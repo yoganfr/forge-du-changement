@@ -160,7 +160,7 @@ const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
   },
 }
 
-const PERIMETRE_COLORS = ['#8E3B46', '#4C86A8', '#477890', '#6B7280', '#7C3AED', '#059669']
+const PERIMETRE_COLORS = ['#8E3B46', '#a67d48', '#8f5f32', '#7a5a42', '#6b4a38', '#5c3d2e']
 
 const DIR_PERIM_ID = 'perim-direction'
 const TRANS_PERIM_ID = 'perim-transverse'
@@ -312,10 +312,10 @@ function computeScore(project: Project, coefs: Coefficients): number {
 
 function getScoreColor(score: number): string {
   if (score === 0) return 'var(--theme-text-muted)'
-  if (score >= 75) return '#EF4444'
-  if (score >= 50) return '#F59E0B'
-  if (score >= 25) return '#4C86A8'
-  return '#10B981'
+  if (score >= 75) return 'var(--score-critical)'
+  if (score >= 50) return 'var(--score-caramel-4)'
+  if (score >= 25) return 'var(--score-caramel-3)'
+  return 'var(--score-caramel-2)'
 }
 
 function getScoreLabel(score: number): string {
@@ -990,7 +990,7 @@ function ProjectCard({
               </table>
               <div className="recap-lines">
                 <div>Score brut : {scoreRaw} / {scoreMax} (max pondéré)</div>
-                <div>Score final : <span className="recap-final-badge" style={{ background: scoreFinal === 0 ? '#9CA3AF' : getScoreColor(scoreFinal) }}>{scoreFinal} — {getScoreLabel(scoreFinal)}</span></div>
+                <div>Score final : <span className="recap-final-badge" style={{ background: scoreFinal === 0 ? 'color-mix(in srgb, var(--theme-text-muted) 35%, var(--theme-border))' : getScoreColor(scoreFinal) }}>{scoreFinal} — {getScoreLabel(scoreFinal)}</span></div>
               </div>
             </div>
           </div>
@@ -1473,10 +1473,10 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
               <p className="ps-page-sub">Les projets BUILD sont classés par indice de criticité — le top 5 est soumis au DG</p>
             </div>
             <div className="ps-legend">
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#EF4444' }} />≥75</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#F59E0B' }} />≥50</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#4C86A8' }} />≥25</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: '#10B981' }} />&lt;25</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-critical)' }} />≥75</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-caramel-4)' }} />≥50</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-caramel-3)' }} />≥25</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-caramel-2)' }} />&lt;25</span>
             </div>
           </div>
 
@@ -1547,7 +1547,7 @@ const CSS = `
 /* ── Root ── */
 .ps-root {
   min-height: 100svh;
-  background: var(--theme-bg-page);
+  background: transparent;
   color: var(--theme-text);
   font-family: var(--font-body);
   font-size: var(--fs-base);
@@ -1862,17 +1862,20 @@ const CSS = `
 }
 
 .project-card {
-  background: var(--theme-bg-card);
-  border: 1px solid color-mix(in srgb, var(--theme-border) 88%, var(--theme-text));
-  box-shadow: var(--shadow-sm);
+  position: relative;
+  background: var(--glass-bg-card);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow), var(--shadow-sm);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 
 .project-card--selected {
-  border-color: var(--perim-color);
-  box-shadow: 0 0 0 1px var(--perim-color), var(--shadow-sm);
+  border-color: color-mix(in srgb, var(--perim-color) 55%, var(--glass-border));
+  box-shadow: var(--glass-highlight), 0 0 0 1px color-mix(in srgb, var(--perim-color) 45%, transparent), var(--glass-shadow), var(--shadow-sm);
 }
 
 .project-card__header {
@@ -2084,7 +2087,7 @@ const CSS = `
 .pilotage-err {
   margin-top: 6px;
   font-size: 12px;
-  color: #EF4444;
+  color: var(--score-critical);
   font-weight: 600;
 }
 
@@ -2132,9 +2135,9 @@ const CSS = `
 }
 
 .type-badge--run {
-  background: color-mix(in srgb, #4C86A8 15%, transparent);
-  color: #4C86A8;
-  border: 1px solid #4C86A8;
+  background: color-mix(in srgb, var(--score-caramel-3) 18%, transparent);
+  color: var(--score-caramel-4);
+  border: 1px solid color-mix(in srgb, var(--score-caramel-3) 65%, var(--theme-border));
 }
 
 .project-thematique {
@@ -2145,7 +2148,7 @@ const CSS = `
 
 .competence-warn {
   font-size: 0.72rem;
-  color: #F59E0B;
+  color: var(--score-caramel-4);
   font-weight: 600;
 }
 
@@ -2346,19 +2349,21 @@ const CSS = `
 }
 
 .eval-legend-card {
-  border: 1px solid color-mix(in srgb, var(--theme-border) 88%, var(--theme-text));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--theme-bg-card) 88%, var(--theme-bg-page));
-  box-shadow: var(--shadow-sm);
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
   overflow: hidden;
 }
 
 .eval-legend-title {
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--theme-text);
-  padding: 9px 12px;
-  background: color-mix(in srgb, var(--theme-border) 45%, transparent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+  padding: 0 4px 12px;
+  background: transparent;
 }
 
 .eval-legend-table {
@@ -2367,10 +2372,11 @@ const CSS = `
 }
 
 .eval-legend-table td {
-  padding: 7px 10px;
-  font-size: 0.74rem;
-  color: color-mix(in srgb, var(--theme-text) 78%, var(--theme-bg-card));
-  border-top: 1px solid color-mix(in srgb, var(--theme-border) 70%, transparent);
+  padding: 12px 10px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--theme-text) 88%, var(--theme-bg-card));
+  border-top: 1px solid color-mix(in srgb, var(--theme-border) 12%, transparent);
 }
 
 .eval-legend-level {
@@ -2455,7 +2461,7 @@ const CSS = `
 .eligible-note {
   margin-top: 4px;
   font-size: 11px;
-  color: #10B981;
+  color: var(--score-caramel-3);
 }
 
 .section-title {
@@ -2549,19 +2555,19 @@ const CSS = `
 }
 
 .critere-value-pane--low {
-  background: #10B981;
+  background: var(--score-caramel-1);
 }
 
 .critere-value-pane--medium {
-  background: #4C86A8;
+  background: var(--score-caramel-2);
 }
 
 .critere-value-pane--high {
-  background: #F59E0B;
+  background: var(--score-caramel-3);
 }
 
 .critere-value-pane--critical {
-  background: #EF4444;
+  background: var(--score-critical);
 }
 
 .critere-name {
@@ -2630,30 +2636,33 @@ const CSS = `
 }
 
 .critere-square--level-1 {
-  color: #20d8ac;
+  color: var(--score-caramel-1);
 }
 
 .critere-square--level-2 {
-  color: #20d8ac;
+  color: var(--score-caramel-2);
 }
 
 .critere-square--level-3 {
-  color: #7cb6e6;
+  color: var(--score-caramel-3);
 }
 
 .critere-square--level-4 {
-  color: #f67c15;
+  color: var(--score-caramel-4);
 }
 
 .critere-square--level-5 {
-  color: #ff4a4a;
+  color: var(--score-critical);
 }
 
 .critere-value-pane--low .critere-val,
 .critere-value-pane--medium .critere-val,
-.critere-value-pane--high .critere-val,
-.critere-value-pane--critical .critere-val {
+.critere-value-pane--high .critere-val {
   color: #0a0a0a;
+}
+
+.critere-value-pane--critical .critere-val {
+  color: #fff;
 }
 
 .critere-row--urgence .critere-icon,
@@ -2720,15 +2729,15 @@ const CSS = `
 }
 
 .toggle-pill--yes {
-  background: rgba(16,185,129,0.12);
-  border-color: #10B981;
-  color: #10B981;
+  background: color-mix(in srgb, var(--score-caramel-2) 14%, transparent);
+  border-color: color-mix(in srgb, var(--score-caramel-3) 55%, var(--theme-border));
+  color: var(--score-caramel-4);
 }
 
 .toggle-pill--no {
-  background: rgba(245,158,11,0.14);
-  border-color: #F59E0B;
-  color: #F59E0B;
+  background: color-mix(in srgb, var(--score-caramel-4) 12%, transparent);
+  border-color: color-mix(in srgb, var(--score-caramel-4) 45%, var(--theme-border));
+  color: var(--score-critical);
 }
 
 .score-summary {
@@ -2778,9 +2787,9 @@ const CSS = `
 }
 
 .project-btn--danger {
-  background: rgba(239,68,68,0.12);
-  border: 1px solid rgba(239,68,68,0.5);
-  color: #EF4444;
+  background: color-mix(in srgb, var(--score-critical) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--score-critical) 45%, var(--theme-border));
+  color: var(--score-critical);
 }
 
 .project-btn--danger:hover {
@@ -3359,6 +3368,14 @@ const CSS = `
   }
   .project-card__body {
     padding: var(--space-md);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .project-card {
+    background: var(--theme-bg-card);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 `
