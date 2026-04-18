@@ -350,3 +350,218 @@
   color: var(--theme-text-muted);
   font-size: var(--text-sm);
 }
+
+/* ─── Vue tableau temps (jalons en colonnes) ─── */
+.mr-tgrid-wrap {
+  margin-bottom: var(--space-xl);
+}
+
+.mr-tgrid-intro {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}
+
+.mr-tgrid-scroll {
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--theme-bg-card);
+  -webkit-overflow-scrolling: touch;
+}
+
+.mr-tgrid {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-sm);
+}
+
+.mr-tgrid__sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--theme-bg-card);
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.06);
+}
+
+.mr-tgrid th,
+.mr-tgrid td {
+  border-bottom: 1px solid var(--glass-border);
+  border-right: 1px solid color-mix(in srgb, var(--theme-text) 8%, transparent);
+  vertical-align: top;
+  padding: 8px 10px;
+}
+
+.mr-tgrid th:last-child,
+.mr-tgrid td:last-child {
+  border-right: none;
+}
+
+.mr-tgrid__chantier-head,
+.mr-tgrid__chantier-cell {
+  min-width: 160px;
+  max-width: 220px;
+  text-align: left;
+}
+
+.mr-tgrid__time-head {
+  min-width: 118px;
+  max-width: 140px;
+  font-weight: 600;
+  text-align: center;
+  background: color-mix(in srgb, var(--theme-text) 4%, transparent);
+}
+
+.mr-tgrid__time-label {
+  display: block;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--theme-text);
+}
+
+.mr-tgrid__time-sub {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+  margin-top: 2px;
+}
+
+.mr-tgrid__chantier-name {
+  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.mr-tgrid__cell {
+  background: color-mix(in srgb, var(--theme-text) 2%, transparent);
+}
+
+.mr-tgrid__pills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.mr-tgrid__pill {
+  appearance: none;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  background: var(--theme-bg-page);
+  color: var(--theme-text);
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.3;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.mr-tgrid__pill:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.mr-tgrid__axe-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 3px;
+}
+
+.mr-tgrid__pill-num {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--theme-text-muted);
+  flex-shrink: 0;
+}
+
+.mr-tgrid__pill-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.mr-tgrid__actions-head {
+  min-width: 88px;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--theme-text) 5%, var(--theme-bg-card));
+}
+
+.mr-tgrid__actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--theme-bg-card);
+  border-left: 1px solid var(--glass-border);
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.06);
+}
+
+.mr-tgrid__add-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.mr-tgrid__add-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
+.mr-tgrid__add-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mr-tgrid__add-axe {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 2px solid;
+  background: transparent;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--theme-text);
+}
+
+.mr-tgrid__add-axe:hover {
+  background: color-mix(in srgb, var(--theme-text) 6%, transparent);
+}
+
+.mr-axes-detail {
+  margin-top: var(--space-lg);
+  border-radius: 12px;
+  border: 1px dashed var(--glass-border);
+  padding: var(--space-md);
+  background: color-mix(in srgb, var(--theme-text) 2%, transparent);
+}
+
+.mr-axes-detail__summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--theme-text-muted);
+}
+
+.mr-axes-detail[open] .mr-axes-detail__summary {
+  margin-bottom: var(--space-md);
+}

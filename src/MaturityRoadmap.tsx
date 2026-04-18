@@ -17,6 +17,7 @@ import {
   updateChantier,
   updateJalon,
 } from './lib/api'
+import RoadmapTimelineGrid from './RoadmapTimelineGrid'
 import './MaturityRoadmap.css'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
@@ -259,31 +260,6 @@ export default function MaturityRoadmap({
 
       <div className="mr-toolbar">
         <label>
-          Trimestre
-          <select
-            value={trimestre}
-            onChange={(e) => setTrimestre(e.target.value as typeof trimestre)}
-          >
-            <option value="all">Tous</option>
-            <option value="Q1">Q1</option>
-            <option value="Q2">Q2</option>
-            <option value="Q3">Q3</option>
-            <option value="Q4">Q4</option>
-          </select>
-        </label>
-        {trimestre !== 'all' && (
-          <label>
-            Année
-            <select value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))}>
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label>
           Axe
           <select value={axeFilter} onChange={(e) => setAxeFilter(e.target.value as typeof axeFilter)}>
             <option value="all">Tous</option>
@@ -300,6 +276,56 @@ export default function MaturityRoadmap({
           </button>
         )}
       </div>
+
+      <RoadmapTimelineGrid
+        chantiers={chantiers}
+        jalonsByChantier={jalonsByChantier}
+        axeFilter={axeFilter}
+        readOnly={readOnly}
+        onOpenJalon={(j, chId) => void openDrawer(j, chId)}
+        onAddJalon={(chId, axe) => void handleNewJalon(chId, axe)}
+      />
+
+      <details className="mr-axes-detail">
+        <summary className="mr-axes-detail__summary">Vue liste par axe (filtres trimestre / année)</summary>
+        <div className="mr-toolbar" style={{ marginTop: 12 }}>
+          <label>
+            Trimestre
+            <select
+              value={trimestre}
+              onChange={(e) => setTrimestre(e.target.value as typeof trimestre)}
+            >
+              <option value="all">Tous</option>
+              <option value="Q1">Q1</option>
+              <option value="Q2">Q2</option>
+              <option value="Q3">Q3</option>
+              <option value="Q4">Q4</option>
+            </select>
+          </label>
+          {trimestre !== 'all' && (
+            <label>
+              Année
+              <select value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))}>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label>
+            Axe
+            <select value={axeFilter} onChange={(e) => setAxeFilter(e.target.value as typeof axeFilter)}>
+              <option value="all">Tous</option>
+              {AXES.map((a) => (
+                <option key={a} value={a}>
+                  {AXE_META[a].title}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
       {chantiers.map((ch) => {
         const allJalons = jalonsByChantier[ch.id] ?? []
@@ -385,6 +411,7 @@ export default function MaturityRoadmap({
           + Nouveau chantier
         </button>
       )}
+      </details>
 
       {drawerJalonId && drawerChantierId && (
         <JalonDrawer
