@@ -38,6 +38,7 @@ const OnboardingFlow = lazy(() => import('./OnboardingFlow'))
 const CompanySheet = lazy(() => import('./CompanySheet'))
 const ProfileSheet = lazy(() => import('./ProfileSheet'))
 const DashboardDG = lazy(() => import('./pages/DashboardDG'))
+const MaturityRoadmap = lazy(() => import('./MaturityRoadmap'))
 
 const navItems = [
   { id: 'fabrique', label: 'La Fabrique', group: null },
@@ -130,6 +131,8 @@ function App() {
     return known.includes(activeNav as (typeof known)[number]) ? activeNav : 'home'
   }, [activeNav])
 
+  const [activeProjetId, setActiveProjetId] = useState<string | null>(null)
+  const [activeRoadmapDirectionId, setActiveRoadmapDirectionId] = useState<string | null>(null)
   const [showProfile, setShowProfile] = useState(false)
   const [showWorkspaceOnboarding, setShowWorkspaceOnboarding] = useState(false)
   const [workspacesCatalog, setWorkspacesCatalog] = useState<Workspace[]>([])
@@ -444,7 +447,11 @@ function App() {
             </span>
           </button>
 
-          <nav className="dashboard__nav dashboard__nav--top" aria-label="Navigation principale">
+          <nav
+            className="dashboard__nav dashboard__nav--top"
+            aria-label="Navigation principale"
+            hidden={Boolean(activeProjetId && activeRoadmapDirectionId)}
+          >
             {navItems.filter((item) => item.group === null).map((item) => (
               <button
                 key={item.id}
@@ -556,6 +563,8 @@ function App() {
                 setCompanyLogo(null)
                 setWorkspaceName('La Forge')
                 setActiveNav('home')
+                setActiveProjetId(null)
+                setActiveRoadmapDirectionId(null)
                 setAuthUser(null)
               }}
             >
@@ -568,7 +577,17 @@ function App() {
       <div className="dashboard__main">
         <main className="dashboard__content">
           <Suspense fallback={<p>Chargement du module…</p>}>
-            {normalizedActiveNav === 'home' ? (
+            {activeProjetId && workspaceId && activeRoadmapDirectionId ? (
+              <MaturityRoadmap
+                workspaceId={workspaceId}
+                projetId={activeProjetId}
+                directionId={activeRoadmapDirectionId}
+                onBack={() => {
+                  setActiveProjetId(null)
+                  setActiveRoadmapDirectionId(null)
+                }}
+              />
+            ) : normalizedActiveNav === 'home' ? (
             <div className="dashboard__module-panel">
               <div className="dashboard__module-panel-deco" aria-hidden="true" />
               <div
@@ -617,6 +636,10 @@ function App() {
               <ProjectSelector
                 memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
                 workspaceId={workspaceId}
+                onOpenRoadmap={(projetId, directionId) => {
+                  setActiveProjetId(projetId)
+                  setActiveRoadmapDirectionId(directionId)
+                }}
               />
             ) : normalizedActiveNav === 'dg' ? (
               <DashboardDG workspaceId={workspaceId} />

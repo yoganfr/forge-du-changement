@@ -682,6 +682,7 @@ function ProjectCard({
   onSaveProject,
   onDeleteProject,
   onPatchProject,
+  onOpenRoadmap,
 }: {
   project: Project
   coefs: Coefficients
@@ -694,6 +695,7 @@ function ProjectCard({
   onSaveProject: (updates: Partial<Project>) => void
   onDeleteProject: () => void
   onPatchProject: (updates: Partial<Project>) => void
+  onOpenRoadmap?: () => void
 }) {
   const [draft, setDraft] = useState<Project>(project)
   const [pilotageError, setPilotageError] = useState(false)
@@ -833,6 +835,18 @@ function ProjectCard({
                 title="Retenir pour le DG"
               >
                 {project.selected_for_transfo ? `★ #${dgRank} DG` : '☆ Retenir'}
+              </button>
+            )}
+            {onOpenRoadmap && (
+              <button
+                type="button"
+                className="roadmap-open-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenRoadmap()
+                }}
+              >
+                → Construire la roadmap
               </button>
             )}
             <span className="expand-icon">{expanded ? '▲' : '▼'}</span>
@@ -1138,6 +1152,7 @@ function PerimetreView({
   onUpdateProject,
   onDeleteProject,
   onPatchProject,
+  onOpenRoadmap,
 }: {
   perimetre: Perimetre
   coefs: Coefficients
@@ -1147,6 +1162,7 @@ function PerimetreView({
   onUpdateProject: (perimId: string, projId: string, updates: Partial<Project>) => Promise<void> | void
   onDeleteProject: (perimId: string, projId: string) => Promise<void> | void
   onPatchProject: (perimId: string, projId: string, updates: Partial<Project>) => void
+  onOpenRoadmap?: (projetId: string) => void
 }) {
   const [mode, setMode] = useState<'edition' | 'synthese'>('edition')
   const buildProjects = perimetre.projects
@@ -1208,6 +1224,11 @@ function PerimetreView({
               onSaveProject={(updates) => onUpdateProject(perimetre.id, project.id, updates)}
               onDeleteProject={() => onDeleteProject(perimetre.id, project.id)}
               onPatchProject={(updates) => onPatchProject(perimetre.id, project.id, updates)}
+              onOpenRoadmap={
+                project.type === 'BUILD' && project.selected_for_transfo && onOpenRoadmap
+                  ? () => onOpenRoadmap(project.id)
+                  : undefined
+              }
             />
           ))}
 
@@ -1285,9 +1306,15 @@ function CoefPanel({
 export interface ProjectSelectorProps {
   memberDirectionName?: string
   workspaceId?: string | null
+  /** Ouvre la Maturity Roadmap (projet BUILD retenu). */
+  onOpenRoadmap?: (projetId: string, directionId: string) => void
 }
 
-export default function ProjectSelector({ memberDirectionName = 'Ma direction', workspaceId = null }: ProjectSelectorProps) {
+export default function ProjectSelector({
+  memberDirectionName = 'Ma direction',
+  workspaceId = null,
+  onOpenRoadmap,
+}: ProjectSelectorProps) {
   const [perimetres, setPerimetres] = useState<Perimetre[]>(() =>
     applyMemberDirectionPrefill(
       autoSelectTopBuildProjects(buildInitialPerimetres(memberDirectionName), DEFAULT_COEFFICIENTS),
@@ -1393,6 +1420,16 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
     if (perimId === TRANS_PERIM_ID) return transverseCandidate?.id ?? null
     if (perimId === DIR_PERIM_ID) return directionCandidate?.id ?? null
     return null
+  }
+
+  function handleOpenRoadmap(projetId: string) {
+    if (!onOpenRoadmap || !active) return
+    const dirId = resolveDirectionIdForWrite(active.id)
+    if (!dirId) {
+      setSyncError('Synchronisation des directions en cours. Réessayez dans quelques secondes.')
+      return
+    }
+    onOpenRoadmap(projetId, dirId)
   }
 
   function updateProjectLocal(perimId: string, projId: string, updates: Partial<Project>) {
@@ -1592,6 +1629,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
               onUpdateProject={persistProject}
               onDeleteProject={removeProject}
               onPatchProject={updateProjectLocal}
+              onOpenRoadmap={onOpenRoadmap ? handleOpenRoadmap : undefined}
             />
           )}
           {syncLoading && <p className="ps-sync-note">Synchronisation en cours...</p>}
@@ -2327,6 +2365,22 @@ const CSS = `
   white-space: nowrap;
   font-family: var(--font-body);
   transition: all var(--transition);
+}
+
+.roadmap-open-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--perim-color) 45%, var(--glass-border));
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--perim-color) 12%, transparent);
+  color: var(--theme-text);
+  white-space: nowrap;
+}
+.roadmap-open-btn:hover {
+  background: color-mix(in srgb, var(--perim-color) 22%, transparent);
 }
 
 .transfo-toggle--on {

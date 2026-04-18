@@ -94,3 +94,61 @@ export type DashboardDgKpis = {
   avgBuildScore: number
   criticalProjects: number
 }
+
+export type Axe = 'PROCESSUS' | 'ORGANISATION' | 'OUTILS' | 'KPI'
+
+export type JalonStatut = 'a_venir' | 'en_cours' | 'realise' | 'bloque'
+
+export type JalonFacette =
+  | 'CONCEPTUALISATION'
+  | 'FORMATION'
+  | 'ACQUISITION'
+  | 'PRODUCTION'
+  | 'COMMUNICATION'
+  | 'AUTRE'
+
+export type Chantier = {
+  id: string
+  projet_id: string
+  workspace_id: string
+  nom: string
+  description: string | null
+  ordre: number
+  created_at: string
+  updated_at: string
+}
+
+export type Jalon = {
+  id: string
+  chantier_id: string
+  projet_id: string
+  workspace_id: string
+  direction_id: string | null
+  axe: Axe
+  numero: string | null
+  nom: string
+  description: string | null
+  mois_cible: number | null
+  annee_cible: number | null
+  ordre_sequentiel: number
+  statut: JalonStatut
+  responsable: string | null
+  decideur: string | null
+  kpi_description: string | null
+  kpi_valeur_cible: string | null
+  facette: JalonFacette | null
+  jalon_dependance_id: string | null
+  note_contexte: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type RaciRole = 'PILOTE' | 'IMPLIQUE' | 'INFORME'
+
+export type RaciJalon = {
+  id: string
+  jalon_id: string
+  direction_id: string
+  role: RaciRole
+  created_at: string
+}
