@@ -2,6 +2,54 @@ import { supabase } from './supabase'
 import type { Workspace, User, Direction, Projet, Invitation } from './types'
 
 const STORAGE_BUCKET = 'assets'
+const CACHE_TTL_MS = 30_000
+type ListOptions = { limit?: number; offset?: number }
+
+type CacheEntry<T> = { value: T; expiresAt: number }
+const responseCache = new Map<string, CacheEntry<unknown>>()
+const inflight = new Map<string, Promise<unknown>>()
+
+function readCache<T>(key: string): T | null {
+  const now = Date.now()
+  const entry = responseCache.get(key)
+  if (!entry) return null
+  if (entry.expiresAt <= now) {
+    responseCache.delete(key)
+    return null
+  }
+  return entry.value as T
+}
+
+function writeCache<T>(key: string, value: T, ttlMs = CACHE_TTL_MS): T {
+  responseCache.set(key, { value, expiresAt: Date.now() + ttlMs })
+  return value
+}
+
+function invalidateCache(prefixes: string[]): void {
+  if (prefixes.length === 0) return
+  for (const key of responseCache.keys()) {
+    if (prefixes.some((prefix) => key.startsWith(prefix))) {
+      responseCache.delete(key)
+    }
+  }
+}
+
+async function dedupedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const cached = readCache<T>(key)
+  if (cached !== null) return cached
+  const existing = inflight.get(key) as Promise<T> | undefined
+  if (existing) return existing
+  const request = (async () => {
+    try {
+      const result = await fetcher()
+      return writeCache(key, result)
+    } finally {
+      inflight.delete(key)
+    }
+  })()
+  inflight.set(key, request)
+  return request
+}
 
 async function resolveAuditActorUserId(): Promise<string | null> {
   const {
@@ -76,6 +124,7 @@ export async function createWorkspace(data: {
     .single()
   if (error) throw error
   const w = workspace as Workspace
+  invalidateCache(['workspaces:list'])
   void insertAuditEvent({
     workspace_id: w.id,
     action: 'workspace_created',
@@ -85,23 +134,27 @@ export async function createWorkspace(data: {
 }
 
 export async function getWorkspace(id: string): Promise<Workspace> {
-  const { data, error } = await supabase
-    .from('workspaces')
-    .select('*')
-    .eq('id', id)
-    .single()
-  if (error) throw error
-  return data as Workspace
+  return dedupedFetch(`workspace:${id}`, async () => {
+    const { data, error } = await supabase
+      .from('workspaces')
+      .select('*')
+      .eq('id', id)
+      .single()
+    if (error) throw error
+    return data as Workspace
+  })
 }
 
 /** Liste des espaces entreprise (consultant / admin). Nécessite une policy RLS SELECT adaptée. */
 export async function listWorkspaces(): Promise<Workspace[]> {
-  const { data, error } = await supabase
-    .from('workspaces')
-    .select('id, company_name, sector, size, logo_url, created_at')
-    .order('company_name', { ascending: true })
-  if (error) throw error
-  return (data ?? []) as Workspace[]
+  return dedupedFetch('workspaces:list', async () => {
+    const { data, error } = await supabase
+      .from('workspaces')
+      .select('id, company_name, sector, size, logo_url, created_at')
+      .order('company_name', { ascending: true })
+    if (error) throw error
+    return (data ?? []) as Workspace[]
+  })
 }
 
 export async function updateWorkspace(
@@ -115,6 +168,7 @@ export async function updateWorkspace(
     .select()
     .single()
   if (error) throw error
+  invalidateCache(['workspaces:list', `workspace:${id}`])
   void insertAuditEvent({
     workspace_id: id,
     action: 'workspace_updated',
@@ -132,6 +186,7 @@ export async function createUser(data: Partial<User>): Promise<User> {
     .single()
   if (error) throw error
   const u = user as User
+  if (u.workspace_id) invalidateCache([`workspace-users:${u.workspace_id}`])
   if (u.workspace_id) {
     void insertAuditEvent({
       workspace_id: u.workspace_id,
@@ -157,16 +212,23 @@ export async function updateUser(
   }
   const { data: user, error } = await q.select().single()
   if (error) throw error
+  if (scope?.workspace_id) invalidateCache([`workspace-users:${scope.workspace_id}`])
   return user as User
 }
 
-export async function getWorkspaceUsers(workspaceId: string): Promise<User[]> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-  if (error) throw error
-  return (data ?? []) as User[]
+export async function getWorkspaceUsers(workspaceId: string, options?: ListOptions): Promise<User[]> {
+  const offset = options?.offset ?? 0
+  const limit = options?.limit
+  const cacheKey = `workspace-users:${workspaceId}:${offset}:${limit ?? 'all'}`
+  return dedupedFetch(cacheKey, async () => {
+    let query = supabase.from('users').select('*').eq('workspace_id', workspaceId)
+    if (typeof limit === 'number' && limit > 0) {
+      query = query.range(offset, offset + limit - 1)
+    }
+    const { data, error } = await query
+    if (error) throw error
+    return (data ?? []) as User[]
+  })
 }
 
 // -- DIRECTIONS --
@@ -249,6 +311,7 @@ export async function createInvitation(data: Partial<Invitation>): Promise<Invit
     .single()
   if (error) throw error
   const inv = invitation as Invitation
+  if (inv.workspace_id) invalidateCache([`workspace-invitations:${inv.workspace_id}`])
   void insertAuditEvent({
     workspace_id: inv.workspace_id,
     action: 'invitation_created',
@@ -257,13 +320,22 @@ export async function createInvitation(data: Partial<Invitation>): Promise<Invit
   return inv
 }
 
-export async function getWorkspaceInvitations(workspaceId: string): Promise<Invitation[]> {
-  const { data, error } = await supabase
-    .from('invitations')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-  if (error) throw error
-  return (data ?? []) as Invitation[]
+export async function getWorkspaceInvitations(
+  workspaceId: string,
+  options?: ListOptions,
+): Promise<Invitation[]> {
+  const offset = options?.offset ?? 0
+  const limit = options?.limit
+  const cacheKey = `workspace-invitations:${workspaceId}:${offset}:${limit ?? 'all'}`
+  return dedupedFetch(cacheKey, async () => {
+    let query = supabase.from('invitations').select('*').eq('workspace_id', workspaceId)
+    if (typeof limit === 'number' && limit > 0) {
+      query = query.range(offset, offset + limit - 1)
+    }
+    const { data, error } = await query
+    if (error) throw error
+    return (data ?? []) as Invitation[]
+  })
 }
 
 /** Dernière invitation en attente pour cet email (connexion magic link avant ligne `users`). */
@@ -311,6 +383,7 @@ export async function markInvitationsAcceptedForWorkspaceEmail(
     .eq('email', normalized)
     .eq('status', 'en_attente')
   if (error) throw error
+  invalidateCache([`workspace-invitations:${workspaceId}`])
   void insertAuditEvent({
     workspace_id: workspaceId,
     action: 'invitations_marked_accepted',

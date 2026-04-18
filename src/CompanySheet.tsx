@@ -23,6 +23,8 @@ export interface CompanyMember {
 type InviteFormRole = 'Membre CODIR' | 'Pilote de projet' | 'Contributeur'
 
 const INVITE_ROLE_OPTIONS: InviteFormRole[] = ['Membre CODIR', 'Pilote de projet', 'Contributeur']
+const REMOTE_PAGE_SIZE = 500
+const MEMBERS_UI_PAGE_SIZE = 100
 
 function mapApiRoleToLabel(role: string): string {
   const r = role.toLowerCase()
@@ -241,6 +243,24 @@ function parseInvitationCsv(
   return { rows: deduped, lineErrors }
 }
 
+async function processWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return
+  let cursor = 0
+  const safeLimit = Math.max(1, Math.min(limit, items.length))
+  const runners = Array.from({ length: safeLimit }, async () => {
+    while (cursor < items.length) {
+      const current = items[cursor]
+      cursor += 1
+      await worker(current)
+    }
+  })
+  await Promise.all(runners)
+}
+
 export default function CompanySheet({
   workspaceId = null,
   companyName,
@@ -261,7 +281,9 @@ export default function CompanySheet({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [remoteMembers, setRemoteMembers] = useState<CompanyMember[] | null>(null)
+  const [remoteMembersLoading, setRemoteMembersLoading] = useState(false)
   const [membersRefreshKey, setMembersRefreshKey] = useState(0)
+  const [membersUiPage, setMembersUiPage] = useState(1)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<InviteFormRole>('Contributeur')
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
@@ -294,6 +316,12 @@ export default function CompanySheet({
   const canEdit = canEditCompany(currentUserRole)
   const canInvite = canInviteMembers(currentUserRole)
   const mergedMembers = remoteMembers ?? members
+  const totalMembersPages = Math.max(1, Math.ceil(mergedMembers.length / MEMBERS_UI_PAGE_SIZE))
+  const visibleMembers = useMemo(() => {
+    const safePage = Math.min(Math.max(membersUiPage, 1), totalMembersPages)
+    const start = (safePage - 1) * MEMBERS_UI_PAGE_SIZE
+    return mergedMembers.slice(start, start + MEMBERS_UI_PAGE_SIZE)
+  }, [membersUiPage, mergedMembers, totalMembersPages])
 
   function onLogoFile(file: File | null) {
     if (!file) {
@@ -308,18 +336,48 @@ export default function CompanySheet({
   }
 
   useEffect(() => {
+    setMembersUiPage(1)
+  }, [workspaceId, membersRefreshKey, mergedMembers.length])
+
+  useEffect(() => {
     if (!workspaceId) return
     let cancelled = false
+    async function fetchAllUsers(workspace: string): Promise<User[]> {
+      const all: User[] = []
+      let offset = 0
+      while (true) {
+        const page = await getWorkspaceUsers(workspace, { limit: REMOTE_PAGE_SIZE, offset })
+        all.push(...page)
+        if (page.length < REMOTE_PAGE_SIZE) break
+        offset += REMOTE_PAGE_SIZE
+      }
+      return all
+    }
+    async function fetchAllInvitations(workspace: string): Promise<Invitation[]> {
+      const all: Invitation[] = []
+      let offset = 0
+      while (true) {
+        const page = await getWorkspaceInvitations(workspace, { limit: REMOTE_PAGE_SIZE, offset })
+        all.push(...page)
+        if (page.length < REMOTE_PAGE_SIZE) break
+        offset += REMOTE_PAGE_SIZE
+      }
+      return all
+    }
     void (async () => {
+      setRemoteMembersLoading(true)
       try {
         const [users, invitations] = await Promise.all([
-          getWorkspaceUsers(workspaceId),
-          getWorkspaceInvitations(workspaceId),
+          fetchAllUsers(workspaceId),
+          fetchAllInvitations(workspaceId),
         ])
         if (cancelled) return
         setRemoteMembers(mergeUsersAndInvitations(users, invitations))
       } catch {
+        if (cancelled) return
         setRemoteMembers(null)
+      } finally {
+        if (!cancelled) setRemoteMembersLoading(false)
       }
     })()
     return () => {
@@ -381,7 +439,7 @@ export default function CompanySheet({
       let ok = 0
       let mailFail = 0
       const rowErrors: string[] = [...lineErrors]
-      for (const { email, role } of rows) {
+      await processWithConcurrency(rows, 4, async ({ email, role }) => {
         try {
           await createInvitation({
             workspace_id: workspaceId,
@@ -397,7 +455,7 @@ export default function CompanySheet({
         } catch (e) {
           rowErrors.push(`${email} : ${inviteApiErrorMessage(e)}`)
         }
-      }
+      })
       setCsvText('')
       setMembersRefreshKey((k) => k + 1)
       const parts = [`${ok} invitation(s) enregistrée(s).`]
@@ -562,8 +620,15 @@ export default function CompanySheet({
           {mergedMembers.length === 0 ? (
             <p className="cs-members-empty">Aucun membre invité pour le moment</p>
           ) : (
-            <div className="cs-members">
-              {mergedMembers.map((member, idx) => {
+            <>
+              <div className="cs-members-meta">
+                <span>
+                  {mergedMembers.length} membre(s) • page {Math.min(membersUiPage, totalMembersPages)}/{totalMembersPages}
+                </span>
+                {remoteMembersLoading && <span>Actualisation…</span>}
+              </div>
+              <div className="cs-members">
+                {visibleMembers.map((member) => {
                 const badgeColor = memberAvatarColor(member.role)
                 const pillLabel =
                   member.pillLabel ?? (member.status === 'actif' ? 'Actif' : 'Invité')
@@ -572,7 +637,7 @@ export default function CompanySheet({
                 const showResend =
                   canInvite && workspaceId && memberCanReceiveInviteResend(member)
                 return (
-                  <div key={`${member.email}-${idx}`} className="cs-member-row">
+                  <div key={member.email.toLowerCase()} className="cs-member-row">
                     <div className="cs-member-avatar" style={{ background: badgeColor }}>
                       {getInitials(getEmailLocal(member.email))}
                     </div>
@@ -600,8 +665,29 @@ export default function CompanySheet({
                     </span>
                   </div>
                 )
-              })}
-            </div>
+                })}
+              </div>
+              {totalMembersPages > 1 && (
+                <div className="cs-members-pagination">
+                  <button
+                    type="button"
+                    className="cs-members-page-btn"
+                    onClick={() => setMembersUiPage((p) => Math.max(1, p - 1))}
+                    disabled={membersUiPage <= 1}
+                  >
+                    ← Précédent
+                  </button>
+                  <button
+                    type="button"
+                    className="cs-members-page-btn"
+                    onClick={() => setMembersUiPage((p) => Math.min(totalMembersPages, p + 1))}
+                    disabled={membersUiPage >= totalMembersPages}
+                  >
+                    Suivant →
+                  </button>
+                </div>
+              )}
+            </>
           )}
           {resendBanner && (
             <p
@@ -887,6 +973,38 @@ const CSS = `
 }
 
 .cs-members { display: flex; flex-direction: column; gap: 8px; }
+
+.cs-members-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.cs-members-pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cs-members-page-btn {
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-bg-page);
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.cs-members-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .cs-member-row {
   display: grid;

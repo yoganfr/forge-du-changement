@@ -1,13 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import './App.css'
-import ProjectSelector from './ProjectSelector'
-import MemberOnboarding from './MemberOnboarding'
-import OnboardingFlow from './OnboardingFlow'
-import CompanySheet from './CompanySheet'
-import ProfileSheet from './ProfileSheet'
-import Login from './pages/Login'
-import SettingsPage from './pages/Settings'
 import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
 import {
@@ -36,6 +29,14 @@ import {
   persistTheme,
   type ThemeMode,
 } from './themeStorage'
+
+const Login = lazy(() => import('./pages/Login'))
+const SettingsPage = lazy(() => import('./pages/Settings'))
+const ProjectSelector = lazy(() => import('./ProjectSelector'))
+const MemberOnboarding = lazy(() => import('./MemberOnboarding'))
+const OnboardingFlow = lazy(() => import('./OnboardingFlow'))
+const CompanySheet = lazy(() => import('./CompanySheet'))
+const ProfileSheet = lazy(() => import('./ProfileSheet'))
 
 const navItems = [
   { id: 'fabrique', label: 'La Fabrique', group: null },
@@ -68,6 +69,33 @@ const cards = [
 
 type OnboardingData = OnboardingFlowProps extends { onComplete: (data: infer T) => void } ? T : never
 
+const APP_SHELL_FALLBACK = (
+  <div
+    style={{
+      minHeight: '100svh',
+      display: 'grid',
+      placeItems: 'center',
+      background: 'var(--theme-bg-page)',
+      color: 'var(--theme-text)',
+    }}
+  >
+    <p>Chargement...</p>
+  </div>
+)
+
+function readStoredProfile(): StoredMemberProfile | null {
+  try {
+    const raw = localStorage.getItem('lfdc-member-onboarding')
+    return raw ? (JSON.parse(raw) as StoredMemberProfile) : null
+  } catch {
+    return null
+  }
+}
+
+function profileInitials(profile: StoredMemberProfile | null): string {
+  return `${profile?.firstName?.[0] ?? ''}${profile?.lastName?.[0] ?? ''}`.toUpperCase() || '?'
+}
+
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authUser, setAuthUser] = useState<User | null>(null)
@@ -75,17 +103,14 @@ function App() {
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
   const [workspaceName, setWorkspaceName] = useState('La Forge')
   const [companyLogo, setCompanyLogo] = useState<string | null>(readInitialCompanyLogo)
-  const [userInitials, setUserInitials] = useState('?')
+  const [storedProfile, setStoredProfile] = useState<StoredMemberProfile | null>(() => readStoredProfile())
+  const [userInitials, setUserInitials] = useState(() => profileInitials(readStoredProfile()))
   const [activeNav, setActiveNav] = useState<string>('home')
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
-  const storedProfile = (() => {
-    try {
-      const raw = localStorage.getItem('lfdc-member-onboarding')
-      return raw ? JSON.parse(raw) as StoredMemberProfile : null
-    } catch {
-      return null
-    }
-  })()
+  const normalizedActiveNav = useMemo(() => {
+    const known = ['fabrique', 'workspace', 'sens', 'roles', 'company', 'settings'] as const
+    return known.includes(activeNav as (typeof known)[number]) ? activeNav : 'home'
+  }, [activeNav])
 
   const [showProfile, setShowProfile] = useState(false)
   const [showWorkspaceOnboarding, setShowWorkspaceOnboarding] = useState(false)
@@ -312,65 +337,52 @@ function App() {
   }, [authUser, workspaceId])
 
   if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: '100svh',
-          display: 'grid',
-          placeItems: 'center',
-          background: 'var(--theme-bg-page)',
-          color: 'var(--theme-text)',
-        }}
-      >
-        <p>Chargement...</p>
-      </div>
-    )
+    return APP_SHELL_FALLBACK
   }
 
   if (!authUser) {
     return (
-      <Login
-        onAuthenticated={(user) => {
-          setAuthUser(user)
-        }}
-      />
+      <Suspense fallback={APP_SHELL_FALLBACK}>
+        <Login
+          onAuthenticated={(user) => {
+            setAuthUser(user)
+          }}
+        />
+      </Suspense>
     )
   }
 
   if (showWorkspaceOnboarding) {
     return (
-      <OnboardingFlow
-        onCancel={() => setShowWorkspaceOnboarding(false)}
-        onComplete={(data) => {
-          localStorage.setItem('workspaceId', data.workspace.id)
-          setWorkspaceId(data.workspace.id)
-          setWorkspaceName(data.workspace.company_name)
-          const logo =
-            normalizeWorkspaceLogoUrl(data.workspace.logo_url)
-            ?? normalizeWorkspaceLogoUrl(data.companyLogo)
-          setCompanyLogo(logo)
-          writeWorkspaceLogoUrl(data.workspace.id, logo)
-          writeWorkspaceSnapshot({
-            id: data.workspace.id,
-            company_name: data.workspace.company_name,
-            sector: data.workspace.sector,
-            size: data.workspace.size,
-            logo_url: logo,
-          })
-          try {
-            const raw = localStorage.getItem('lfdc-member-onboarding')
-            const p = raw ? JSON.parse(raw) as StoredMemberProfile : {}
-            const u = `${p.firstName?.[0] ?? ''}${p.lastName?.[0] ?? ''}`.toUpperCase() || '?'
-            setUserInitials(u)
-          } catch {
-            setUserInitials('?')
-          }
-          setWorkspaceData(data)
-          setActiveNav('company')
-          setShowWorkspaceOnboarding(false)
-          void refreshWorkspacesCatalog()
-        }}
-      />
+      <Suspense fallback={APP_SHELL_FALLBACK}>
+        <OnboardingFlow
+          onCancel={() => setShowWorkspaceOnboarding(false)}
+          onComplete={(data) => {
+            localStorage.setItem('workspaceId', data.workspace.id)
+            setWorkspaceId(data.workspace.id)
+            setWorkspaceName(data.workspace.company_name)
+            const logo =
+              normalizeWorkspaceLogoUrl(data.workspace.logo_url)
+              ?? normalizeWorkspaceLogoUrl(data.companyLogo)
+            setCompanyLogo(logo)
+            writeWorkspaceLogoUrl(data.workspace.id, logo)
+            writeWorkspaceSnapshot({
+              id: data.workspace.id,
+              company_name: data.workspace.company_name,
+              sector: data.workspace.sector,
+              size: data.workspace.size,
+              logo_url: logo,
+            })
+            const nextProfile = readStoredProfile()
+            setStoredProfile(nextProfile)
+            setUserInitials(profileInitials(nextProfile))
+            setWorkspaceData(data)
+            setActiveNav('company')
+            setShowWorkspaceOnboarding(false)
+            void refreshWorkspacesCatalog()
+          }}
+        />
+      </Suspense>
     )
   }
 
@@ -521,7 +533,8 @@ function App() {
 
       <div className="dashboard__main">
         <main className="dashboard__content">
-          {activeNav === 'home' || (!['fabrique', 'workspace', 'sens', 'roles', 'company', 'settings'].includes(activeNav)) ? (
+          <Suspense fallback={<p>Chargement du module…</p>}>
+            {normalizedActiveNav === 'home' ? (
             <div className="dashboard__module-panel">
               <div className="dashboard__module-panel-deco" aria-hidden="true" />
               <div
@@ -555,105 +568,106 @@ function App() {
                 </div>
               </div>
             </div>
-          ) : activeNav === 'settings' ? (
-            <SettingsPage
-              workspaceId={workspaceId}
-              workspaceName={workspaceName}
-              workspaces={workspacesCatalog}
-              workspacesLoading={workspacesLoading}
-              workspacesError={workspacesError}
-              onRefreshWorkspaces={() => { void refreshWorkspacesCatalog() }}
-              onSelectWorkspace={handleSelectWorkspaceFromSettings}
-              onAddWorkspace={() => setShowWorkspaceOnboarding(true)}
-            />
-          ) : activeNav === 'fabrique' ? (
-            <ProjectSelector
-              memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
-              workspaceId={workspaceId}
-            />
-          ) : activeNav === 'company' ? (
-            <CompanySheet
-              workspaceId={workspaceId}
-              companyName={workspaceData?.companyName ?? workspaceName}
-              sector={workspaceData?.sector ?? 'Non renseigné'}
-              size={workspaceData?.size ?? 'Non renseigné'}
-              members={workspaceData?.members ?? []}
-              currentUserRole={currentUserRole}
-              companyLogo={companyLogo}
-              onCompanyUpdate={(data) => {
-                setCompanyLogo(data.logo)
-                setWorkspaceName(data.companyName)
-                setWorkspaceData((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        companyName: data.companyName,
-                        sector: data.sector,
-                        size: data.size,
-                        companyLogo: data.logo,
-                        workspace: prev.workspace
-                          ? {
-                              ...prev.workspace,
-                              company_name: data.companyName,
-                              sector: data.sector === 'Non renseigné' ? null : data.sector,
-                              size:
-                                data.size === 'Non renseigné'
-                                  ? null
-                                  : (data.size as Workspace['size']),
-                              logo_url: data.logo,
-                            }
-                          : prev.workspace,
-                      }
-                    : prev,
-                )
-                if (workspaceId) {
-                  writeWorkspaceLogoUrl(workspaceId, data.logo)
-                  writeWorkspaceSnapshot({
-                    id: workspaceId,
-                    company_name: data.companyName,
-                    sector: data.sector === 'Non renseigné' ? null : data.sector,
-                    size: data.size === 'Non renseigné' ? null : data.size,
-                    logo_url: data.logo,
-                  })
-                }
-              }}
-            />
-          ) : activeNav === 'workspace' ? (
-            <MemberOnboarding
-              firstName={storedProfile?.firstName}
-              direction={storedProfile?.directionName || 'votre direction'}
-              role="codir"
-              onNavigate={setActiveNav}
-            />
-          ) : (
-            <></>
-          )}
+            ) : normalizedActiveNav === 'settings' ? (
+              <SettingsPage
+                workspaceId={workspaceId}
+                workspaceName={workspaceName}
+                workspaces={workspacesCatalog}
+                workspacesLoading={workspacesLoading}
+                workspacesError={workspacesError}
+                onRefreshWorkspaces={() => { void refreshWorkspacesCatalog() }}
+                onSelectWorkspace={handleSelectWorkspaceFromSettings}
+                onAddWorkspace={() => setShowWorkspaceOnboarding(true)}
+              />
+            ) : normalizedActiveNav === 'fabrique' ? (
+              <ProjectSelector
+                memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
+                workspaceId={workspaceId}
+              />
+            ) : normalizedActiveNav === 'company' ? (
+              <CompanySheet
+                workspaceId={workspaceId}
+                companyName={workspaceData?.companyName ?? workspaceName}
+                sector={workspaceData?.sector ?? 'Non renseigné'}
+                size={workspaceData?.size ?? 'Non renseigné'}
+                members={workspaceData?.members ?? []}
+                currentUserRole={currentUserRole}
+                companyLogo={companyLogo}
+                onCompanyUpdate={(data) => {
+                  setCompanyLogo(data.logo)
+                  setWorkspaceName(data.companyName)
+                  setWorkspaceData((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          companyName: data.companyName,
+                          sector: data.sector,
+                          size: data.size,
+                          companyLogo: data.logo,
+                          workspace: prev.workspace
+                            ? {
+                                ...prev.workspace,
+                                company_name: data.companyName,
+                                sector: data.sector === 'Non renseigné' ? null : data.sector,
+                                size:
+                                  data.size === 'Non renseigné'
+                                    ? null
+                                    : (data.size as Workspace['size']),
+                                logo_url: data.logo,
+                              }
+                            : prev.workspace,
+                        }
+                      : prev,
+                  )
+                  if (workspaceId) {
+                    writeWorkspaceLogoUrl(workspaceId, data.logo)
+                    writeWorkspaceSnapshot({
+                      id: workspaceId,
+                      company_name: data.companyName,
+                      sector: data.sector === 'Non renseigné' ? null : data.sector,
+                      size: data.size === 'Non renseigné' ? null : data.size,
+                      logo_url: data.logo,
+                    })
+                  }
+                }}
+              />
+            ) : normalizedActiveNav === 'workspace' ? (
+              <MemberOnboarding
+                firstName={storedProfile?.firstName}
+                direction={storedProfile?.directionName || 'votre direction'}
+                role="codir"
+                onNavigate={setActiveNav}
+              />
+            ) : (
+              <></>
+            )}
+          </Suspense>
         </main>
       </div>
 
-      <ProfileSheet
-        open={showProfile}
-        onClose={() => setShowProfile(false)}
-        workspaceId={workspaceId}
-        firstName={storedProfile?.firstName ?? ''}
-        lastName={storedProfile?.lastName ?? ''}
-        jobTitle={storedProfile?.jobTitle ?? ''}
-        direction={storedProfile?.directionName ?? ''}
-        mission={storedProfile?.mission ?? ''}
-        vision={storedProfile?.vision ?? ''}
-        role="codir"
-        directionType={storedProfile?.directionType}
-        managedCount={storedProfile?.managedCount}
-        totalEffectif={storedProfile?.totalEffectif}
-        avatarUrl={storedProfile?.avatar ?? null}
-        onSaved={() => {
-          try {
-            const raw = localStorage.getItem('lfdc-member-onboarding')
-            const p = raw ? JSON.parse(raw) as StoredMemberProfile : {}
-            setUserInitials(`${p.firstName?.[0] ?? ''}${p.lastName?.[0] ?? ''}`.toUpperCase() || '?')
-          } catch { /* ignore */ }
-        }}
-      />
+      <Suspense fallback={null}>
+        <ProfileSheet
+          open={showProfile}
+          onClose={() => setShowProfile(false)}
+          workspaceId={workspaceId}
+          firstName={storedProfile?.firstName ?? ''}
+          lastName={storedProfile?.lastName ?? ''}
+          jobTitle={storedProfile?.jobTitle ?? ''}
+          direction={storedProfile?.directionName ?? ''}
+          mission={storedProfile?.mission ?? ''}
+          vision={storedProfile?.vision ?? ''}
+          role="codir"
+          directionType={storedProfile?.directionType}
+          managedCount={storedProfile?.managedCount}
+          totalEffectif={storedProfile?.totalEffectif}
+          avatarUrl={storedProfile?.avatar ?? null}
+          onSaved={() => {
+            const nextProfile = readStoredProfile()
+            setStoredProfile(nextProfile)
+            setUserInitials(profileInitials(nextProfile))
+          }}
+        />
+      </Suspense>
     </div>
   )
 }
