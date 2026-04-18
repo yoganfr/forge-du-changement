@@ -496,12 +496,69 @@
   font-size: var(--text-sm);
 }
 
+.mr-tgrid--matrix {
+  min-width: 960px;
+}
+
 .mr-tgrid__sticky {
   position: sticky;
   left: 0;
   z-index: 2;
   background: var(--theme-bg-card);
   box-shadow: 4px 0 12px rgba(0, 0, 0, 0.06);
+}
+
+.mr-tgrid__sticky--axis {
+  left: 0;
+  z-index: 3;
+  min-width: 76px;
+  max-width: 88px;
+  width: 76px;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.06);
+}
+
+.mr-tgrid__sticky--chantier {
+  left: 76px;
+  z-index: 2;
+  min-width: 148px;
+  max-width: 200px;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.06);
+}
+
+.mr-tgrid__axis-head {
+  min-width: 76px;
+  max-width: 88px;
+  width: 76px;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--theme-text-muted);
+  vertical-align: bottom;
+}
+
+.mr-tgrid__axis-cell {
+  vertical-align: middle;
+  text-align: center;
+  padding: 10px 6px;
+}
+
+.mr-tgrid__axis-cell-title {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  max-height: 280px;
+  overflow: hidden;
+}
+
+.mr-tgrid__block-start-row th,
+.mr-tgrid__block-start-row td {
+  border-top: 2px solid color-mix(in srgb, var(--theme-text) 18%, transparent);
 }
 
 .mr-tgrid th,
@@ -638,6 +695,57 @@
 .mr-tgrid__pill-name {
   flex: 1;
   min-width: 0;
+}
+
+.mr-tgrid__pill--matrix {
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--theme-text) 12%, transparent);
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow: hidden;
+  min-height: 36px;
+}
+
+.mr-tgrid__pill--matrix:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.mr-tgrid__pill-check {
+  display: flex;
+  align-items: flex-start;
+  padding: 6px 2px 6px 6px;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.mr-tgrid__pill-check input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--theme-accent, #8e3b46);
+  cursor: pointer;
+}
+
+.mr-tgrid__pill-main {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 6px 8px 6px 2px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--theme-text);
+}
+
+.mr-tgrid__pill-main:hover {
+  opacity: 0.92;
 }
 
 .mr-tgrid__cell-plus {

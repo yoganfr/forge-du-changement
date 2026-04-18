@@ -27,7 +27,6 @@ export type RoadmapLegendProject = {
   id: string
   nom: string
   color: string
-  /** Case cochée = lignes de ce projet visibles dans le tableau. */
   checked: boolean
 }
 
@@ -36,18 +35,20 @@ type Props = {
   jalonsByChantier: Record<string, Jalon[]>
   axeFilter: 'all' | Axe
   readOnly: boolean
-  /** Projets transformants — cases à cocher pour filtrer les lignes. */
   legendProjects: RoadmapLegendProject[]
   onToggleLegendProject: (projetId: string) => void
   onSelectAllLegendProjects: () => void
   onDeselectAllLegendProjects: () => void
-  /** Couleur des pilules par projet (clé = projet_id). */
   projectColorById: Record<string, string>
-  /** Libellé court du projet sous le nom du chantier (clé = projet_id). */
   projetNomById: Record<string, string>
   onOpenJalon: (jalon: Jalon, chantierId: string) => void
-  /** Clic sur le + dans une cellule (création guidée en popin). */
-  onQuickAddInCell: (chantierId: string, column: TimelineColumn | typeof UNSCHEDULED_KEY) => void
+  onQuickAddInCell: (
+    chantierId: string,
+    column: TimelineColumn | typeof UNSCHEDULED_KEY,
+    axe: Axe,
+  ) => void
+  /** Case « réalisé » sur la pilule (hors lecture seule). */
+  onToggleJalonRealise?: (jalon: Jalon, chantierId: string, realised: boolean) => void
 }
 
 export default function RoadmapTimelineGrid({
@@ -63,6 +64,7 @@ export default function RoadmapTimelineGrid({
   projetNomById,
   onOpenJalon,
   onQuickAddInCell,
+  onToggleJalonRealise,
 }: Props) {
   const timeColumns = buildTimelineColumns(new Date())
 
@@ -81,13 +83,10 @@ export default function RoadmapTimelineGrid({
     })),
   ]
 
-  function filterJalon(j: Jalon): boolean {
-    if (axeFilter !== 'all' && j.axe !== axeFilter) return false
-    return true
-  }
+  const axesToShow: Axe[] = axeFilter === 'all' ? AXES : [axeFilter]
 
-  function bucketForChantier(chId: string): Map<string, Jalon[]> {
-    const raw = (jalonsByChantier[chId] ?? []).filter(filterJalon)
+  function bucketForChantierAxis(chId: string, blockAxe: Axe): Map<string, Jalon[]> {
+    const raw = (jalonsByChantier[chId] ?? []).filter((j) => j.axe === blockAxe)
     const map = new Map<string, Jalon[]>()
     for (const j of raw) {
       const k = assignJalonToColumn(j, timeColumns)
@@ -99,24 +98,10 @@ export default function RoadmapTimelineGrid({
   }
 
   const defaultPillColor = 'var(--theme-accent, #8e3b46)'
+  const colCount = headerCells.length + 2
 
   return (
     <div className="mr-tgrid-wrap">
-      <section className="mr-four-axes" aria-label="Les 4 axes de transformation">
-        {AXES.map((a) => (
-          <div
-            key={a}
-            className="mr-four-axes__item"
-            style={{
-              borderLeftColor: AXE_META[a].color,
-              background: `color-mix(in srgb, ${AXE_META[a].color} 10%, transparent)`,
-            }}
-          >
-            <span className="mr-four-axes__title">{AXE_META[a].title}</span>
-          </div>
-        ))}
-      </section>
-
       <div className="mr-tgrid-legend" role="group" aria-label="Projets transformants">
         <span className="mr-tgrid-legend__label">Projets transformants</span>
         <div className="mr-tgrid-legend__toolbar">
@@ -148,16 +133,19 @@ export default function RoadmapTimelineGrid({
       </div>
 
       <p className="mr-tgrid-intro">
-        Chaque <strong>chantier</strong> est une ligne ; les <strong>jalons</strong> sont des pilules à la couleur du
-        projet, avec le repère d’axe (P / O / I / K). Utilisez le <strong>+</strong> dans une case pour créer un jalon à
-        cette échéance.
+        Quatre <strong>blocs d’axe</strong> (Processus, Organisation, Outils, KPI) : chaque <strong>chantier</strong>{' '}
+        est une ligne ; les <strong>jalons</strong> sont des cartes colorées par projet (case = réalisé). Le{' '}
+        <strong>+</strong> ajoute un jalon dans l’axe du bloc.
       </p>
 
-      <div className="mr-tgrid-scroll" role="region" aria-label="Tableau roadmap temps">
-        <table className="mr-tgrid">
+      <div className="mr-tgrid-scroll" role="region" aria-label="Tableau roadmap par axe et temps">
+        <table className="mr-tgrid mr-tgrid--matrix">
           <thead>
             <tr>
-              <th scope="col" className="mr-tgrid__sticky mr-tgrid__chantier-head">
+              <th scope="col" className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-head">
+                Axe
+              </th>
+              <th scope="col" className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-head">
                 Chantier
               </th>
               {headerCells.map((h) => (
@@ -168,82 +156,118 @@ export default function RoadmapTimelineGrid({
               ))}
             </tr>
           </thead>
-          <tbody>
-            {chantiers.length === 0 ? (
+          {chantiers.length === 0 ? (
+            <tbody>
               <tr>
-                <td
-                  colSpan={headerCells.length + 1}
-                  className="mr-tgrid__empty"
-                >
+                <td colSpan={colCount} className="mr-tgrid__empty">
                   Aucun chantier à afficher pour les projets sélectionnés. Cochez un ou plusieurs projets dans la légende
                   ou créez un chantier rattaché à un projet.
                 </td>
               </tr>
-            ) : null}
-            {chantiers.map((ch) => {
-              const buckets = bucketForChantier(ch.id)
-              const projectColor = projectColorById[ch.projet_id] ?? defaultPillColor
-              const projetLabel = projetNomById[ch.projet_id] ?? ''
+            </tbody>
+          ) : (
+            axesToShow.map((axe, blockIndex) => {
+              const n = chantiers.length
               return (
-                <tr key={ch.id}>
-                  <th scope="row" className="mr-tgrid__sticky mr-tgrid__chantier-cell">
-                    <span className="mr-tgrid__chantier-name">{ch.nom}</span>
-                    {projetLabel ? (
-                      <span className="mr-tgrid__chantier-projet" title="Projet parent">
-                        {projetLabel}
-                      </span>
-                    ) : null}
-                  </th>
-                  {headerCells.map((h) => (
-                    <td key={h.key} className="mr-tgrid__cell">
-                      <div className="mr-tgrid__cell-inner">
-                        <div className="mr-tgrid__pills">
-                          {(buckets.get(h.key) ?? []).map((j) => (
-                            <button
-                              key={j.id}
-                              type="button"
-                              className="mr-tgrid__pill"
-                              style={{
-                                borderColor: projectColor,
-                                background: `color-mix(in srgb, ${projectColor} 14%, var(--theme-bg-page))`,
-                              }}
-                              onClick={() => onOpenJalon(j, ch.id)}
-                              title={`${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`}
-                            >
-                              <span
-                                className="mr-tgrid__axe-badge"
-                                style={{
-                                  background: AXE_META[j.axe].color,
-                                  color: '#fff',
-                                }}
-                                aria-hidden
-                              >
-                                {AXE_META[j.axe].short}
-                              </span>
-                              <span className="mr-tgrid__pill-num">{j.numero ?? '—'}</span>
-                              <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
-                            </button>
-                          ))}
-                        </div>
-                        {!readOnly && (
-                          <button
-                            type="button"
-                            className="mr-tgrid__cell-plus"
-                            aria-label={`Ajouter un jalon — ${ch.nom} — ${h.label}`}
-                            onClick={() => onQuickAddInCell(ch.id, h.col)}
+                <tbody key={axe} className="mr-tgrid__axis-block">
+                  {chantiers.map((ch, rowIdx) => {
+                    const buckets = bucketForChantierAxis(ch.id, axe)
+                    const projectColor = projectColorById[ch.projet_id] ?? defaultPillColor
+                    const projetLabel = projetNomById[ch.projet_id] ?? ''
+                    const isFirst = rowIdx === 0
+                    const blockStartRow = blockIndex > 0 && rowIdx === 0
+                    return (
+                      <tr
+                        key={`${axe}-${ch.id}`}
+                        className={blockStartRow ? 'mr-tgrid__block-start-row' : undefined}
+                      >
+                        {isFirst ? (
+                          <td
+                            rowSpan={n}
+                            className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell"
+                            style={{
+                              borderLeftColor: AXE_META[axe].color,
+                              background: `color-mix(in srgb, ${AXE_META[axe].color} 14%, var(--theme-bg-card))`,
+                            }}
                           >
-                            <span className="mr-tgrid__cell-plus-ring" aria-hidden>
-                              +
+                            <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                          </td>
+                        ) : null}
+                        <th
+                          scope="row"
+                          className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-cell"
+                        >
+                          <span className="mr-tgrid__chantier-name">{ch.nom}</span>
+                          {projetLabel ? (
+                            <span className="mr-tgrid__chantier-projet" title="Projet parent">
+                              {projetLabel}
                             </span>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
+                          ) : null}
+                        </th>
+                        {headerCells.map((h) => (
+                          <td key={h.key} className="mr-tgrid__cell">
+                            <div className="mr-tgrid__cell-inner">
+                              <div className="mr-tgrid__pills">
+                                {(buckets.get(h.key) ?? []).map((j) => {
+                                  const realised = j.statut === 'realise'
+                                  return (
+                                    <div
+                                      key={j.id}
+                                      className="mr-tgrid__pill mr-tgrid__pill--matrix"
+                                      style={{
+                                        borderLeft: `4px solid ${projectColor}`,
+                                        background: `color-mix(in srgb, ${projectColor} 22%, var(--theme-bg-card))`,
+                                      }}
+                                    >
+                                      {!readOnly && onToggleJalonRealise ? (
+                                        <label className="mr-tgrid__pill-check">
+                                          <input
+                                            type="checkbox"
+                                            checked={realised}
+                                            aria-label={`Réalisé — ${j.nom || 'Jalon'}`}
+                                            onChange={(e) => {
+                                              e.stopPropagation()
+                                              onToggleJalonRealise(j, ch.id, e.target.checked)
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
+                                        </label>
+                                      ) : null}
+                                      <button
+                                        type="button"
+                                        className="mr-tgrid__pill-main"
+                                        onClick={() => onOpenJalon(j, ch.id)}
+                                        title={`${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`}
+                                      >
+                                        <span className="mr-tgrid__pill-num">{j.numero ?? '—'}</span>
+                                        <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
+                                      </button>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                              {!readOnly && (
+                                <button
+                                  type="button"
+                                  className="mr-tgrid__cell-plus"
+                                  aria-label={`Ajouter un jalon — ${ch.nom} — ${AXE_META[axe].title} — ${h.label}`}
+                                  onClick={() => onQuickAddInCell(ch.id, h.col, axe)}
+                                >
+                                  <span className="mr-tgrid__cell-plus-ring" aria-hidden>
+                                    +
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </tbody>
               )
-            })}
-          </tbody>
+            })
+          )}
         </table>
       </div>
     </div>

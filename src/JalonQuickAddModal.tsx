@@ -33,6 +33,8 @@ type Props = {
   echeanceLabel: string
   /** null = colonne « Sans date » */
   defaultMonthYear: { mois: number; annee: number } | null
+  /** Si défini (ex. création depuis la grille par axe), l’axe n’est pas modifiable. */
+  fixedAxe?: Axe | null
   saving: boolean
   onSubmit: (data: {
     nom: string
@@ -48,6 +50,7 @@ export default function JalonQuickAddModal({
   chantierNom,
   echeanceLabel,
   defaultMonthYear,
+  fixedAxe = null,
   saving,
   onSubmit,
 }: Props) {
@@ -59,7 +62,7 @@ export default function JalonQuickAddModal({
   useEffect(() => {
     if (!open) return
     setNom('')
-    setAxe('PROCESSUS')
+    setAxe(fixedAxe ?? 'PROCESSUS')
     if (defaultMonthYear) {
       setMois(defaultMonthYear.mois)
       setAnnee(defaultMonthYear.annee)
@@ -67,7 +70,7 @@ export default function JalonQuickAddModal({
       setMois(new Date().getMonth() + 1)
       setAnnee(new Date().getFullYear())
     }
-  }, [open, defaultMonthYear])
+  }, [open, defaultMonthYear, fixedAxe])
 
   useEffect(() => {
     if (!open) return
@@ -88,7 +91,7 @@ export default function JalonQuickAddModal({
     if (!trimmed) return
     await onSubmit({
       nom: trimmed,
-      axe,
+      axe: fixedAxe ?? axe,
       mois_cible: hasDate ? mois : null,
       annee_cible: hasDate ? annee : null,
     })
@@ -122,16 +125,22 @@ export default function JalonQuickAddModal({
               required
             />
           </label>
-          <label className="mr-modal__field">
-            Axe
-            <select value={axe} onChange={(e) => setAxe(e.target.value as Axe)}>
-              {AXES.map((a) => (
-                <option key={a} value={a}>
-                  {AXE_LABELS[a]}
-                </option>
-              ))}
-            </select>
-          </label>
+          {fixedAxe ? (
+            <p className="mr-modal__meta">
+              Axe : <strong>{AXE_LABELS[fixedAxe]}</strong>
+            </p>
+          ) : (
+            <label className="mr-modal__field">
+              Axe
+              <select value={axe} onChange={(e) => setAxe(e.target.value as Axe)}>
+                {AXES.map((a) => (
+                  <option key={a} value={a}>
+                    {AXE_LABELS[a]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {hasDate && (
             <div className="mr-modal__row">
               <label className="mr-modal__field">

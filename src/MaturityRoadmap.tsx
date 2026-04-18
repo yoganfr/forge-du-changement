@@ -118,6 +118,7 @@ export default function MaturityRoadmap({
   const [quickAdd, setQuickAdd] = useState<{
     chantierId: string
     column: TimelineColumn | typeof UNSCHEDULED_KEY
+    axe: Axe
   } | null>(null)
   const [quickAddSaving, setQuickAddSaving] = useState(false)
 
@@ -306,7 +307,7 @@ export default function MaturityRoadmap({
     try {
       const j = await createJalon({
         chantier_id: chantierId,
-        axe: data.axe,
+        axe: quickAdd.axe,
         nom: data.nom,
         mois_cible: data.mois_cible,
         annee_cible: data.annee_cible,
@@ -327,6 +328,20 @@ export default function MaturityRoadmap({
       window.alert(msg || 'Impossible de créer le jalon.')
     } finally {
       setQuickAddSaving(false)
+    }
+  }
+
+  async function handleToggleJalonRealise(jalon: Jalon, chantierId: string, realised: boolean) {
+    if (readOnly) return
+    try {
+      await updateJalon(jalon.id, { statut: realised ? 'realise' : 'en_cours' })
+      await refreshChantierJalons(chantierId)
+    } catch (e) {
+      const msg =
+        typeof e === 'object' && e !== null && 'message' in e
+          ? String((e as { message?: unknown }).message ?? '').trim()
+          : ''
+      window.alert(msg || 'Impossible de mettre à jour le statut.')
     }
   }
 
@@ -448,7 +463,10 @@ export default function MaturityRoadmap({
         projectColorById={projectColorById}
         projetNomById={projetNomById}
         onOpenJalon={(j, chId) => void openDrawer(j, chId)}
-        onQuickAddInCell={(chId, col) => setQuickAdd({ chantierId: chId, column: col })}
+        onQuickAddInCell={(chId, col, axe) => setQuickAdd({ chantierId: chId, column: col, axe })}
+        onToggleJalonRealise={
+          readOnly ? undefined : (j, chId, realised) => void handleToggleJalonRealise(j, chId, realised)
+        }
       />
 
       <ChantierCreateModal
@@ -479,6 +497,7 @@ export default function MaturityRoadmap({
             : null
         }
         saving={quickAddSaving}
+        fixedAxe={quickAdd?.axe ?? null}
         onSubmit={async (data) => {
           await handleQuickAddSubmit(data)
         }}
