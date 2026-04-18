@@ -103,6 +103,8 @@ export default function MaturityRoadmap({
   const [editingChantierId, setEditingChantierId] = useState<string | null>(null)
   const [drawerJalonId, setDrawerJalonId] = useState<string | null>(null)
   const [drawerChantierId, setDrawerChantierId] = useState<string | null>(null)
+  /** Jalon tout juste créé (évite un tiroir bloqué si le cache réseau était encore en cours). */
+  const [drawerSeedJalon, setDrawerSeedJalon] = useState<Jalon | null>(null)
 
   const yearOptions = useMemo(() => {
     const y = new Date().getFullYear()
@@ -192,19 +194,29 @@ export default function MaturityRoadmap({
 
   async function handleNewJalon(chantierId: string, axe: Axe) {
     if (readOnly) return
-    const j = await createJalon({
-      chantier_id: chantierId,
-      axe,
-      direction_id: directionId,
-      projet_id: projetId,
-      workspace_id: workspaceId,
-    })
-    await refreshChantierJalons(chantierId)
-    setDrawerChantierId(chantierId)
-    setDrawerJalonId(j.id)
+    try {
+      const j = await createJalon({
+        chantier_id: chantierId,
+        axe,
+        direction_id: directionId,
+        projet_id: projetId,
+        workspace_id: workspaceId,
+      })
+      setDrawerSeedJalon(j)
+      setDrawerChantierId(chantierId)
+      setDrawerJalonId(j.id)
+      await refreshChantierJalons(chantierId)
+    } catch (e) {
+      const msg =
+        typeof e === 'object' && e !== null && 'message' in e
+          ? String((e as { message?: unknown }).message ?? '').trim()
+          : ''
+      window.alert(msg || 'Impossible de créer le jalon.')
+    }
   }
 
   async function openDrawer(jalon: Jalon, chantierId: string) {
+    setDrawerSeedJalon(null)
     setDrawerChantierId(chantierId)
     setDrawerJalonId(jalon.id)
   }
@@ -379,6 +391,7 @@ export default function MaturityRoadmap({
           projetId={projetId}
           chantierId={drawerChantierId}
           jalonId={drawerJalonId}
+          seedJalon={drawerSeedJalon}
           projetNom={projetNom}
           chantierNom={chantiers.find((c) => c.id === drawerChantierId)?.nom ?? ''}
           directions={directions}
@@ -386,6 +399,7 @@ export default function MaturityRoadmap({
           onClose={() => {
             setDrawerJalonId(null)
             setDrawerChantierId(null)
+            setDrawerSeedJalon(null)
           }}
           onSaved={async () => {
             await refreshChantierJalons(drawerChantierId)
@@ -451,6 +465,7 @@ function JalonDrawer({
   projetId,
   chantierId,
   jalonId,
+  seedJalon,
   projetNom,
   chantierNom,
   directions,
@@ -461,6 +476,8 @@ function JalonDrawer({
   projetId: string
   chantierId: string
   jalonId: string
+  /** Réponse de `createJalon` si la liste chantier n’est pas encore à jour. */
+  seedJalon: Jalon | null
   projetNom: string
   chantierNom: string
   directions: Direction[]
@@ -484,7 +501,10 @@ function JalonDrawer({
         getProjetJalons(projetId),
       ])
       if (cancelled) return
-      const j = jList.find((x) => x.id === jalonId) ?? null
+      const j =
+        jList.find((x) => x.id === jalonId) ??
+        (seedJalon?.id === jalonId ? seedJalon : null) ??
+        null
       setJalon(j)
       setProjetJalons(allJ)
       const pilote = raci.find((r) => r.role === 'PILOTE')
@@ -495,7 +515,7 @@ function JalonDrawer({
     return () => {
       cancelled = true
     }
-  }, [chantierId, jalonId, projetId])
+  }, [chantierId, jalonId, projetId, seedJalon])
 
   const axeLabel = jalon ? AXE_META[jalon.axe].title : ''
 

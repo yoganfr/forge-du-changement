@@ -19,6 +19,8 @@ type ListOptions = { limit?: number; offset?: number }
 type CacheEntry<T> = { value: T; expiresAt: number }
 const responseCache = new Map<string, CacheEntry<unknown>>()
 const inflight = new Map<string, Promise<unknown>>()
+/** Incrémenté à chaque invalidation pour ignorer les réponses obsolètes (inflight / écriture tardive). */
+const fetchGeneration = new Map<string, number>()
 
 function readCache<T>(key: string): T | null {
   const now = Date.now()
@@ -38,10 +40,17 @@ function writeCache<T>(key: string, value: T, ttlMs = CACHE_TTL_MS): T {
 
 function invalidateCache(prefixes: string[]): void {
   if (prefixes.length === 0) return
+  const keysToBump = new Set<string>()
   for (const key of responseCache.keys()) {
-    if (prefixes.some((prefix) => key.startsWith(prefix))) {
-      responseCache.delete(key)
-    }
+    if (prefixes.some((prefix) => key.startsWith(prefix))) keysToBump.add(key)
+  }
+  for (const key of inflight.keys()) {
+    if (prefixes.some((prefix) => key.startsWith(prefix))) keysToBump.add(key)
+  }
+  for (const key of keysToBump) {
+    responseCache.delete(key)
+    inflight.delete(key)
+    fetchGeneration.set(key, (fetchGeneration.get(key) ?? 0) + 1)
   }
 }
 
@@ -50,16 +59,24 @@ async function dedupedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<
   if (cached !== null) return cached
   const existing = inflight.get(key) as Promise<T> | undefined
   if (existing) return existing
-  const request = (async () => {
+  const genAtStart = fetchGeneration.get(key) ?? 0
+  const handle: { p: Promise<T> | null } = { p: null }
+  handle.p = (async () => {
     try {
       const result = await fetcher()
+      if ((fetchGeneration.get(key) ?? 0) !== genAtStart) {
+        return result
+      }
       return writeCache(key, result)
     } finally {
-      inflight.delete(key)
+      const current = inflight.get(key)
+      if (current === handle.p) {
+        inflight.delete(key)
+      }
     }
   })()
-  inflight.set(key, request)
-  return request
+  inflight.set(key, handle.p)
+  return handle.p
 }
 
 async function resolveAuditActorUserId(): Promise<string | null> {
