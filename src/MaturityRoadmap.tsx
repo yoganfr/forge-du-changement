@@ -22,10 +22,7 @@ import { getCurrentUser } from './lib/auth'
 import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
-import {
-  defaultTargetMonthYearForColumn,
-  type TimelineColumn,
-} from './lib/roadmapTimelineColumns'
+import type { TimelineColumn } from './lib/roadmapTimelineColumns'
 import { assignRoadmapProjectColors } from './lib/projectRoadmapColor'
 import './MaturityRoadmap.css'
 
@@ -555,8 +552,7 @@ export default function MaturityRoadmap({
         open={quickAdd !== null}
         onClose={() => setQuickAdd(null)}
         chantierNom={visibleChantiers.find((c) => c.id === quickAdd?.chantierId)?.nom ?? chantiers.find((c) => c.id === quickAdd?.chantierId)?.nom ?? ''}
-        echeanceLabel={quickAdd ? quickAdd.column.label : ''}
-        defaultMonthYear={quickAdd ? defaultTargetMonthYearForColumn(quickAdd.column) : null}
+        initialColumnKey={quickAdd?.column.key ?? ''}
         saving={quickAddSaving}
         fixedAxe={
           quickAdd

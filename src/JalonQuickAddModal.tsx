@@ -1,20 +1,6 @@
-import { useEffect, useState } from 'react'
-
-const MONTH_LABELS_FR = [
-  'Janvier',
-  'Février',
-  'Mars',
-  'Avril',
-  'Mai',
-  'Juin',
-  'Juillet',
-  'Août',
-  'Septembre',
-  'Octobre',
-  'Novembre',
-  'Décembre',
-] as const
+import { useEffect, useMemo, useState } from 'react'
 import type { Axe } from './lib/types'
+import { buildTimelineColumns, defaultTargetMonthYearForColumn } from './lib/roadmapTimelineColumns'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
@@ -29,10 +15,8 @@ type Props = {
   open: boolean
   onClose: () => void
   chantierNom: string
-  /** Libellé de la colonne temps (ex. Sept 2026) */
-  echeanceLabel: string
-  /** Dates cibles par défaut (dérivées de la colonne temps de la grille). */
-  defaultMonthYear: { mois: number; annee: number } | null
+  /** Clé de la colonne temps cliquée dans la grille (alignée sur `buildTimelineColumns`). */
+  initialColumnKey: string
   /** Si défini (ex. création depuis la grille par axe), l’axe n’est pas modifiable. */
   fixedAxe?: Axe | null
   saving: boolean
@@ -48,29 +32,30 @@ export default function JalonQuickAddModal({
   open,
   onClose,
   chantierNom,
-  echeanceLabel,
-  defaultMonthYear,
+  initialColumnKey,
   fixedAxe = null,
   saving,
   onSubmit,
 }: Props) {
   const [nom, setNom] = useState('')
   const [axe, setAxe] = useState<Axe>('PROCESSUS')
-  const [mois, setMois] = useState(1)
-  const [annee, setAnnee] = useState(new Date().getFullYear())
+  const [echeanceKey, setEcheanceKey] = useState(initialColumnKey)
+
+  const echeanceOptions = useMemo(() => (open ? buildTimelineColumns() : []), [open])
 
   useEffect(() => {
     if (!open) return
     setNom('')
     setAxe(fixedAxe ?? 'PROCESSUS')
-    if (defaultMonthYear) {
-      setMois(defaultMonthYear.mois)
-      setAnnee(defaultMonthYear.annee)
-    } else {
-      setMois(new Date().getMonth() + 1)
-      setAnnee(new Date().getFullYear())
-    }
-  }, [open, defaultMonthYear, fixedAxe])
+    setEcheanceKey(initialColumnKey)
+  }, [open, initialColumnKey, fixedAxe])
+
+  const echeanceSelectValue = useMemo(() => {
+    const keys = new Set(echeanceOptions.map((c) => c.key))
+    if (keys.has(echeanceKey)) return echeanceKey
+    if (keys.has(initialColumnKey)) return initialColumnKey
+    return echeanceOptions[0]?.key ?? ''
+  }, [echeanceOptions, echeanceKey, initialColumnKey])
 
   useEffect(() => {
     if (!open) return
@@ -83,17 +68,17 @@ export default function JalonQuickAddModal({
 
   if (!open) return null
 
-  const hasDate = defaultMonthYear !== null
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = nom.trim()
     if (!trimmed) return
+    const col = echeanceOptions.find((c) => c.key === echeanceSelectValue)
+    const my = col ? defaultTargetMonthYearForColumn(col) : null
     await onSubmit({
       nom: trimmed,
       axe: fixedAxe ?? axe,
-      mois_cible: hasDate ? mois : null,
-      annee_cible: hasDate ? annee : null,
+      mois_cible: my?.mois ?? null,
+      annee_cible: my?.annee ?? null,
     })
   }
 
@@ -110,8 +95,6 @@ export default function JalonQuickAddModal({
         </h2>
         <p className="mr-modal__meta">
           Chantier : <strong>{chantierNom}</strong>
-          <br />
-          Échéance : <strong>{echeanceLabel}</strong>
         </p>
         <form onSubmit={(e) => void handleSubmit(e)} className="mr-modal__form">
           <label className="mr-modal__field">
@@ -141,30 +124,20 @@ export default function JalonQuickAddModal({
               </select>
             </label>
           )}
-          {hasDate && (
-            <div className="mr-modal__row">
-              <label className="mr-modal__field">
-                Mois cible
-                <select value={mois} onChange={(e) => setMois(Number(e.target.value))}>
-                  {MONTH_LABELS_FR.map((label, i) => (
-                    <option key={label} value={i + 1}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="mr-modal__field">
-                Année
-                <input
-                  type="number"
-                  min={2000}
-                  max={2100}
-                  value={annee}
-                  onChange={(e) => setAnnee(Number(e.target.value))}
-                />
-              </label>
-            </div>
-          )}
+          <label className="mr-modal__field">
+            Échéance
+            <select
+              id="mr-jalon-echeance"
+              value={echeanceSelectValue}
+              onChange={(e) => setEcheanceKey(e.target.value)}
+            >
+              {echeanceOptions.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="mr-modal__actions">
             <button type="button" className="mr-btn-ghost" onClick={onClose} disabled={saving}>
               Annuler
