@@ -27,7 +27,7 @@ import {
   UNSCHEDULED_KEY,
   type TimelineColumn,
 } from './lib/roadmapTimelineColumns'
-import { getRoadmapProjectColorHex } from './lib/projectRoadmapColor'
+import { assignRoadmapProjectColors } from './lib/projectRoadmapColor'
 import './MaturityRoadmap.css'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
@@ -197,13 +197,10 @@ export default function MaturityRoadmap({
     [chantiers, selectedProjectIds],
   )
 
-  const projectColorById = useMemo(() => {
-    const m: Record<string, string> = {}
-    for (const p of roadmapProjects) {
-      m[p.id] = getRoadmapProjectColorHex(p.id)
-    }
-    return m
-  }, [roadmapProjects])
+  const projectColorById = useMemo(
+    () => assignRoadmapProjectColors(roadmapProjects.map((p) => p.id)),
+    [roadmapProjects],
+  )
 
   const projetNomById = useMemo(() => {
     const m: Record<string, string> = {}
@@ -405,9 +402,9 @@ export default function MaturityRoadmap({
           </>
         ) : null}
         {roadmapProjects.length} projet{roadmapProjects.length > 1 ? 's' : ''} transformant
-        {roadmapProjects.length > 1 ? 's' : ''} — sous le tableau, cochez les projets pour filtrer les lignes chantier.
-        Cliquez sur l’intitulé d’une ligne (ou sur la ligne dédiée en bas de chaque axe) pour le nom et le rattachement
-        au projet.
+        {roadmapProjects.length > 1 ? 's' : ''}. Choisissez les projets affichés dans le menu à côté de l’axe. Cliquez
+        sur l’intitulé d’une ligne (ou sur la ligne dédiée en bas de chaque axe) pour le nom et le rattachement au
+        projet.
       </p>
 
       <div className="mr-toolbar">
@@ -422,6 +419,50 @@ export default function MaturityRoadmap({
             ))}
           </select>
         </label>
+        <details className="mr-toolbar__projects">
+          <summary className="mr-toolbar__projects-summary">
+            Projets transformants
+            {memberDirectionLabel ? (
+              <>
+                {' '}
+                — Direction <strong>{memberDirectionLabel}</strong>
+              </>
+            ) : null}{' '}
+            <span className="mr-toolbar__projects-hint">(affichés)</span>
+          </summary>
+          <div className="mr-toolbar__projects-panel">
+            <div className="mr-toolbar__projects-actions">
+              <button type="button" className="mr-toolbar__link" onClick={selectAllLegendProjects}>
+                Tout afficher
+              </button>
+              <span className="mr-toolbar__sep" aria-hidden>
+                ·
+              </span>
+              <button type="button" className="mr-toolbar__link" onClick={deselectAllLegendProjects}>
+                Tout masquer
+              </button>
+            </div>
+            <ul className="mr-toolbar__projects-list">
+              {roadmapProjects.map((p) => (
+                <li key={p.id}>
+                  <label className="mr-toolbar__project-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedProjectIds.includes(p.id)}
+                      onChange={() => toggleLegendProject(p.id)}
+                    />
+                    <span
+                      className="mr-toolbar__project-swatch"
+                      style={{ background: projectColorById[p.id] }}
+                      aria-hidden
+                    />
+                    <span className="mr-toolbar__project-name">{p.nom}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
       </div>
 
       <RoadmapTimelineGrid
@@ -429,15 +470,6 @@ export default function MaturityRoadmap({
         jalonsByChantier={jalonsByChantier}
         axeFilter={axeFilter}
         readOnly={readOnly}
-        legendProjects={roadmapProjects.map((p) => ({
-          id: p.id,
-          nom: p.nom,
-          color: projectColorById[p.id] ?? getRoadmapProjectColorHex(p.id),
-          checked: selectedProjectIds.includes(p.id),
-        }))}
-        onToggleLegendProject={toggleLegendProject}
-        onSelectAllLegendProjects={selectAllLegendProjects}
-        onDeselectAllLegendProjects={deselectAllLegendProjects}
         projectColorById={projectColorById}
         projetNomById={projetNomById}
         onOpenJalon={(j, chId) => void openDrawer(j, chId)}
@@ -693,17 +725,13 @@ function JalonDrawer({
         <button type="button" className="mr-back" onClick={onClose}>
           ✕ Fermer
         </button>
-        <h2>
-          Détail jalon {jalon.numero ?? ''}
-        </h2>
+        <h2>Détail jalon</h2>
         <p className="mr-muted">
           Projet : {projetNom}
           <br />
           Chantier : {chantierNom}
           <br />
           Axe : {axeLabel}
-          <br />
-          Numéro : {jalon.numero ?? '—'}
         </p>
 
         <div className="mr-field">
@@ -960,7 +988,7 @@ function JalonDrawer({
             <option value="">—</option>
             {depOptions.map((j) => (
               <option key={j.id} value={j.id}>
-                {j.numero ?? j.id.slice(0, 8)} — {j.nom}
+                {j.nom || 'Sans titre'}
               </option>
             ))}
           </select>

@@ -23,22 +23,11 @@ const STATUT_LABEL: Record<string, string> = {
   bloque: 'Bloqué',
 }
 
-export type RoadmapLegendProject = {
-  id: string
-  nom: string
-  color: string
-  checked: boolean
-}
-
 type Props = {
   chantiers: Chantier[]
   jalonsByChantier: Record<string, Jalon[]>
   axeFilter: 'all' | Axe
   readOnly: boolean
-  legendProjects: RoadmapLegendProject[]
-  onToggleLegendProject: (projetId: string) => void
-  onSelectAllLegendProjects: () => void
-  onDeselectAllLegendProjects: () => void
   projectColorById: Record<string, string>
   projetNomById: Record<string, string>
   onOpenJalon: (jalon: Jalon, chantierId: string) => void
@@ -61,10 +50,6 @@ export default function RoadmapTimelineGrid({
   jalonsByChantier,
   axeFilter,
   readOnly,
-  legendProjects,
-  onToggleLegendProject,
-  onSelectAllLegendProjects,
-  onDeselectAllLegendProjects,
   projectColorById,
   projetNomById,
   onOpenJalon,
@@ -110,9 +95,9 @@ export default function RoadmapTimelineGrid({
     <div className="mr-tgrid-wrap">
       <p className="mr-tgrid-intro">
         Chaque <strong>chantier</strong> est rattaché à un projet transformant ; le <strong>bloc d’axe</strong> où vous le
-        créez définit son type (Processus, Organisation, Outils, KPI). Les <strong>jalons</strong> de la ligne reprennent la
-        couleur du projet parent. Dans les cases temps, un seul jalon par case — le <strong>+</strong> disparaît une fois le
-        jalon créé.
+        créez définit son type (Processus, Organisation, Outils, KPI). Les <strong>jalons</strong> reprennent la couleur du
+        projet parent. Un seul jalon par case temps — le <strong>+</strong> disparaît une fois le jalon créé. Faites défiler
+        horizontalement si besoin ; les colonnes sont condensées pour limiter la largeur.
       </p>
 
       <div className="mr-tgrid-scroll" role="region" aria-label="Tableau roadmap par axe et temps">
@@ -301,9 +286,12 @@ export default function RoadmapTimelineGrid({
                                       type="button"
                                       className="mr-tgrid__pill-main"
                                       onClick={() => onOpenJalon(j, ch.id)}
-                                      title={`${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`}
+                                      title={
+                                        j.numero
+                                          ? `${j.nom || 'Jalon'} (${j.numero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                          : `${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                      }
                                     >
-                                      <span className="mr-tgrid__pill-num">{j.numero ?? '—'}</span>
                                       <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
                                     </button>
                                   </div>
@@ -333,32 +321,6 @@ export default function RoadmapTimelineGrid({
             )
           })}
         </table>
-      </div>
-
-      <div className="mr-tgrid-legend mr-tgrid-legend--below" role="group" aria-label="Filtre projets transformants">
-        <span className="mr-tgrid-legend__label">Afficher les chantiers des projets</span>
-        <div className="mr-tgrid-legend__toolbar">
-          <button type="button" className="mr-tgrid-legend__link" onClick={onSelectAllLegendProjects}>
-            Tout afficher
-          </button>
-          <span className="mr-tgrid-legend__sep" aria-hidden>
-            ·
-          </span>
-          <button type="button" className="mr-tgrid-legend__link" onClick={onDeselectAllLegendProjects}>
-            Tout masquer
-          </button>
-        </div>
-        <ul className="mr-tgrid-legend__list">
-          {legendProjects.map((p) => (
-            <li key={p.id} className="mr-tgrid-legend__item">
-              <label className="mr-tgrid-legend__check">
-                <input type="checkbox" checked={p.checked} onChange={() => onToggleLegendProject(p.id)} />
-                <span className="mr-tgrid-legend__swatch" style={{ background: p.color }} aria-hidden />
-                <span>{p.nom}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   )
