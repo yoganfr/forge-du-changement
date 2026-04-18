@@ -3,7 +3,6 @@ import {
   assignJalonToColumn,
   buildTimelineColumns,
   sortJalonsForCell,
-  UNSCHEDULED_KEY,
   type TimelineColumn,
 } from './lib/roadmapTimelineColumns'
 
@@ -47,11 +46,7 @@ type Props = {
   projectColorById: Record<string, string>
   projetNomById: Record<string, string>
   onOpenJalon: (jalon: Jalon, chantierId: string) => void
-  onQuickAddInCell: (
-    chantierId: string,
-    column: TimelineColumn | typeof UNSCHEDULED_KEY,
-    axe: Axe,
-  ) => void
+  onQuickAddInCell: (chantierId: string, column: TimelineColumn, axe: Axe) => void
   /** Case « réalisé » sur la pilule (hors lecture seule). */
   onToggleJalonRealise?: (jalon: Jalon, chantierId: string, realised: boolean) => void
   /**
@@ -75,20 +70,17 @@ export default function RoadmapTimelineGrid({
 }: Props) {
   const timeColumns = buildTimelineColumns(new Date())
 
-  const headerCells: { key: string; label: string; sub: string; col: TimelineColumn | 'unscheduled' }[] = [
-    { key: UNSCHEDULED_KEY, label: 'Sans date', sub: 'À planifier', col: UNSCHEDULED_KEY },
-    ...timeColumns.map((c) => ({
-      key: c.key,
-      label: c.label,
-      sub:
-        c.kind === 'quarter'
-          ? 'Échéance'
-          : c.kind === 'year'
-            ? 'Horizon annuel'
-            : 'Projection',
-      col: c,
-    })),
-  ]
+  const headerCells: { key: string; label: string; sub: string; col: TimelineColumn }[] = timeColumns.map((c) => ({
+    key: c.key,
+    label: c.label,
+    sub:
+      c.kind === 'quarter'
+        ? 'Échéance'
+        : c.kind === 'year'
+          ? 'Horizon annuel'
+          : 'Projection',
+    col: c,
+  }))
 
   const axesToShow: Axe[] = axeFilter === 'all' ? AXES : [axeFilter]
 

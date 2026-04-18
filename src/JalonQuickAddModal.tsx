@@ -31,7 +31,7 @@ type Props = {
   chantierNom: string
   /** Libellé de la colonne temps (ex. Sept 2026) */
   echeanceLabel: string
-  /** null = colonne « Sans date » */
+  /** Dates cibles par défaut (dérivées de la colonne temps de la grille). */
   defaultMonthYear: { mois: number; annee: number } | null
   /** Si défini (ex. création depuis la grille par axe), l’axe n’est pas modifiable. */
   fixedAxe?: Axe | null

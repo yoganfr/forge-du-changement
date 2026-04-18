@@ -108,8 +108,6 @@ export function buildTimelineColumns(now: Date = new Date()): TimelineColumn[] {
   return cols
 }
 
-export const UNSCHEDULED_KEY = 'unscheduled'
-
 export function jalonTargetDate(j: Jalon): Date | null {
   if (!j.annee_cible) return null
   const m = j.mois_cible && j.mois_cible >= 1 && j.mois_cible <= 12 ? j.mois_cible : 1
@@ -123,7 +121,9 @@ function dateInRange(d: Date, start: Date, end: Date): boolean {
 
 export function assignJalonToColumn(j: Jalon, columns: TimelineColumn[]): string {
   const d = jalonTargetDate(j)
-  if (!d) return UNSCHEDULED_KEY
+  if (!d) {
+    return columns[0]?.key ?? 'later'
+  }
   for (const col of columns) {
     if (dateInRange(d, col.start, col.end)) return col.key
   }

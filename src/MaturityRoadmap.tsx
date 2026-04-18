@@ -24,7 +24,6 @@ import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
 import {
   defaultTargetMonthYearForColumn,
-  UNSCHEDULED_KEY,
   type TimelineColumn,
 } from './lib/roadmapTimelineColumns'
 import { assignRoadmapProjectColors } from './lib/projectRoadmapColor'
@@ -108,7 +107,7 @@ export default function MaturityRoadmap({
   const [drawerSeedJalon, setDrawerSeedJalon] = useState<Jalon | null>(null)
   const [quickAdd, setQuickAdd] = useState<{
     chantierId: string
-    column: TimelineColumn | typeof UNSCHEDULED_KEY
+    column: TimelineColumn
     axe: Axe
   } | null>(null)
   const [quickAddSaving, setQuickAddSaving] = useState(false)
@@ -544,18 +543,8 @@ export default function MaturityRoadmap({
         open={quickAdd !== null}
         onClose={() => setQuickAdd(null)}
         chantierNom={visibleChantiers.find((c) => c.id === quickAdd?.chantierId)?.nom ?? chantiers.find((c) => c.id === quickAdd?.chantierId)?.nom ?? ''}
-        echeanceLabel={
-          quickAdd
-            ? quickAdd.column === UNSCHEDULED_KEY
-              ? 'Sans date'
-              : quickAdd.column.label
-            : ''
-        }
-        defaultMonthYear={
-          quickAdd && quickAdd.column !== UNSCHEDULED_KEY
-            ? defaultTargetMonthYearForColumn(quickAdd.column)
-            : null
-        }
+        echeanceLabel={quickAdd ? quickAdd.column.label : ''}
+        defaultMonthYear={quickAdd ? defaultTargetMonthYearForColumn(quickAdd.column) : null}
         saving={quickAddSaving}
         fixedAxe={
           quickAdd
