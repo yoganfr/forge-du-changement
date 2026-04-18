@@ -3,6 +3,7 @@ export interface MemberOnboardingProps {
   direction?: string
   role?: string
   onNavigate: (id: string) => void
+  onOpenRoadmap?: () => void
 }
 
 export default function MemberOnboarding({
@@ -10,6 +11,7 @@ export default function MemberOnboarding({
   direction = 'votre direction',
   role = 'Membre CODIR',
   onNavigate,
+  onOpenRoadmap,
 }: MemberOnboardingProps) {
   return (
     <div className="mo-root">
@@ -37,12 +39,16 @@ export default function MemberOnboarding({
             <span className="mo-cta">Ouvrir →</span>
           </button>
 
-          <div className="mo-card mo-card--disabled">
-            <span className="mo-soon">Bientôt disponible</span>
-            <span className="mo-icon mo-icon--muted">{ICON_TIMELINE}</span>
+          <button
+            type="button"
+            className="mo-card mo-card--active"
+            onClick={() => onOpenRoadmap?.()}
+          >
+            <span className="mo-icon">{ICON_TIMELINE}</span>
             <h3>Ma roadmap</h3>
             <p>Construire ma feuille de route de transformation par axe</p>
-          </div>
+            <span className="mo-cta">Ouvrir →</span>
+          </button>
 
           <div className="mo-card mo-card--disabled">
             <span className="mo-soon">Bientôt disponible</span>

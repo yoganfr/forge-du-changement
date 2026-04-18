@@ -5,8 +5,10 @@ import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
 import {
   getAcceptedInvitationAwaitingUserRow,
+  getDirectionProjets,
   getLatestPendingInvitationForEmail,
   getWorkspace,
+  getWorkspaceDirections,
   listWorkspaces,
   markInvitationsAcceptedForWorkspaceEmail,
 } from './lib/api'
@@ -184,6 +186,40 @@ function App() {
     setWorkspaceId(id)
     setActiveNav('company')
   }, [])
+
+  const handleOpenRoadmapFromWorkspace = useCallback(async () => {
+    if (!workspaceId) {
+      setActiveNav('fabrique')
+      return
+    }
+
+    const directions = await getWorkspaceDirections(workspaceId)
+    if (directions.length === 0) {
+      setActiveNav('fabrique')
+      window.alert('Aucune direction disponible. Créez d’abord vos directions et projets dans La Fabrique.')
+      return
+    }
+
+    const preferredDirectionName = (storedProfile?.directionName ?? '').trim().toLowerCase()
+    const selectedDirection =
+      directions.find((d) => d.nom.trim().toLowerCase() === preferredDirectionName)
+      ?? directions.find((d) => !d.is_transverse)
+      ?? directions[0]
+
+    const directionProjects = await getDirectionProjets(selectedDirection.id)
+    const targetProject =
+      directionProjects.find((p) => p.type === 'BUILD' && p.selected_for_transfo)
+      ?? directionProjects.find((p) => p.type === 'BUILD')
+
+    if (!targetProject) {
+      setActiveNav('fabrique')
+      window.alert('Aucun projet BUILD trouvé pour ouvrir la roadmap. Créez ou retenez un BUILD dans La Fabrique.')
+      return
+    }
+
+    setActiveProjetId(targetProject.id)
+    setActiveRoadmapDirectionId(selectedDirection.id)
+  }, [workspaceId, storedProfile?.directionName])
 
   const reconcileAuthSession = useCallback(async (user: User) => {
     const email = user.email ?? ''
@@ -696,6 +732,7 @@ function App() {
                 direction={storedProfile?.directionName || 'votre direction'}
                 role="codir"
                 onNavigate={setActiveNav}
+                onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
               />
             ) : (
               <></>
