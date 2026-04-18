@@ -56,6 +56,8 @@ export type Projet = {
   score_investissement: number
   competences_dispo: boolean
   selected_for_transfo: boolean
+  /** Validé DG pour passage en Maturity Roadmap (chantiers / jalons). */
+  dg_validated_transfo: boolean
   pilote: string | null
   gains_quantitatifs: number | null
   gains_qualitatifs: string | null

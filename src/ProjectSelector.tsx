@@ -42,6 +42,7 @@ type Project = {
   scores: Scores
   competences_dispo: boolean
   selected_for_transfo: boolean
+  dg_validated_transfo: boolean
   planning: Record<string, boolean>
   pilote: string
   gains_quantitatifs?: number
@@ -195,6 +196,7 @@ function createEmptyProject(): Project {
     },
     competences_dispo: true,
     selected_for_transfo: false,
+    dg_validated_transfo: false,
     planning: emptyPlanning(),
     pilote: '',
     gains_quantitatifs: undefined,
@@ -243,6 +245,7 @@ function mapDbProjetToProject(p: DbProjet): Project {
     },
     competences_dispo: p.competences_dispo ?? true,
     selected_for_transfo: p.selected_for_transfo ?? false,
+    dg_validated_transfo: p.dg_validated_transfo ?? false,
     planning: { ...emptyPlanning(), ...(p.planning ?? {}) },
     pilote: p.pilote ?? '',
     gains_quantitatifs: p.gains_quantitatifs ?? undefined,
@@ -276,6 +279,7 @@ function mapProjectToDbProjet(
     score_investissement: withDefaults.scores.investissement,
     competences_dispo: withDefaults.competences_dispo,
     selected_for_transfo: withDefaults.selected_for_transfo,
+    dg_validated_transfo: withDefaults.dg_validated_transfo,
     pilote: withDefaults.pilote || null,
     gains_quantitatifs: withDefaults.gains_quantitatifs ?? null,
     gains_qualitatifs: withDefaults.gains_qualitatifs || null,
@@ -683,6 +687,7 @@ function ProjectCard({
   onDeleteProject,
   onPatchProject,
   onOpenRoadmap,
+  roadmapPendingDg,
 }: {
   project: Project
   coefs: Coefficients
@@ -696,6 +701,8 @@ function ProjectCard({
   onDeleteProject: () => void
   onPatchProject: (updates: Partial<Project>) => void
   onOpenRoadmap?: () => void
+  /** BUILD retenu mais pas encore validé DG pour la roadmap */
+  roadmapPendingDg?: boolean
 }) {
   const [draft, setDraft] = useState<Project>(project)
   const [pilotageError, setPilotageError] = useState(false)
@@ -849,6 +856,16 @@ function ProjectCard({
                 → Construire la roadmap
               </button>
             )}
+            {roadmapPendingDg && !onOpenRoadmap && (
+              <button
+                type="button"
+                className="roadmap-open-btn roadmap-open-btn--pending"
+                disabled
+                title="En attente de validation DG (Vue DG → projets soumis pour la roadmap)"
+              >
+                Roadmap (attente DG)
+              </button>
+            )}
             <span className="expand-icon">{expanded ? '▲' : '▼'}</span>
           </div>
         </div>
@@ -894,6 +911,14 @@ function ProjectCard({
                       </button>
                     </div>
                     {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 DG</div>}
+                    {draft.type === 'BUILD' && project.selected_for_transfo && !project.dg_validated_transfo && (
+                      <div className="dg-pending-hint">
+                        Soumis au DG : la validation se fait dans <strong>Vue DG</strong> avant d&apos;ouvrir la Maturity Roadmap.
+                      </div>
+                    )}
+                    {draft.type === 'BUILD' && project.dg_validated_transfo && (
+                      <div className="dg-ok-hint">Validé DG — le projet est prêt pour la roadmap (chantiers & jalons).</div>
+                    )}
                   </div>
                 </div>
 
@@ -1128,6 +1153,11 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
                   <span className={`type-badge type-badge--${project.type.toLowerCase()}`}>{project.type}</span>
                   <strong className="synthese-project-name">{project.name}</strong>
                   <span className="synthese-thematique">{project.thematique}</span>
+                  {project.dg_validated_transfo ? (
+                    <span className="synthese-dg-ok" title="Validé DG pour la roadmap">Validé DG</span>
+                  ) : (
+                    <span className="synthese-dg-wait" title="En attente validation DG">Attente DG</span>
+                  )}
                   <span className="synthese-score" style={{ color: getScoreColor(score) }}>{score === 0 ? '—' : score}pts</span>
                 </div>
                 <p className="synthese-problematique">{project.problematique}</p>
@@ -1225,9 +1255,12 @@ function PerimetreView({
               onDeleteProject={() => onDeleteProject(perimetre.id, project.id)}
               onPatchProject={(updates) => onPatchProject(perimetre.id, project.id, updates)}
               onOpenRoadmap={
-                project.type === 'BUILD' && project.selected_for_transfo && onOpenRoadmap
+                project.type === 'BUILD' && project.selected_for_transfo && project.dg_validated_transfo && onOpenRoadmap
                   ? () => onOpenRoadmap(project.id)
                   : undefined
+              }
+              roadmapPendingDg={
+                project.type === 'BUILD' && project.selected_for_transfo && !project.dg_validated_transfo
               }
             />
           ))}
@@ -2383,6 +2416,12 @@ const CSS = `
   background: color-mix(in srgb, var(--perim-color) 22%, transparent);
 }
 
+.roadmap-open-btn--pending {
+  opacity: 0.65;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
 .transfo-toggle--on {
   border-color: var(--perim-color);
   color: var(--perim-color);
@@ -2616,6 +2655,28 @@ const CSS = `
   margin-top: 4px;
   font-size: 11px;
   color: var(--score-caramel-3);
+}
+
+.dg-pending-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-text-muted);
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--glass-border);
+  background: color-mix(in srgb, var(--theme-text) 4%, transparent);
+}
+
+.dg-ok-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-text);
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, var(--glass-border));
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
 }
 
 .section-title {
@@ -3264,6 +3325,26 @@ const CSS = `
   font-size: 0.75rem;
   color: var(--theme-text-muted);
   font-style: italic;
+}
+
+.synthese-dg-ok,
+.synthese-dg-wait {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+}
+.synthese-dg-ok {
+  color: var(--theme-text);
+  background: color-mix(in srgb, var(--theme-accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--theme-accent) 40%, var(--glass-border));
+}
+.synthese-dg-wait {
+  color: var(--theme-text-muted);
+  background: var(--glass-bg-chip);
 }
 
 .synthese-score {

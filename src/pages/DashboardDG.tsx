@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getWorkspaceDirectionsWithProjects } from '../lib/api'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getWorkspaceDirectionsWithProjects, updateProjet } from '../lib/api'
 import type { DashboardDgDirectionStats, DashboardDgKpis, Projet } from '../lib/types'
 
 const SCORE_COEFFICIENTS = {
@@ -43,42 +43,91 @@ function monthKeys(count: number): Array<{ key: string; label: string }> {
   })
 }
 
+type DirectionBundle = {
+  id: string
+  name: string
+  projects: Projet[]
+}
+
 export default function DashboardDG({ workspaceId }: { workspaceId: string | null }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [directions, setDirections] = useState<Array<{ name: string; projects: Projet[] }>>([])
+  const [directions, setDirections] = useState<DirectionBundle[]>([])
+  const [savingId, setSavingId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!workspaceId) {
       setDirections([])
       return
     }
-    let cancelled = false
-    void (async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const rows = await getWorkspaceDirectionsWithProjects(workspaceId)
-        if (cancelled) return
-        setDirections(rows.map((r) => ({ name: r.direction.nom, projects: r.projects })))
-      } catch (e) {
-        if (cancelled) return
-        const message =
-          typeof e === 'object' && e !== null && 'message' in e
-            ? String((e as { message?: unknown }).message ?? '').trim()
-            : ''
-        setError(message || 'Impossible de charger la vue consolidée.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
+    setLoading(true)
+    setError(null)
+    try {
+      const rows = await getWorkspaceDirectionsWithProjects(workspaceId)
+      setDirections(
+        rows.map((r) => ({
+          id: r.direction.id,
+          name: r.direction.nom,
+          projects: r.projects,
+        })),
+      )
+    } catch (e) {
+      const message =
+        typeof e === 'object' && e !== null && 'message' in e
+          ? String((e as { message?: unknown }).message ?? '').trim()
+          : ''
+      setError(message || 'Impossible de charger la vue consolidée.')
+    } finally {
+      setLoading(false)
     }
   }, [workspaceId])
 
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const pendingRoadmap = useMemo(() => {
+    const out: Array<{ projet: Projet; directionName: string }> = []
+    for (const d of directions) {
+      for (const p of d.projects) {
+        if (p.type === 'BUILD' && p.selected_for_transfo && !p.dg_validated_transfo) {
+          out.push({ projet: p, directionName: d.name })
+        }
+      }
+    }
+    return out.sort((a, b) => computeProjectScore(b.projet) - computeProjectScore(a.projet))
+  }, [directions])
+
+  const validatedRoadmap = useMemo(() => {
+    const out: Array<{ projet: Projet; directionName: string }> = []
+    for (const d of directions) {
+      for (const p of d.projects) {
+        if (p.type === 'BUILD' && p.dg_validated_transfo) {
+          out.push({ projet: p, directionName: d.name })
+        }
+      }
+    }
+    return out.sort((a, b) => computeProjectScore(b.projet) - computeProjectScore(a.projet))
+  }, [directions])
+
+  async function handleValidate(projetId: string, validated: boolean) {
+    setSavingId(projetId)
+    try {
+      await updateProjet(projetId, { dg_validated_transfo: validated })
+      await load()
+    } catch (e) {
+      const message =
+        typeof e === 'object' && e !== null && 'message' in e
+          ? String((e as { message?: unknown }).message ?? '').trim()
+          : ''
+      window.alert(message || 'Impossible de mettre à jour le projet.')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
   const model = useMemo(() => {
-    const directionStats: DashboardDgDirectionStats[] = directions.map((direction, idx) => {
+    const directionStats: DashboardDgDirectionStats[] = directions.map((direction) => {
       const build = direction.projects.filter((p) => p.type === 'BUILD')
       const run = direction.projects.filter((p) => p.type === 'RUN')
       const avgBuildScore =
@@ -86,7 +135,7 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
           ? Math.round(build.reduce((sum, p) => sum + computeProjectScore(p), 0) / build.length)
           : 0
       return {
-        directionId: `${idx}-${direction.name}`,
+        directionId: direction.id,
         directionName: direction.name,
         totalProjects: direction.projects.length,
         runProjects: run.length,
@@ -137,7 +186,7 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
       <div className="dg__header">
         <div>
           <h2 className="dg__title">Vue DG consolidée</h2>
-          <p className="dg__subtitle">Synthèse multi-directions des priorités BUILD et de la charge macro.</p>
+          <p className="dg__subtitle">Synthèse multi-directions, validation des projets BUILD pour la Maturity Roadmap.</p>
         </div>
         <button
           type="button"
@@ -165,6 +214,70 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
             <article className="dg__kpi"><span>Score BUILD moyen</span><strong>{model.kpis.avgBuildScore}/100</strong></article>
             <article className="dg__kpi"><span>Projets critiques</span><strong>{model.kpis.criticalProjects}</strong></article>
           </div>
+
+          <article className="dg__card dg__card--wide">
+            <h3>Projets BUILD soumis pour la roadmap</h3>
+            <p className="dg__hint">
+              Les directions marquent des projets comme &laquo; retenus pour le DG &raquo; dans La Fabrique. Validez ici ceux qui passent en
+              Maturity Roadmap (chantiers et jalons sur 4 axes).
+            </p>
+            {pendingRoadmap.length === 0 ? (
+              <p className="dg__empty">Aucun projet en attente de validation.</p>
+            ) : (
+              <ul className="dg__validation-list">
+                {pendingRoadmap.map(({ projet, directionName }) => {
+                  const score = computeProjectScore(projet)
+                  return (
+                    <li key={projet.id} className="dg__validation-row">
+                      <div className="dg__validation-main">
+                        <span className="dg__validation-dir">{directionName}</span>
+                        <strong className="dg__validation-name">{projet.nom || 'Sans titre'}</strong>
+                        <span className="dg__validation-meta">{projet.thematique || '—'}</span>
+                        <span className="dg__validation-score">{score}/100</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="dg__validate-btn"
+                        disabled={savingId === projet.id}
+                        onClick={() => void handleValidate(projet.id, true)}
+                      >
+                        {savingId === projet.id ? '…' : 'Valider pour la roadmap'}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </article>
+
+          {validatedRoadmap.length > 0 && (
+            <article className="dg__card dg__card--wide">
+              <h3>Projets validés pour la roadmap</h3>
+              <p className="dg__hint">Ces projets sont disponibles dans <strong>Mon Espace → Ma roadmap</strong> (et le bouton roadmap dans La Fabrique).</p>
+              <ul className="dg__validation-list dg__validation-list--muted">
+                {validatedRoadmap.map(({ projet, directionName }) => (
+                  <li key={projet.id} className="dg__validation-row">
+                    <div className="dg__validation-main">
+                      <span className="dg__validation-dir">{directionName}</span>
+                      <strong className="dg__validation-name">{projet.nom || 'Sans titre'}</strong>
+                      <span className="dg__validation-meta">{computeProjectScore(projet)}/100</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="dg__validate-btn dg__validate-btn--ghost"
+                      disabled={savingId === projet.id}
+                      onClick={() => {
+                        if (!window.confirm('Retirer la validation DG ? Le projet ne sera plus accessible depuis Ma roadmap tant qu’il n’est pas validé à nouveau.')) return
+                        void handleValidate(projet.id, false)
+                      }}
+                    >
+                      Retirer la validation
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          )}
 
           <div className="dg__grid">
             <article className="dg__card">

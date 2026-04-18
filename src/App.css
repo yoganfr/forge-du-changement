@@ -1153,6 +1153,107 @@
   border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, var(--theme-border));
 }
 
+.dg__card--wide {
+  grid-column: 1 / -1;
+}
+
+.dg__hint {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--theme-text-muted);
+}
+
+.dg__empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--theme-text-muted);
+  font-style: italic;
+}
+
+.dg__validation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.dg__validation-list--muted .dg__validation-name {
+  font-weight: 600;
+}
+
+.dg__validation-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--theme-text) 3%, transparent);
+}
+
+.dg__validation-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dg__validation-dir {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
+.dg__validation-name {
+  font-size: 0.95rem;
+  color: var(--theme-text);
+}
+
+.dg__validation-meta {
+  font-size: 0.82rem;
+  color: var(--theme-text-muted);
+}
+
+.dg__validation-score {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--theme-text);
+}
+
+.dg__validate-btn {
+  appearance: none;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  background: var(--theme-accent, var(--caramel-candy-600));
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.dg__validate-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.dg__validate-btn--ghost {
+  background: transparent;
+  color: var(--theme-text);
+  border: 1px solid var(--glass-border);
+}
+
+.dg__validate-btn--ghost:hover {
+  background: color-mix(in srgb, var(--theme-text) 6%, transparent);
+}
+
 @media print {
   body.dg-printing .dashboard__topbar,
   body.dg-printing .dashboard__nav,

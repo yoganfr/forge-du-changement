@@ -208,12 +208,21 @@ function App() {
 
     const directionProjects = await getDirectionProjets(selectedDirection.id)
     const targetProject =
-      directionProjects.find((p) => p.type === 'BUILD' && p.selected_for_transfo)
-      ?? directionProjects.find((p) => p.type === 'BUILD')
+      directionProjects.find(
+        (p) => p.type === 'BUILD' && p.selected_for_transfo && p.dg_validated_transfo,
+      )
+      ?? directionProjects.find((p) => p.type === 'BUILD' && p.dg_validated_transfo)
 
     if (!targetProject) {
-      setActiveNav('fabrique')
-      window.alert('Aucun projet BUILD trouvé pour ouvrir la roadmap. Créez ou retenez un BUILD dans La Fabrique.')
+      const pendingDg = directionProjects.some(
+        (p) => p.type === 'BUILD' && p.selected_for_transfo && !p.dg_validated_transfo,
+      )
+      setActiveNav(pendingDg ? 'dg' : 'fabrique')
+      window.alert(
+        pendingDg
+          ? 'Votre projet BUILD est soumis au DG mais pas encore validé pour la roadmap. Ouvrez la Vue DG et validez le projet (section « Projets BUILD soumis pour la roadmap »).'
+          : 'Aucun projet BUILD validé par le DG pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le DG, puis validez-le dans la Vue DG.',
+      )
       return
     }
 

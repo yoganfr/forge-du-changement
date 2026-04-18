@@ -113,8 +113,14 @@ export default function MaturityRoadmap({
     setLoading(true)
     setError(null)
     try {
-      const [p, dirs, chs] = await Promise.all([
-        getProjet(projetId),
+      const p = await getProjet(projetId)
+      if (p.type === 'BUILD' && !p.dg_validated_transfo) {
+        setError(
+          'Ce projet BUILD n’est pas validé par le DG pour la Maturity Roadmap. Ouvrez la Vue DG et validez-le dans « Projets BUILD soumis pour la roadmap ».',
+        )
+        return
+      }
+      const [dirs, chs] = await Promise.all([
         getWorkspaceDirections(workspaceId),
         getProjetChantiers(projetId),
       ])
