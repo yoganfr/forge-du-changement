@@ -239,6 +239,7 @@ export async function createDirection(data: Partial<Direction>): Promise<Directi
     .select()
     .single()
   if (error) throw error
+  if (direction?.workspace_id) invalidateCache([`workspace-directions-projects:${direction.workspace_id}`])
   return direction as Direction
 }
 
@@ -250,6 +251,7 @@ export async function updateDirection(id: string, data: Partial<Direction>): Pro
     .select()
     .single()
   if (error) throw error
+  if (direction?.workspace_id) invalidateCache([`workspace-directions-projects:${direction.workspace_id}`])
   return direction as Direction
 }
 
@@ -262,6 +264,22 @@ export async function getWorkspaceDirections(workspaceId: string): Promise<Direc
   return (data ?? []) as Direction[]
 }
 
+export async function getWorkspaceDirectionsWithProjects(workspaceId: string): Promise<Array<{
+  direction: Direction
+  projects: Projet[]
+}>> {
+  return dedupedFetch(`workspace-directions-projects:${workspaceId}`, async () => {
+    const directions = await getWorkspaceDirections(workspaceId)
+    const rows = await Promise.all(
+      directions.map(async (direction) => {
+        const projects = await getDirectionProjets(direction.id)
+        return { direction, projects }
+      }),
+    )
+    return rows
+  })
+}
+
 // -- PROJETS --
 export async function createProjet(data: Partial<Projet>): Promise<Projet> {
   const { data: projet, error } = await supabase
@@ -270,6 +288,7 @@ export async function createProjet(data: Partial<Projet>): Promise<Projet> {
     .select()
     .single()
   if (error) throw error
+  if (projet?.workspace_id) invalidateCache([`workspace-directions-projects:${projet.workspace_id}`])
   return projet as Projet
 }
 
@@ -281,6 +300,7 @@ export async function updateProjet(id: string, data: Partial<Projet>): Promise<P
     .select()
     .single()
   if (error) throw error
+  if (projet?.workspace_id) invalidateCache([`workspace-directions-projects:${projet.workspace_id}`])
   return projet as Projet
 }
 

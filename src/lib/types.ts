@@ -75,3 +75,22 @@ export type Invitation = {
   status: 'en_attente' | 'acceptee' | 'expiree'
   created_at: string
 }
+
+export type DashboardDgDirectionStats = {
+  directionId: string
+  directionName: string
+  totalProjects: number
+  runProjects: number
+  buildProjects: number
+  avgBuildScore: number
+  selectedBuildCount: number
+}
+
+export type DashboardDgKpis = {
+  totalProjects: number
+  runProjects: number
+  buildProjects: number
+  activeDirections: number
+  avgBuildScore: number
+  criticalProjects: number
+}

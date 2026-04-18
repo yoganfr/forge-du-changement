@@ -37,9 +37,11 @@ const MemberOnboarding = lazy(() => import('./MemberOnboarding'))
 const OnboardingFlow = lazy(() => import('./OnboardingFlow'))
 const CompanySheet = lazy(() => import('./CompanySheet'))
 const ProfileSheet = lazy(() => import('./ProfileSheet'))
+const DashboardDG = lazy(() => import('./pages/DashboardDG'))
 
 const navItems = [
   { id: 'fabrique', label: 'La Fabrique', group: null },
+  { id: 'dg', label: 'Vue DG', group: null },
   { id: 'workspace', label: 'Mon Espace', group: 'fabrique' },
 ] as const
 
@@ -64,6 +66,13 @@ const cards = [
     description:
       'Clarifier qui fait quoi, à quel rythme, et comment synchroniser les décisions sans friction.',
     icon: '◎',
+  },
+  {
+    id: 'dg',
+    title: 'Vue DG',
+    description:
+      'Consolider la lecture inter-directions avec KPI, top BUILD et trajectoire macro pour les arbitrages CODIR.',
+    icon: '◈',
   },
 ] as const
 
@@ -108,7 +117,7 @@ function App() {
   const [activeNav, setActiveNav] = useState<string>('home')
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
   const normalizedActiveNav = useMemo(() => {
-    const known = ['fabrique', 'workspace', 'sens', 'roles', 'company', 'settings'] as const
+    const known = ['fabrique', 'workspace', 'sens', 'roles', 'company', 'settings', 'dg'] as const
     return known.includes(activeNav as (typeof known)[number]) ? activeNav : 'home'
   }, [activeNav])
 
@@ -584,6 +593,8 @@ function App() {
                 memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
                 workspaceId={workspaceId}
               />
+            ) : normalizedActiveNav === 'dg' ? (
+              <DashboardDG workspaceId={workspaceId} />
             ) : normalizedActiveNav === 'company' ? (
               <CompanySheet
                 workspaceId={workspaceId}
