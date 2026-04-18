@@ -1491,6 +1491,26 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
     setExpandedProjectId(null)
   }
 
+  if (!workspaceId) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <div className="ps-root">
+          <main className="ps-main">
+            <div className="ps-empty">
+              <div className="ps-empty-icon">◈</div>
+              <h3>Sélectionnez d&apos;abord un espace entreprise</h3>
+              <p>
+                Tant qu&apos;aucun workspace n&apos;est actif, les projets ne peuvent pas être enregistrés durablement.
+                Ouvrez <strong>Paramètres</strong>, choisissez une entreprise, puis revenez dans La Fabrique.
+              </p>
+            </div>
+          </main>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <style>{CSS}</style>
