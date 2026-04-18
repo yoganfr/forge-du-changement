@@ -365,6 +365,18 @@ const AXE_PREFIX: Record<Axe, number> = {
   KPI: 4,
 }
 
+/** Aligné sur la contrainte PostgreSQL `jalons_axe_check` (valeurs strictes en majuscules). */
+const ALLOWED_AXES: readonly Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
+
+export function normalizeAxeForDb(input: unknown): Axe {
+  const raw = String(input ?? '').trim()
+  const upper = raw.toUpperCase()
+  if (ALLOWED_AXES.includes(upper as Axe)) return upper as Axe
+  throw new Error(
+    `Axe invalide: "${raw}". Valeurs autorisées: ${ALLOWED_AXES.join(', ')}. Si la base a une ancienne contrainte, exécutez docs/supabase-jalons-fix-axe-check.sql dans Supabase.`,
+  )
+}
+
 function invalidateRoadmapCaches(params: {
   projet_id?: string
   chantier_id?: string
@@ -482,7 +494,7 @@ export async function getChantierJalons(chantier_id: string): Promise<Jalon[]> {
 }
 
 export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
-  if (!data.chantier_id || !data.axe) {
+  if (!data.chantier_id || data.axe === undefined || data.axe === null || String(data.axe).trim() === '') {
     throw new Error('createJalon: chantier_id et axe sont requis')
   }
   const { data: ch, error: eCh } = await supabase
@@ -492,7 +504,7 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
     .single()
   if (eCh) throw eCh
   const chantier = ch as { projet_id: string; workspace_id: string }
-  const axe = data.axe
+  const axe = normalizeAxeForDb(data.axe)
   const numero = data.numero ?? (await getNextJalonNumero(data.chantier_id, axe))
   const seq = Number.parseInt(numero.split('.')[1] ?? '1', 10) || 1
   const insert = {
@@ -527,9 +539,13 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
 }
 
 export async function updateJalon(id: string, data: Partial<Jalon>): Promise<Jalon> {
+  const payload = { ...data, updated_at: new Date().toISOString() }
+  if (data.axe !== undefined && data.axe !== null) {
+    ;(payload as Partial<Jalon>).axe = normalizeAxeForDb(data.axe)
+  }
   const { data: row, error } = await supabase
     .from('jalons')
-    .update({ ...data, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', id)
     .select()
     .single()
