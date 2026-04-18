@@ -1366,6 +1366,15 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
   const transPerimetre = perimetres.find((p) => p.id === TRANS_PERIM_ID)
   const isTransverse = activeId === TRANS_PERIM_ID
 
+  function resolveDirectionIdForWrite(perimId: string): string | null {
+    if (perimId && !perimId.startsWith('perim-')) return perimId
+    const directionCandidate = perimetres.find((p) => p.id !== TRANS_PERIM_ID && !p.id.startsWith('perim-'))
+    const transverseCandidate = perimetres.find((p) => p.id !== DIR_PERIM_ID && !p.id.startsWith('perim-'))
+    if (perimId === TRANS_PERIM_ID) return transverseCandidate?.id ?? null
+    if (perimId === DIR_PERIM_ID) return directionCandidate?.id ?? null
+    return null
+  }
+
   function updateProjectLocal(perimId: string, projId: string, updates: Partial<Project>) {
     setPerimetres((prev) =>
       prev.map((p) =>
@@ -1382,6 +1391,11 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
   async function persistProject(perimId: string, projId: string, updates: Partial<Project>) {
     updateProjectLocal(perimId, projId, updates)
     if (!workspaceId) return
+    const resolvedPerimId = resolveDirectionIdForWrite(perimId)
+    if (!resolvedPerimId) {
+      setSyncError('Synchronisation des directions en cours. Réessayez dans quelques secondes.')
+      return
+    }
 
     const perimetre = perimetres.find((p) => p.id === perimId)
     const current = perimetre?.projects.find((pr) => pr.id === projId)
@@ -1392,7 +1406,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
       if (merged.id.startsWith('proj-')) {
         if (!pendingCreateRef.current[projId]) {
           pendingCreateRef.current[projId] = (async () => {
-            const created = await createProjet(mapProjectToDbProjet(merged, perimId, workspaceId))
+            const created = await createProjet(mapProjectToDbProjet(merged, resolvedPerimId, workspaceId))
             const hydrated = mapDbProjetToProject(created as DbProjet)
             setPerimetres((prev) =>
               prev.map((p) =>
@@ -1409,7 +1423,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
           })
         }
         const realId = await pendingCreateRef.current[projId]
-        const updated = await updateProjet(realId, mapProjectToDbProjet(merged, perimId, workspaceId))
+        const updated = await updateProjet(realId, mapProjectToDbProjet(merged, resolvedPerimId, workspaceId))
         const hydrated = mapDbProjetToProject(updated as DbProjet)
         setPerimetres((prev) =>
           prev.map((p) =>
@@ -1420,7 +1434,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
           ),
         )
       } else {
-        const updated = await updateProjet(merged.id, mapProjectToDbProjet(merged, perimId, workspaceId))
+        const updated = await updateProjet(merged.id, mapProjectToDbProjet(merged, resolvedPerimId, workspaceId))
         const hydrated = mapDbProjetToProject(updated as DbProjet)
         setPerimetres((prev) =>
           prev.map((p) =>
@@ -1459,6 +1473,10 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
 
   function addProject() {
     if (!active) return
+    if (workspaceId && !resolveDirectionIdForWrite(active.id)) {
+      setSyncError('Les directions ne sont pas encore prêtes. Patientez quelques secondes puis réessayez.')
+      return
+    }
     const empty = createEmptyProject()
     setPerimetres((prev) =>
       prev.map((p) =>
