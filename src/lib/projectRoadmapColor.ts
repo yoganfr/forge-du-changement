@@ -1,28 +1,17 @@
 /**
- * Couleurs stables par projet pour la roadmap (palette distincte, ordre de la liste).
- * L’assignation par **index** dans la liste éligible garantit des teintes différentes pour chaque
- * projet affiché (contrairement à un simple hash d’UUID, qui peut collisionner).
+ * Palette limitée à 5 teintes, choisies pour se distinguer nettement entre elles
+ * et rester lisibles sur fond clair (cartes / pilules) — espacement régulier en teinte.
+ * Au-delà de 5 projets, les couleurs sont réutilisées dans le même ordre.
  */
 export const ROADMAP_PROJECT_PALETTE = [
-  '#8E3B46', // bordeaux
-  '#4C86A8', // bleu
-  '#477890', // bleu outils
-  '#B45309', // ambre
-  '#2d6a4f', // vert
-  '#6b4c9a', // violet
-  '#c45c26', // orange
-  '#3d6b7a', // bleu-gris
-  '#b91c1c', // rouge
-  '#0d9488', // teal
-  '#ca8a04', // jaune or
-  '#7c3aed', // violet vif
-  '#db2777', // rose
-  '#059669', // émeraude
-  '#ea580c', // orange vif
-  '#2563eb', // bleu roi
+  '#9D174D', // magenta / bordeaux soutenu
+  '#1D4ED8', // bleu roi
+  '#166534', // vert forêt
+  '#C2410C', // orange brûlé
+  '#5B21B6', // violet profond
 ] as const
 
-/** Couleur par position dans la liste des projets roadmap (toujours distincte jusqu’à palette.length projets). */
+/** Couleur par position dans la liste des projets roadmap (distincte jusqu’à 5 projets). */
 export function assignRoadmapProjectColors(projectIdsInDisplayOrder: string[]): Record<string, string> {
   const m: Record<string, string> = {}
   const n = ROADMAP_PROJECT_PALETTE.length

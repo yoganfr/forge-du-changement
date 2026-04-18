@@ -404,12 +404,60 @@ export default function MaturityRoadmap({
           </>
         ) : null}
         {roadmapProjects.length} projet{roadmapProjects.length > 1 ? 's' : ''} transformant
-        {roadmapProjects.length > 1 ? 's' : ''}. Choisissez les projets affichés dans le menu à côté de l’axe. Cliquez
-        sur l’intitulé d’une ligne (ou sur la ligne dédiée en bas de chaque axe) pour le nom et le rattachement au
-        projet.
+        {roadmapProjects.length > 1 ? 's' : ''}. Cochez les projets dans la légende ci-dessous (couleurs sur la
+        grille). Choisissez ensuite l’axe affiché. Cliquez sur l’intitulé d’une ligne (ou sur la ligne dédiée en bas
+        de chaque axe) pour le nom et le rattachement au projet.
       </p>
 
       <div className="mr-toolbar">
+        <div className="mr-toolbar__field mr-toolbar__field--projects-legend">
+          <span className="mr-toolbar__label">Projets transformants affichés</span>
+          {memberDirectionLabel ? (
+            <span className="mr-toolbar__direction">Direction {memberDirectionLabel}</span>
+          ) : null}
+          <div
+            className="mr-toolbar__projects-panel"
+            role="group"
+            aria-label="Légende couleur et filtre des projets transformants"
+          >
+            <div className="mr-toolbar__projects-actions">
+              <button type="button" className="mr-toolbar__link" onClick={selectAllLegendProjects}>
+                Tout afficher
+              </button>
+              <span className="mr-toolbar__sep" aria-hidden>
+                ·
+              </span>
+              <button type="button" className="mr-toolbar__link" onClick={deselectAllLegendProjects}>
+                Tout masquer
+              </button>
+              <span className="mr-toolbar__projects-count" aria-live="polite">
+                {selectedProjectIds.length}/{roadmapProjects.length} dans la vue
+              </span>
+            </div>
+            <ul className="mr-toolbar__projects-list">
+              {roadmapProjects.map((p) => (
+                <li key={p.id}>
+                  <label className="mr-toolbar__project-row">
+                    <input
+                      type="checkbox"
+                      className="mr-toolbar__project-check"
+                      checked={selectedProjectIds.includes(p.id)}
+                      onChange={() => toggleLegendProject(p.id)}
+                    />
+                    <span className="mr-toolbar__project-line">
+                      <span
+                        className="mr-toolbar__project-swatch mr-toolbar__project-swatch--legend"
+                        style={{ background: projectColorById[p.id] }}
+                        aria-hidden
+                      />
+                      <span className="mr-toolbar__project-name">{p.nom}</span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
         <label className="mr-toolbar__field" htmlFor="mr-axe-filter">
           <span className="mr-toolbar__label">Axe affiché</span>
           <select
@@ -425,55 +473,6 @@ export default function MaturityRoadmap({
             ))}
           </select>
         </label>
-        <div className="mr-toolbar__field mr-toolbar__field--projects">
-          <span className="mr-toolbar__label">Projets transformants affichés</span>
-          {memberDirectionLabel ? (
-            <span className="mr-toolbar__direction">Direction {memberDirectionLabel}</span>
-          ) : null}
-          <details className="mr-toolbar__projects">
-            <summary className="mr-toolbar__projects-summary">
-              <span className="mr-toolbar__projects-summary-text">
-                {selectedProjectIds.length}/{roadmapProjects.length} projet
-                {roadmapProjects.length > 1 ? 's' : ''} — choisir
-              </span>
-            </summary>
-            <div className="mr-toolbar__projects-panel">
-              <div className="mr-toolbar__projects-actions">
-                <button type="button" className="mr-toolbar__link" onClick={selectAllLegendProjects}>
-                  Tout afficher
-                </button>
-                <span className="mr-toolbar__sep" aria-hidden>
-                  ·
-                </span>
-                <button type="button" className="mr-toolbar__link" onClick={deselectAllLegendProjects}>
-                  Tout masquer
-                </button>
-              </div>
-              <ul className="mr-toolbar__projects-list">
-                {roadmapProjects.map((p) => (
-                  <li key={p.id}>
-                    <label className="mr-toolbar__project-row">
-                      <input
-                        type="checkbox"
-                        className="mr-toolbar__project-check"
-                        checked={selectedProjectIds.includes(p.id)}
-                        onChange={() => toggleLegendProject(p.id)}
-                      />
-                      <span className="mr-toolbar__project-line">
-                        <span
-                          className="mr-toolbar__project-swatch"
-                          style={{ background: projectColorById[p.id] }}
-                          aria-hidden
-                        />
-                        <span className="mr-toolbar__project-name">{p.nom}</span>
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </details>
-        </div>
       </div>
 
       <RoadmapTimelineGrid
