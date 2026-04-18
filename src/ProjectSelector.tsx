@@ -7,6 +7,7 @@ import {
   getWorkspaceDirections,
   updateProjet,
 } from './lib/api'
+import { getCurrentUser } from './lib/auth'
 import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -1295,8 +1296,15 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
         let directions = await getWorkspaceDirections(workspaceId)
 
         if (directions.length === 0) {
+          const appUser = await getCurrentUser()
+          if (!appUser?.id) {
+            throw new Error(
+              "Impossible d'initialiser les directions: profil utilisateur introuvable dans l'espace.",
+            )
+          }
           const createdDirection = await createDirection({
             workspace_id: workspaceId,
+            user_id: appUser.id,
             nom: memberDirectionName.trim() || 'Ma direction',
             type: 'Fonctionnel',
             mission: null,
@@ -1306,6 +1314,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
           })
           const createdTransverse = await createDirection({
             workspace_id: workspaceId,
+            user_id: appUser.id,
             nom: 'Projets transverses',
             type: null,
             mission: null,
@@ -1340,7 +1349,14 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
         const message = typeof error === 'object' && error && 'message' in error
           ? String((error as { message?: unknown }).message ?? '')
           : ''
-        setSyncError(message || 'Erreur de synchronisation Supabase')
+        const normalized = message.toLowerCase()
+        if (normalized.includes('row-level security')) {
+          setSyncError(
+            "Vous n'avez pas les droits pour créer automatiquement les directions sur cet espace. Demandez à un consultant/admin de les initialiser.",
+          )
+        } else {
+          setSyncError(message || 'Erreur de synchronisation Supabase')
+        }
       } finally {
         if (!cancelled) setSyncLoading(false)
       }
