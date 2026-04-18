@@ -49,6 +49,10 @@ type Props = {
   ) => void
   /** Case « réalisé » sur la pilule (hors lecture seule). */
   onToggleJalonRealise?: (jalon: Jalon, chantierId: string, realised: boolean) => void
+  /** Clic sur la cellule « Chantier » : nom + rattachement projet (hors lecture seule). */
+  onChantierCellClick?: (chantierId: string) => void
+  /** Ligne d’ajout en bas du tableau (pas de bouton séparé dans la barre). */
+  onAddChantierRowClick?: () => void
 }
 
 export default function RoadmapTimelineGrid({
@@ -65,6 +69,8 @@ export default function RoadmapTimelineGrid({
   onOpenJalon,
   onQuickAddInCell,
   onToggleJalonRealise,
+  onChantierCellClick,
+  onAddChantierRowClick,
 }: Props) {
   const timeColumns = buildTimelineColumns(new Date())
 
@@ -133,9 +139,9 @@ export default function RoadmapTimelineGrid({
       </div>
 
       <p className="mr-tgrid-intro">
-        Quatre <strong>blocs d’axe</strong> (Processus, Organisation, Outils, KPI) : chaque <strong>chantier</strong>{' '}
-        est une ligne ; les <strong>jalons</strong> sont des cartes colorées par projet (case = réalisé). Le{' '}
-        <strong>+</strong> ajoute un jalon dans l’axe du bloc.
+        Quatre <strong>blocs d’axe</strong> : chaque <strong>ligne chantier</strong> se définit en cliquant sur son
+        intitulé ; les <strong>jalons</strong> sont des cartes par projet (case = réalisé). Le <strong>+</strong> dans une
+        case temps ajoute un jalon dans l’axe du bloc.
       </p>
 
       <div className="mr-tgrid-scroll" role="region" aria-label="Tableau roadmap par axe et temps">
@@ -160,10 +166,26 @@ export default function RoadmapTimelineGrid({
             <tbody>
               <tr>
                 <td colSpan={colCount} className="mr-tgrid__empty">
-                  Aucun chantier à afficher pour les projets sélectionnés. Cochez un ou plusieurs projets dans la légende
-                  ou créez un chantier rattaché à un projet.
+                  {legendProjects.some((p) => p.checked)
+                    ? 'Aucun chantier pour les projets sélectionnés. Utilisez la ligne ci-dessous ou cochez d’autres projets dans la légende.'
+                    : 'Cochez au moins un projet dans la légende, ou ajoutez une ligne de chantier ci-dessous.'}
                 </td>
               </tr>
+              {!readOnly && onAddChantierRowClick ? (
+                <tr className="mr-tgrid__add-chantier-row">
+                  <td
+                    colSpan={2}
+                    className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__add-chantier-cell"
+                  >
+                    <button type="button" className="mr-tgrid__chantier-add-line" onClick={onAddChantierRowClick}>
+                      + Ajouter une ligne de chantier
+                    </button>
+                  </td>
+                  {headerCells.map((h) => (
+                    <td key={h.key} className="mr-tgrid__cell mr-tgrid__cell--filler" aria-hidden />
+                  ))}
+                </tr>
+              ) : null}
             </tbody>
           ) : (
             axesToShow.map((axe, blockIndex) => {
@@ -197,12 +219,29 @@ export default function RoadmapTimelineGrid({
                           scope="row"
                           className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-cell"
                         >
-                          <span className="mr-tgrid__chantier-name">{ch.nom}</span>
-                          {projetLabel ? (
-                            <span className="mr-tgrid__chantier-projet" title="Projet parent">
-                              {projetLabel}
-                            </span>
-                          ) : null}
+                          {!readOnly && onChantierCellClick ? (
+                            <button
+                              type="button"
+                              className="mr-tgrid__chantier-name-btn"
+                              onClick={() => onChantierCellClick(ch.id)}
+                            >
+                              <span className="mr-tgrid__chantier-name">{ch.nom}</span>
+                              {projetLabel ? (
+                                <span className="mr-tgrid__chantier-projet" title="Projet parent">
+                                  {projetLabel}
+                                </span>
+                              ) : null}
+                            </button>
+                          ) : (
+                            <>
+                              <span className="mr-tgrid__chantier-name">{ch.nom}</span>
+                              {projetLabel ? (
+                                <span className="mr-tgrid__chantier-projet" title="Projet parent">
+                                  {projetLabel}
+                                </span>
+                              ) : null}
+                            </>
+                          )}
                         </th>
                         {headerCells.map((h) => (
                           <td key={h.key} className="mr-tgrid__cell">
@@ -268,6 +307,23 @@ export default function RoadmapTimelineGrid({
               )
             })
           )}
+          {chantiers.length > 0 && !readOnly && onAddChantierRowClick ? (
+            <tbody>
+              <tr className="mr-tgrid__add-chantier-row">
+                <td className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__add-axis-filler" aria-hidden>
+                  {' '}
+                </td>
+                <td className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__add-chantier-cell">
+                  <button type="button" className="mr-tgrid__chantier-add-line" onClick={onAddChantierRowClick}>
+                    + Ajouter une ligne de chantier
+                  </button>
+                </td>
+                {headerCells.map((h) => (
+                  <td key={h.key} className="mr-tgrid__cell mr-tgrid__cell--filler" aria-hidden />
+                ))}
+              </tr>
+            </tbody>
+          ) : null}
         </table>
       </div>
     </div>

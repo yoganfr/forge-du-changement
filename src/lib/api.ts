@@ -324,6 +324,14 @@ export async function getRoadmapEligibleProjects(workspaceId: string): Promise<P
   return out.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 }
 
+/** Projets BUILD validés DG — pour une direction donnée (périmètre CODIR / roadmap). */
+export async function getRoadmapEligibleProjectsForDirection(directionId: string): Promise<Projet[]> {
+  const list = await getDirectionProjets(directionId)
+  return list
+    .filter((p) => p.type === 'BUILD' && p.dg_validated_transfo)
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+}
+
 // -- PROJETS --
 export async function createProjet(data: Partial<Projet>): Promise<Projet> {
   const { data: projet, error } = await supabase
@@ -384,10 +392,36 @@ const AXE_PREFIX: Record<Axe, number> = {
 /** Aligné sur la contrainte PostgreSQL `jalons_axe_check` (valeurs strictes en majuscules). */
 const ALLOWED_AXES: readonly Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
+/** Synonymes / anciennes variantes → axe canonique (même logique que le script SQL de réparation). */
+const AXE_SYNONYMS: Record<string, Axe> = {
+  PROCESSUS: 'PROCESSUS',
+  ORGANISATION: 'ORGANISATION',
+  OUTILS: 'OUTILS',
+  OUTIL: 'OUTILS',
+  KPI: 'KPI',
+  KPIS: 'KPI',
+  P: 'PROCESSUS',
+  O: 'ORGANISATION',
+  I: 'OUTILS',
+  K: 'KPI',
+  '1': 'PROCESSUS',
+  '2': 'ORGANISATION',
+  '3': 'OUTILS',
+  '4': 'KPI',
+}
+
 export function normalizeAxeForDb(input: unknown): Axe {
-  const raw = String(input ?? '').trim()
+  let raw = String(input ?? '').trim()
+  raw = raw.replace(/[\u200B-\u200D\uFEFF]/g, '')
   const upper = raw.toUpperCase()
+  const fromMap = AXE_SYNONYMS[upper]
+  if (fromMap) return fromMap
+  const deaccent = upper
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+  if (AXE_SYNONYMS[deaccent]) return AXE_SYNONYMS[deaccent]
   if (ALLOWED_AXES.includes(upper as Axe)) return upper as Axe
+  if (ALLOWED_AXES.includes(deaccent as Axe)) return deaccent as Axe
   throw new Error(
     `Axe invalide: "${raw}". Valeurs autorisées: ${ALLOWED_AXES.join(', ')}. Si la base a une ancienne contrainte, exécutez docs/supabase-jalons-fix-axe-check.sql dans Supabase.`,
   )
@@ -434,6 +468,37 @@ export async function updateChantier(id: string, data: Partial<Chantier>): Promi
   if (error) throw error
   const c = row as Chantier
   invalidateRoadmapCaches({ projet_id: c.projet_id })
+  return c
+}
+
+/**
+ * Met à jour le chantier ; si `projet_id` change, aligne aussi les jalons du chantier sur le nouveau projet.
+ * Invalide les caches chantiers des deux projets (ancien / nouveau).
+ */
+export async function updateChantierAndReparentProject(
+  chantierId: string,
+  data: { nom?: string; projet_id?: string },
+): Promise<Chantier> {
+  const { data: before, error: e0 } = await supabase
+    .from('chantiers')
+    .select('projet_id')
+    .eq('id', chantierId)
+    .single()
+  if (e0) throw e0
+  const oldPid = (before as { projet_id: string }).projet_id
+
+  const row = await updateChantier(chantierId, data)
+  const c = row as Chantier
+
+  if (data.projet_id !== undefined && data.projet_id !== oldPid) {
+    const { error } = await supabase
+      .from('jalons')
+      .update({ projet_id: data.projet_id })
+      .eq('chantier_id', chantierId)
+    if (error) throw error
+    invalidateRoadmapCaches({ projet_id: oldPid })
+    invalidateRoadmapCaches({ projet_id: data.projet_id })
+  }
   return c
 }
 

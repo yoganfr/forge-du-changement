@@ -624,6 +624,53 @@
   text-overflow: ellipsis;
 }
 
+.mr-tgrid__chantier-name-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.mr-tgrid__chantier-name-btn:hover {
+  opacity: 0.9;
+}
+
+.mr-tgrid__chantier-add-line {
+  font: inherit;
+  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  color: var(--theme-accent, #8e3b46);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.mr-tgrid__chantier-add-line:hover {
+  opacity: 0.88;
+}
+
+.mr-tgrid__cell--filler {
+  background: var(--theme-bg-card);
+}
+
+.mr-tgrid__add-axis-filler {
+  background: color-mix(in srgb, var(--theme-text) 4%, transparent);
+}
+
+.mr-tgrid__add-chantier-row .mr-tgrid__add-chantier-cell {
+  border-top: 1px dashed color-mix(in srgb, var(--theme-text) 22%, transparent);
+}
+
 .mr-tgrid__empty {
   padding: 24px 16px;
   text-align: center;
@@ -853,6 +900,22 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 4px;
+}
+
+.mr-modal__actions--split {
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mr-modal__actions-spacer {
+  min-width: 0;
+}
+
+.mr-modal__actions-right {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .mr-axes-detail {

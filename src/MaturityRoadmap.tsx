@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Axe, Direction, Jalon, JalonFacette, JalonStatut, Projet, RaciRole } from './lib/types'
+import type { Axe, Direction, Jalon, JalonFacette, JalonStatut, Projet, RaciRole, User } from './lib/types'
 import {
   createChantier,
   createJalon,
@@ -10,14 +10,16 @@ import {
   getProjetChantiers,
   getProjetJalons,
   getRoadmapEligibleProjects,
+  getRoadmapEligibleProjectsForDirection,
   getWorkspaceDirections,
   monthToQuarter,
   removeRaci,
   setRaci,
-  updateChantier,
+  updateChantierAndReparentProject,
   updateJalon,
 } from './lib/api'
-import ChantierCreateModal from './ChantierCreateModal'
+import { getCurrentUser } from './lib/auth'
+import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
 import {
@@ -56,32 +58,18 @@ const FACETTE_OPTIONS: { value: JalonFacette; label: string }[] = [
   { value: 'AUTRE', label: 'Autre' },
 ]
 
-function formatMonthYearShort(mois: number | null, annee: number | null): string {
-  if (!mois || !annee) return '—'
-  const d = new Date(annee, mois - 1, 1)
-  const s = d.toLocaleString('fr-FR', { month: 'short', year: 'numeric' })
-  return s.replace(/\.$/, '')
-}
-
-function monthInQuarter(mois: number, q: 'Q1' | 'Q2' | 'Q3' | 'Q4'): boolean {
-  if (mois < 1 || mois > 12) return false
-  if (q === 'Q1') return mois <= 3
-  if (q === 'Q2') return mois >= 4 && mois <= 6
-  if (q === 'Q3') return mois >= 7 && mois <= 9
-  return mois >= 10
-}
-
-function jalonMatchesFilters(
-  j: Jalon,
-  trimestre: 'all' | 'Q1' | 'Q2' | 'Q3' | 'Q4',
-  axe: 'all' | Axe,
-  year: number,
-): boolean {
-  if (axe !== 'all' && j.axe !== axe) return false
-  if (trimestre === 'all') return true
-  if (!j.mois_cible || !j.annee_cible) return true
-  if (j.annee_cible !== year) return false
-  return monthInQuarter(j.mois_cible, trimestre)
+/** Direction « métier » du membre CODIR / pilote (nom dans le profil ou première direction non transverse). */
+function resolveMemberDirectionId(dirs: Direction[], u: User | null): string | null {
+  if (!u) return null
+  const want = u.direction_nom?.trim().toLowerCase()
+  if (want) {
+    const hit = dirs.find((d) => d.nom.trim().toLowerCase() === want)
+    if (hit) return hit.id
+  }
+  if (u.role === 'codir' || u.role === 'pilote') {
+    return dirs.find((d) => !d.is_transverse)?.id ?? dirs[0]?.id ?? null
+  }
+  return null
 }
 
 export type MaturityRoadmapProps = {
@@ -105,12 +93,13 @@ export default function MaturityRoadmap({
   const [directions, setDirections] = useState<Direction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [chantierModalOpen, setChantierModalOpen] = useState(false)
   const [chantierSaving, setChantierSaving] = useState(false)
-  const [trimestre, setTrimestre] = useState<'all' | 'Q1' | 'Q2' | 'Q3' | 'Q4'>('all')
+  const [memberDirectionLabel, setMemberDirectionLabel] = useState<string | null>(null)
+  const [chantierModal, setChantierModal] = useState<{
+    mode: 'create' | 'edit'
+    chantierId: string | null
+  } | null>(null)
   const [axeFilter, setAxeFilter] = useState<'all' | Axe>('all')
-  const [filterYear, setFilterYear] = useState(() => new Date().getFullYear())
-  const [editingChantierId, setEditingChantierId] = useState<string | null>(null)
   const [drawerJalonId, setDrawerJalonId] = useState<string | null>(null)
   const [drawerChantierId, setDrawerChantierId] = useState<string | null>(null)
   /** Jalon tout juste créé (évite un tiroir bloqué si le cache réseau était encore en cours). */
@@ -122,27 +111,32 @@ export default function MaturityRoadmap({
   } | null>(null)
   const [quickAddSaving, setQuickAddSaving] = useState(false)
 
-  const yearOptions = useMemo(() => {
-    const y = new Date().getFullYear()
-    return [y - 1, y, y + 1, y + 2]
-  }, [])
-
   const loadAll = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [dirs, projects] = await Promise.all([
+      const [dirs, appUser] = await Promise.all([
         getWorkspaceDirections(workspaceId),
-        getRoadmapEligibleProjects(workspaceId),
+        getCurrentUser(),
       ])
       setDirections(dirs)
+      const memberDirId = resolveMemberDirectionId(dirs, appUser)
+      const dirLabel = memberDirId ? dirs.find((d) => d.id === memberDirId)?.nom ?? null : null
+      setMemberDirectionLabel(dirLabel)
+
+      const projects = memberDirId
+        ? await getRoadmapEligibleProjectsForDirection(memberDirId)
+        : await getRoadmapEligibleProjects(workspaceId)
+
       if (projects.length === 0) {
         setRoadmapProjects([])
         setSelectedProjectIds([])
         setChantiers([])
         setJalonsByChantier({})
         setError(
-          'Aucun projet BUILD validé par le DG pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le DG, puis validez-le dans la Vue DG (section « Projets BUILD soumis pour la roadmap »).',
+          memberDirId
+            ? 'Aucun projet BUILD validé par le DG pour votre direction. Créez un BUILD dans La Fabrique, retenez-le pour le DG, puis validez-le dans la Vue DG (section « Projets BUILD soumis pour la roadmap »).'
+            : 'Aucun projet BUILD validé par le DG pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le DG, puis validez-le dans la Vue DG (section « Projets BUILD soumis pour la roadmap »).',
         )
         return
       }
@@ -191,8 +185,6 @@ export default function MaturityRoadmap({
     void loadAll()
   }, [loadAll])
 
-  const directionById = useMemo(() => new Map(directions.map((d) => [d.id, d.nom])), [directions])
-
   const projectsById = useMemo(
     () => new Map(roadmapProjects.map((p) => [p.id, p])),
     [roadmapProjects],
@@ -238,10 +230,17 @@ export default function MaturityRoadmap({
     setJalonsByChantier((prev) => ({ ...prev, [chantierId]: list }))
   }
 
-  async function handleCreateChantierSubmit(projetId: string, nom: string) {
+  async function handleChantierModalSubmit(projetId: string, nom: string) {
     if (readOnly) return
     setChantierSaving(true)
     try {
+      if (chantierModal?.mode === 'edit' && chantierModal.chantierId) {
+        await updateChantierAndReparentProject(chantierModal.chantierId, { nom, projet_id: projetId })
+        setSelectedProjectIds((prev) => (prev.includes(projetId) ? prev : [...prev, projetId]))
+        setChantierModal(null)
+        await loadAll()
+        return
+      }
       const sameCh = chantiers.filter((c) => c.projet_id === projetId)
       const ordre = (sameCh.reduce((m, c) => Math.max(m, c.ordre), 0) || 0) + 1
       const c = await createChantier({
@@ -250,7 +249,8 @@ export default function MaturityRoadmap({
         nom,
         ordre,
       })
-      setChantierModalOpen(false)
+      setSelectedProjectIds((prev) => (prev.includes(projetId) ? prev : [...prev, projetId]))
+      setChantierModal(null)
       setChantiers((prev) => {
         const next = [...prev, c]
         const order = new Map(roadmapProjects.map((p, i) => [p.id, i]))
@@ -273,23 +273,23 @@ export default function MaturityRoadmap({
     }
   }
 
-  async function handleDeleteChantier(id: string) {
-    if (readOnly) return
+  async function handleChantierModalDelete() {
+    if (readOnly || !chantierModal || chantierModal.mode !== 'edit' || !chantierModal.chantierId) return
     if (!window.confirm('Supprimer ce chantier et tous ses jalons ?')) return
-    await deleteChantier(id)
-    setChantiers((prev) => prev.filter((c) => c.id !== id))
-    setJalonsByChantier((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
-  }
-
-  async function handleSaveChantierName(id: string, nom: string) {
-    if (readOnly) return
-    const updated = await updateChantier(id, { nom })
-    setChantiers((prev) => prev.map((c) => (c.id === id ? updated : c)))
-    setEditingChantierId(null)
+    setChantierSaving(true)
+    try {
+      await deleteChantier(chantierModal.chantierId)
+      setChantierModal(null)
+      await loadAll()
+    } catch (e) {
+      const msg =
+        typeof e === 'object' && e !== null && 'message' in e
+          ? String((e as { message?: unknown }).message ?? '').trim()
+          : ''
+      window.alert(msg || 'Impossible de supprimer le chantier.')
+    } finally {
+      setChantierSaving(false)
+    }
   }
 
   async function handleQuickAddSubmit(data: {
@@ -345,40 +345,10 @@ export default function MaturityRoadmap({
     }
   }
 
-  async function handleNewJalon(chantierId: string, axe: Axe) {
-    if (readOnly) return
-    const ch = chantiers.find((c) => c.id === chantierId)
-    const proj = ch ? projectsById.get(ch.projet_id) : undefined
-    if (!ch || !proj) return
-    try {
-      const j = await createJalon({
-        chantier_id: chantierId,
-        axe,
-        direction_id: proj.direction_id,
-        projet_id: proj.id,
-        workspace_id: workspaceId,
-      })
-      setDrawerSeedJalon(j)
-      setDrawerChantierId(chantierId)
-      setDrawerJalonId(j.id)
-      await refreshChantierJalons(chantierId)
-    } catch (e) {
-      const msg =
-        typeof e === 'object' && e !== null && 'message' in e
-          ? String((e as { message?: unknown }).message ?? '').trim()
-          : ''
-      window.alert(msg || 'Impossible de créer le jalon.')
-    }
-  }
-
   async function openDrawer(jalon: Jalon, chantierId: string) {
     setDrawerSeedJalon(null)
     setDrawerChantierId(chantierId)
     setDrawerJalonId(jalon.id)
-  }
-
-  function filteredJalons(list: Jalon[]): Jalon[] {
-    return list.filter((j) => jalonMatchesFilters(j, trimestre, axeFilter, filterYear))
   }
 
   const drawerChantier = drawerChantierId
@@ -418,15 +388,22 @@ export default function MaturityRoadmap({
       </button>
       <h1 className="mr-title">Maturity Roadmap</h1>
       <p className="mr-sub">
+        {memberDirectionLabel ? (
+          <>
+            Direction : <strong>{memberDirectionLabel}</strong>
+            {' — '}
+          </>
+        ) : null}
         {roadmapProjects.length} projet{roadmapProjects.length > 1 ? 's' : ''} transformant
-        {roadmapProjects.length > 1 ? 's' : ''} dans l&apos;espace — filtrez par projet via la légende.
+        {roadmapProjects.length > 1 ? 's' : ''} — filtrez par projet via la légende. Cliquez sur l’intitulé d’une ligne
+        chantier pour le nom et le rattachement au projet.
       </p>
 
       <div className="mr-toolbar">
         <label>
-          Axe
+          Axe affiché
           <select value={axeFilter} onChange={(e) => setAxeFilter(e.target.value as typeof axeFilter)}>
-            <option value="all">Tous</option>
+            <option value="all">Les quatre axes</option>
             {AXES.map((a) => (
               <option key={a} value={a}>
                 {AXE_META[a].title}
@@ -434,16 +411,6 @@ export default function MaturityRoadmap({
             ))}
           </select>
         </label>
-        {!readOnly && (
-          <button
-            type="button"
-            className="mr-btn-primary"
-            onClick={() => setChantierModalOpen(true)}
-            disabled={roadmapProjects.length === 0}
-          >
-            + Nouveau chantier
-          </button>
-        )}
       </div>
 
       <RoadmapTimelineGrid
@@ -467,17 +434,51 @@ export default function MaturityRoadmap({
         onToggleJalonRealise={
           readOnly ? undefined : (j, chId, realised) => void handleToggleJalonRealise(j, chId, realised)
         }
+        onChantierCellClick={
+          readOnly
+            ? undefined
+            : (chantierId) =>
+                setChantierModal({ mode: 'edit', chantierId })
+        }
+        onAddChantierRowClick={
+          readOnly
+            ? undefined
+            : () => {
+                if (roadmapProjects.length === 0) {
+                  window.alert(
+                    'Aucun projet BUILD validé par le DG pour cette direction. Validez un projet dans la Vue DG avant d’ajouter des chantiers.',
+                  )
+                  return
+                }
+                setChantierModal({ mode: 'create', chantierId: null })
+              }
+        }
       />
 
-      <ChantierCreateModal
-        open={chantierModalOpen}
-        onClose={() => setChantierModalOpen(false)}
+      <ChantierLineModal
+        open={chantierModal !== null}
+        onClose={() => setChantierModal(null)}
+        mode={chantierModal?.mode ?? 'create'}
         projects={roadmapProjects.map((p) => ({ id: p.id, nom: p.nom }))}
-        defaultProjetId={selectedProjectIds[0] ?? roadmapProjects[0]?.id ?? null}
+        initialNom={
+          chantierModal?.mode === 'edit' && chantierModal.chantierId
+            ? chantiers.find((c) => c.id === chantierModal.chantierId)?.nom ?? ''
+            : ''
+        }
+        initialProjetId={
+          chantierModal?.mode === 'edit' && chantierModal.chantierId
+            ? chantiers.find((c) => c.id === chantierModal.chantierId)?.projet_id ?? null
+            : selectedProjectIds[0] ?? roadmapProjects[0]?.id ?? null
+        }
+        directionLabel={memberDirectionLabel}
+        readOnly={readOnly}
         saving={chantierSaving}
         onSubmit={async (projetId, nom) => {
-          await handleCreateChantierSubmit(projetId, nom)
+          await handleChantierModalSubmit(projetId, nom)
         }}
+        onDelete={
+          chantierModal?.mode === 'edit' && !readOnly ? () => handleChantierModalDelete() : undefined
+        }
       />
 
       <JalonQuickAddModal
@@ -503,139 +504,6 @@ export default function MaturityRoadmap({
         }}
       />
 
-      <details className="mr-axes-detail">
-        <summary className="mr-axes-detail__summary">Vue liste par axe (filtres trimestre / année)</summary>
-        <div className="mr-toolbar" style={{ marginTop: 12 }}>
-          <label>
-            Trimestre
-            <select
-              value={trimestre}
-              onChange={(e) => setTrimestre(e.target.value as typeof trimestre)}
-            >
-              <option value="all">Tous</option>
-              <option value="Q1">Q1</option>
-              <option value="Q2">Q2</option>
-              <option value="Q3">Q3</option>
-              <option value="Q4">Q4</option>
-            </select>
-          </label>
-          {trimestre !== 'all' && (
-            <label>
-              Année
-              <select value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))}>
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <label>
-            Axe
-            <select value={axeFilter} onChange={(e) => setAxeFilter(e.target.value as typeof axeFilter)}>
-              <option value="all">Tous</option>
-              {AXES.map((a) => (
-                <option key={a} value={a}>
-                  {AXE_META[a].title}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-      {visibleChantiers.map((ch) => {
-        const allJalons = jalonsByChantier[ch.id] ?? []
-        return (
-          <section key={ch.id} className="mr-chantier">
-            <div className="mr-chantier-header">
-              {editingChantierId === ch.id ? (
-                <input
-                  className="mr-chantier-title"
-                  defaultValue={ch.nom}
-                  autoFocus
-                  onBlur={(e) => void handleSaveChantierName(ch.id, e.target.value.trim() || 'Chantier')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-                    if (e.key === 'Escape') setEditingChantierId(null)
-                  }}
-                />
-              ) : (
-                <h2 className="mr-chantier-title">
-                  CHANTIER : {ch.nom}
-                </h2>
-              )}
-              {!readOnly && (
-                <>
-                  <button type="button" className="mr-btn-ghost" onClick={() => setEditingChantierId(ch.id)}>
-                    Éditer nom
-                  </button>
-                  <button type="button" className="mr-btn-ghost mr-btn-danger" onClick={() => void handleDeleteChantier(ch.id)}>
-                    Supprimer chantier
-                  </button>
-                </>
-              )}
-            </div>
-
-            {AXES.map((axe) => {
-              const rawAxis = allJalons.filter((j) => j.axe === axe)
-              const axisJalons = filteredJalons(rawAxis)
-              const meta = AXE_META[axe]
-              return (
-                <div
-                  key={axe}
-                  className="mr-axe"
-                  style={{
-                    background: `color-mix(in srgb, ${meta.color} 12%, transparent)`,
-                  }}
-                >
-                  <div className="mr-axe-title">{meta.title}</div>
-                  {axisJalons.length === 0 && (
-                    <p className="mr-muted" style={{ margin: '0 0 8px' }}>
-                      {rawAxis.length === 0
-                        ? 'Aucun jalon dans cet axe.'
-                        : 'Aucun jalon ne correspond aux filtres.'}
-                    </p>
-                  )}
-                  {axisJalons.map((j) => (
-                    <JalonRow
-                      key={j.id}
-                      jalon={j}
-                      onOpen={() => void openDrawer(j, ch.id)}
-                      directionById={directionById}
-                    />
-                  ))}
-                  {!readOnly && (
-                    <div className="mr-add-jalon">
-                      <button
-                        type="button"
-                        className="mr-btn-ghost"
-                        onClick={() => void handleNewJalon(ch.id, axe)}
-                      >
-                        + Nouveau jalon dans cet axe
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </section>
-        )
-      })}
-
-      {!readOnly && (
-        <button
-          type="button"
-          className="mr-btn-primary"
-          style={{ marginTop: 8 }}
-          onClick={() => setChantierModalOpen(true)}
-          disabled={roadmapProjects.length === 0}
-        >
-          + Nouveau chantier
-        </button>
-      )}
-      </details>
-
       {drawerJalonId && drawerChantierId && drawerProjetId && (
         <JalonDrawer
           projetId={drawerProjetId}
@@ -657,56 +525,6 @@ export default function MaturityRoadmap({
           }}
         />
       )}
-    </div>
-  )
-}
-
-function JalonRow({
-  jalon,
-  onOpen,
-  directionById,
-}: {
-  jalon: Jalon
-  onOpen: () => void
-  directionById: Map<string, string>
-}) {
-  const [raciPilote, setRaciPilote] = useState<string>('')
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const raci = await getJalonRaci(jalon.id)
-      const pilote = raci.find((r) => r.role === 'PILOTE')
-      if (!cancelled && pilote) {
-        setRaciPilote(directionById.get(pilote.direction_id) ?? '')
-      } else if (!cancelled) setRaciPilote('')
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [jalon.id, directionById])
-
-  const displayPilote = raciPilote
-
-  return (
-    <div className="mr-jalon-row" onClick={onOpen} role="button" tabIndex={0} onKeyDown={(e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault()
-        onOpen()
-      }
-    }}>
-      <span className="mr-jalon-num">{jalon.numero ?? '—'}</span>
-      <span className="mr-jalon-name">
-        &ldquo;{jalon.nom || 'Sans titre'}&rdquo;
-      </span>
-      <span className="mr-badge-date">{formatMonthYearShort(jalon.mois_cible, jalon.annee_cible)}</span>
-      <span className={`mr-badge-statut mr-statut-${jalon.statut}`}>{STATUT_LABEL[jalon.statut]}</span>
-      {jalon.responsable ? (
-        <span className="mr-jalon-meta">Responsable : {jalon.responsable}</span>
-      ) : null}
-      {displayPilote ? (
-        <span className="mr-jalon-meta">Pilote : {displayPilote}</span>
-      ) : null}
     </div>
   )
 }
