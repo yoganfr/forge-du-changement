@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   createDirection,
   deleteProjet,
@@ -10,8 +10,6 @@ import {
 import { getCurrentUser } from './lib/auth'
 import { generateGanttMonths } from './lib/ganttMonths'
 import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
-
-export { generateGanttMonths }
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -693,11 +691,12 @@ function ProjectCard({
   const hasMountedRef = useRef(false)
 
   useEffect(() => {
-    if (expanded) {
+    if (!expanded) return
+    queueMicrotask(() => {
       setDraft(project)
       setPilotageError(false)
       setConfirmDelete(false)
-    }
+    })
   }, [expanded, project])
 
   useEffect(() => {
@@ -1337,6 +1336,10 @@ export default function ProjectSelector({
     ),
   )
   const [activeId, setActiveId] = useState<string>(DIR_PERIM_ID)
+  const activeIdRef = useRef(activeId)
+  useLayoutEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null)
   const [coefs, setCoefs] = useState<Coefficients>(DEFAULT_COEFFICIENTS)
   const [showCoefs, setShowCoefs] = useState(false)
@@ -1345,8 +1348,10 @@ export default function ProjectSelector({
   const pendingCreateRef = useRef<Record<string, Promise<string>>>({})
 
   useEffect(() => {
-    const name = memberDirectionName.trim() || 'Ma direction'
-    setPerimetres((prev) => prev.map((p) => (p.id === DIR_PERIM_ID ? { ...p, name } : p)))
+    queueMicrotask(() => {
+      const name = memberDirectionName.trim() || 'Ma direction'
+      setPerimetres((prev) => prev.map((p) => (p.id === DIR_PERIM_ID ? { ...p, name } : p)))
+    })
   }, [memberDirectionName])
 
   useEffect(() => {
@@ -1399,7 +1404,7 @@ export default function ProjectSelector({
 
         if (cancelled) return
         setPerimetres(hydrated)
-        if (!hydrated.find((p) => p.id === activeId)) {
+        if (!hydrated.find((p) => p.id === activeIdRef.current)) {
           setActiveId(hydrated[0]?.id ?? DIR_PERIM_ID)
         }
       } catch (error) {

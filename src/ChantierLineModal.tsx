@@ -37,16 +37,18 @@ export default function ChantierLineModal({
 
   useEffect(() => {
     if (!open) return
-    setNom(initialNom)
-    if (mode === 'create') {
-      setProjetId('')
-      return
-    }
-    const pick =
-      initialProjetId && projects.some((p) => p.id === initialProjetId)
-        ? initialProjetId
-        : projects[0]?.id ?? ''
-    setProjetId(pick)
+    queueMicrotask(() => {
+      setNom(initialNom)
+      if (mode === 'create') {
+        setProjetId('')
+        return
+      }
+      const pick =
+        initialProjetId && projects.some((p) => p.id === initialProjetId)
+          ? initialProjetId
+          : projects[0]?.id ?? ''
+      setProjetId(pick)
+    })
   }, [open, mode, initialNom, initialProjetId, projects])
 
   useEffect(() => {

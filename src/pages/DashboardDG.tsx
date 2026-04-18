@@ -75,7 +75,9 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
   }, [workspaceId])
 
   useEffect(() => {
-    void load()
+    queueMicrotask(() => {
+      void load()
+    })
   }, [load])
 
   const pendingByDirection = useMemo(() => {

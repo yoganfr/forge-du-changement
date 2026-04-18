@@ -188,7 +188,7 @@ function App() {
 
   useEffect(() => {
     if (activeNav === 'settings' && !canAccessSettings) {
-      navigateToMainNav('home')
+      queueMicrotask(() => navigateToMainNav('home'))
     }
   }, [activeNav, canAccessSettings, navigateToMainNav])
 
@@ -213,7 +213,9 @@ function App() {
 
   useEffect(() => {
     if (activeNav !== 'settings' || !canAccessSettings) return
-    void refreshWorkspacesCatalog()
+    queueMicrotask(() => {
+      void refreshWorkspacesCatalog()
+    })
   }, [activeNav, canAccessSettings, refreshWorkspacesCatalog])
 
   const handleSelectWorkspaceFromSettings = useCallback((id: string) => {

@@ -78,10 +78,6 @@ function InlineTextField({ label, value, onCommit }: InlineFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!editing) setLocal(value)
-  }, [value, editing])
-
-  useEffect(() => {
     if (editing) inputRef.current?.focus()
   }, [editing])
 
@@ -118,7 +114,14 @@ function InlineTextField({ label, value, onCommit }: InlineFieldProps) {
   }
 
   return (
-    <button type="button" className="psd-inline psd-inline--read" onClick={() => setEditing(true)}>
+    <button
+      type="button"
+      className="psd-inline psd-inline--read"
+      onClick={() => {
+        setLocal(value)
+        setEditing(true)
+      }}
+    >
       <span className="psd-inline-label">{label}</span>
       <span className="psd-inline-value">
         {value || '—'}
@@ -142,10 +145,6 @@ function InlineNumberField({
   const [editing, setEditing] = useState(false)
   const [local, setLocal] = useState(String(value))
   const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!editing) setLocal(String(value))
-  }, [value, editing])
 
   useEffect(() => {
     if (editing) inputRef.current?.focus()
@@ -188,7 +187,14 @@ function InlineNumberField({
   }
 
   return (
-    <button type="button" className="psd-inline psd-inline--read" onClick={() => setEditing(true)}>
+    <button
+      type="button"
+      className="psd-inline psd-inline--read"
+      onClick={() => {
+        setLocal(String(value))
+        setEditing(true)
+      }}
+    >
       <span className="psd-inline-label">{label}</span>
       <span className="psd-inline-value">
         {value} {suffix}
@@ -231,17 +237,19 @@ export default function ProfileSheet({
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem('lfdc-user-id'))
   useEffect(() => {
     if (!open) return
-    const s = loadStored()
-    setFirstName(s.firstName ?? firstNameProp)
-    setLastName(s.lastName ?? lastNameProp)
-    setJobTitle(s.jobTitle ?? jobTitleProp)
-    setDirectionName(s.directionName ?? directionProp)
-    setDirectionType(s.directionType ?? directionTypeProp)
-    setManagedCount(s.managedCount ?? managedCountProp)
-    setTotalEffectif(s.totalEffectif ?? totalEffectifProp)
-    setAvatarUrl(s.avatar ?? avatarUrlProp ?? null)
-    setAvatarFile(null)
-    setDirty(false)
+    queueMicrotask(() => {
+      const s = loadStored()
+      setFirstName(s.firstName ?? firstNameProp)
+      setLastName(s.lastName ?? lastNameProp)
+      setJobTitle(s.jobTitle ?? jobTitleProp)
+      setDirectionName(s.directionName ?? directionProp)
+      setDirectionType(s.directionType ?? directionTypeProp)
+      setManagedCount(s.managedCount ?? managedCountProp)
+      setTotalEffectif(s.totalEffectif ?? totalEffectifProp)
+      setAvatarUrl(s.avatar ?? avatarUrlProp ?? null)
+      setAvatarFile(null)
+      setDirty(false)
+    })
   }, [open, firstNameProp, lastNameProp, jobTitleProp, directionProp, directionTypeProp, managedCountProp, totalEffectifProp, avatarUrlProp])
 
   useEffect(() => {

@@ -27,7 +27,7 @@ const STATUT_LABEL: Record<string, string> = {
  * Chantiers sans axe (données antérieures) : visibles uniquement dans les blocs où ils ont au moins un jalon ;
  * s’ils n’en ont aucun, une seule ligne sur Processus pour éviter les doublons vides.
  */
-export function chantierVisibleInAxisBlock(c: Chantier, blockAxe: Axe, jalons: Jalon[]): boolean {
+function chantierVisibleInAxisBlock(c: Chantier, blockAxe: Axe, jalons: Jalon[]): boolean {
   const typed = c.axe != null && String(c.axe).trim() !== ''
   if (typed) {
     return c.axe === blockAxe
