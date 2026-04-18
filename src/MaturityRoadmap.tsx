@@ -528,7 +528,7 @@ export default function MaturityRoadmap({
         initialProjetId={
           chantierModal?.mode === 'edit' && chantierModal.chantierId
             ? chantiers.find((c) => c.id === chantierModal.chantierId)?.projet_id ?? null
-            : selectedProjectIds[0] ?? roadmapProjects[0]?.id ?? null
+            : null
         }
         axeTypeLabel={(() => {
           if (chantierModal?.mode === 'create' && chantierModal.axeForCreate) {

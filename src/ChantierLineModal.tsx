@@ -38,12 +38,16 @@ export default function ChantierLineModal({
   useEffect(() => {
     if (!open) return
     setNom(initialNom)
+    if (mode === 'create') {
+      setProjetId('')
+      return
+    }
     const pick =
       initialProjetId && projects.some((p) => p.id === initialProjetId)
         ? initialProjetId
         : projects[0]?.id ?? ''
     setProjetId(pick)
-  }, [open, initialNom, initialProjetId, projects])
+  }, [open, mode, initialNom, initialProjetId, projects])
 
   useEffect(() => {
     if (!open) return
@@ -71,6 +75,10 @@ export default function ChantierLineModal({
       return
     }
     if (projetId !== id) return
+    if (mode === 'create') {
+      setProjetId('')
+      return
+    }
     const alt = projects.find((p) => p.id !== id)
     if (alt) setProjetId(alt.id)
   }
