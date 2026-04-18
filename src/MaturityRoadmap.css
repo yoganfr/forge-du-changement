@@ -395,6 +395,11 @@
   background: color-mix(in srgb, var(--theme-text) 3%, transparent);
 }
 
+.mr-tgrid-legend--below {
+  margin-top: var(--space-md);
+  margin-bottom: 0;
+}
+
 .mr-tgrid-legend__label {
   font-size: var(--text-xs);
   font-weight: 800;
@@ -478,6 +483,39 @@
   font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--theme-text-muted);
+}
+
+.mr-tgrid__chantier-cell--empty .mr-tgrid__chantier-empty {
+  color: var(--theme-text-muted);
+  font-weight: 600;
+}
+
+.mr-tgrid__chantier-add-placeholder {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  text-align: left;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--theme-accent, #8e3b46) 45%, var(--glass-border));
+  background: color-mix(in srgb, var(--theme-accent, #8e3b46) 6%, transparent);
+  color: var(--theme-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.mr-tgrid__chantier-add-placeholder:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--theme-accent, #8e3b46) 70%, var(--glass-border));
+  color: var(--theme-text);
+  background: color-mix(in srgb, var(--theme-accent, #8e3b46) 10%, transparent);
+}
+
+.mr-tgrid__chantier-add-placeholder:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .mr-tgrid-scroll {

@@ -441,17 +441,17 @@ function invalidateRoadmapCaches(params: {
 
 // -- CHANTIERS (Maturity Roadmap) --
 export async function createChantier(data: Partial<Chantier>): Promise<Chantier> {
-  const { data: row, error } = await supabase
-    .from('chantiers')
-    .insert({
-      projet_id: data.projet_id,
-      workspace_id: data.workspace_id,
-      nom: data.nom ?? 'Nouveau chantier',
-      description: data.description ?? null,
-      ordre: data.ordre ?? 1,
-    })
-    .select()
-    .single()
+  const insert: Record<string, unknown> = {
+    projet_id: data.projet_id,
+    workspace_id: data.workspace_id,
+    nom: data.nom ?? 'Chantier',
+    description: data.description ?? null,
+    ordre: data.ordre ?? 1,
+  }
+  if (data.axe !== undefined && data.axe !== null) {
+    insert.axe = normalizeAxeForDb(data.axe)
+  }
+  const { data: row, error } = await supabase.from('chantiers').insert(insert).select().single()
   if (error) throw error
   const c = row as Chantier
   invalidateRoadmapCaches({ projet_id: c.projet_id })
@@ -580,12 +580,16 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
   }
   const { data: ch, error: eCh } = await supabase
     .from('chantiers')
-    .select('projet_id, workspace_id')
+    .select('projet_id, workspace_id, axe')
     .eq('id', data.chantier_id)
     .single()
   if (eCh) throw eCh
-  const chantier = ch as { projet_id: string; workspace_id: string }
-  const axe = normalizeAxeForDb(data.axe)
+  const chantier = ch as { projet_id: string; workspace_id: string; axe?: Axe | null }
+  /** Si le chantier a un axe défini, les jalons héritent de ce type (aligné sur la zone de création). */
+  const axe =
+    chantier.axe != null && String(chantier.axe).trim() !== ''
+      ? normalizeAxeForDb(chantier.axe)
+      : normalizeAxeForDb(data.axe)
   const numero = data.numero ?? (await getNextJalonNumero(data.chantier_id, axe))
   const seq = Number.parseInt(numero.split('.')[1] ?? '1', 10) || 1
   const insert = {

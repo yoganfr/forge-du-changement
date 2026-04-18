@@ -98,6 +98,8 @@ export default function MaturityRoadmap({
   const [chantierModal, setChantierModal] = useState<{
     mode: 'create' | 'edit'
     chantierId: string | null
+    /** Axe du bloc où la création a été lancée (type Processus / … / KPI). */
+    axeForCreate?: Axe
   } | null>(null)
   const [axeFilter, setAxeFilter] = useState<'all' | Axe>('all')
   const [drawerJalonId, setDrawerJalonId] = useState<string | null>(null)
@@ -241,13 +243,19 @@ export default function MaturityRoadmap({
         await loadAll()
         return
       }
-      const sameCh = chantiers.filter((c) => c.projet_id === projetId)
+      const axeForCreate = chantierModal?.axeForCreate
+      const sameCh = chantiers.filter((c) => {
+        if (c.projet_id !== projetId) return false
+        if (axeForCreate == null) return true
+        return c.axe === axeForCreate
+      })
       const ordre = (sameCh.reduce((m, c) => Math.max(m, c.ordre), 0) || 0) + 1
       const c = await createChantier({
         projet_id: projetId,
         workspace_id: workspaceId,
         nom,
         ordre,
+        ...(axeForCreate != null ? { axe: axeForCreate } : {}),
       })
       setSelectedProjectIds((prev) => (prev.includes(projetId) ? prev : [...prev, projetId]))
       setChantierModal(null)
@@ -303,11 +311,13 @@ export default function MaturityRoadmap({
     const ch = chantiers.find((c) => c.id === chantierId)
     const proj = ch ? projectsById.get(ch.projet_id) : undefined
     if (!ch || !proj) return
+    /** Jalons : même axe que le chantier si typé ; sinon axe de la case (chantiers historiques). */
+    const axe = ch.axe ?? quickAdd.axe
     setQuickAddSaving(true)
     try {
       const j = await createJalon({
         chantier_id: chantierId,
-        axe: quickAdd.axe,
+        axe,
         nom: data.nom,
         mois_cible: data.mois_cible,
         annee_cible: data.annee_cible,
@@ -395,8 +405,9 @@ export default function MaturityRoadmap({
           </>
         ) : null}
         {roadmapProjects.length} projet{roadmapProjects.length > 1 ? 's' : ''} transformant
-        {roadmapProjects.length > 1 ? 's' : ''} — filtrez par projet via la légende. Cliquez sur l’intitulé d’une ligne
-        chantier pour le nom et le rattachement au projet.
+        {roadmapProjects.length > 1 ? 's' : ''} — sous le tableau, cochez les projets pour filtrer les lignes chantier.
+        Cliquez sur l’intitulé d’une ligne (ou sur la ligne dédiée en bas de chaque axe) pour le nom et le rattachement
+        au projet.
       </p>
 
       <div className="mr-toolbar">
@@ -437,20 +448,22 @@ export default function MaturityRoadmap({
         onChantierCellClick={
           readOnly
             ? undefined
-            : (chantierId) =>
-                setChantierModal({ mode: 'edit', chantierId })
-        }
-        onAddChantierRowClick={
-          readOnly
-            ? undefined
-            : () => {
-                if (roadmapProjects.length === 0) {
-                  window.alert(
-                    'Aucun projet BUILD validé par le DG pour cette direction. Validez un projet dans la Vue DG avant d’ajouter des chantiers.',
-                  )
+            : (chantierId, axeForCreate) => {
+                if (chantierId === null) {
+                  if (roadmapProjects.length === 0) {
+                    window.alert(
+                      'Aucun projet BUILD validé par le DG pour cette direction. Validez un projet dans la Vue DG avant d’ajouter des chantiers.',
+                    )
+                    return
+                  }
+                  if (axeForCreate == null) {
+                    window.alert('Impossible de déterminer l’axe du chantier. Rechargez la page et réessayez.')
+                    return
+                  }
+                  setChantierModal({ mode: 'create', chantierId: null, axeForCreate })
                   return
                 }
-                setChantierModal({ mode: 'create', chantierId: null })
+                setChantierModal({ mode: 'edit', chantierId })
               }
         }
       />
@@ -470,6 +483,17 @@ export default function MaturityRoadmap({
             ? chantiers.find((c) => c.id === chantierModal.chantierId)?.projet_id ?? null
             : selectedProjectIds[0] ?? roadmapProjects[0]?.id ?? null
         }
+        axeTypeLabel={(() => {
+          if (chantierModal?.mode === 'create' && chantierModal.axeForCreate) {
+            return AXE_META[chantierModal.axeForCreate].title
+          }
+          if (chantierModal?.mode === 'edit' && chantierModal.chantierId) {
+            const ec = chantiers.find((c) => c.id === chantierModal.chantierId)
+            if (ec?.axe) return AXE_META[ec.axe].title
+            return 'Non défini (données antérieures)'
+          }
+          return null
+        })()}
         directionLabel={memberDirectionLabel}
         readOnly={readOnly}
         saving={chantierSaving}
@@ -498,7 +522,11 @@ export default function MaturityRoadmap({
             : null
         }
         saving={quickAddSaving}
-        fixedAxe={quickAdd?.axe ?? null}
+        fixedAxe={
+          quickAdd
+            ? chantiers.find((c) => c.id === quickAdd.chantierId)?.axe ?? quickAdd.axe
+            : null
+        }
         onSubmit={async (data) => {
           await handleQuickAddSubmit(data)
         }}

@@ -10,6 +10,8 @@ export type ChantierLineModalProps = {
   saving: boolean
   /** Libellé de la direction (périmètre CODIR). */
   directionLabel?: string | null
+  /** Axe de roadmap (zone) — affichage seul, non modifiable ici. */
+  axeTypeLabel?: string | null
   readOnly?: boolean
   onSubmit: (projetId: string, nom: string) => Promise<void>
   onDelete?: () => Promise<void>
@@ -24,6 +26,7 @@ export default function ChantierLineModal({
   initialProjetId,
   saving,
   directionLabel,
+  axeTypeLabel,
   readOnly = false,
   onSubmit,
   onDelete,
@@ -60,7 +63,7 @@ export default function ChantierLineModal({
     await onSubmit(projetId, n)
   }
 
-  const title = mode === 'create' ? 'Nouvelle ligne de chantier' : 'Chantier'
+  const title = mode === 'create' ? 'Chantier et projet transformant' : 'Chantier'
 
   return (
     <div className="mr-modal-overlay" role="presentation" onClick={onClose}>
@@ -82,6 +85,12 @@ export default function ChantierLineModal({
           ) : null}
           Choisissez le <strong>projet transformant</strong> parent (BUILD validé DG) — la couleur des jalons suivra ce
           projet.
+          {axeTypeLabel ? (
+            <>
+              <br />
+              <strong>Type (axe)</strong> : {axeTypeLabel}
+            </>
+          ) : null}
         </p>
         <form onSubmit={(e) => void handleSubmit(e)} className="mr-modal__form">
           <label className="mr-modal__field">

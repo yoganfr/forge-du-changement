@@ -115,6 +115,8 @@ export type Chantier = {
   workspace_id: string
   nom: string
   description: string | null
+  /** Zone (axe) où le chantier a été créé ; les jalons de la ligne suivent ce type. Absent / NULL = données historiques. */
+  axe?: Axe | null
   ordre: number
   created_at: string
   updated_at: string
