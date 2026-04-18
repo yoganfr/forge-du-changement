@@ -17,7 +17,14 @@ import {
   updateChantier,
   updateJalon,
 } from './lib/api'
+import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
+import {
+  defaultTargetMonthYearForColumn,
+  UNSCHEDULED_KEY,
+  type TimelineColumn,
+} from './lib/roadmapTimelineColumns'
+import { getRoadmapProjectColorHex } from './lib/projectRoadmapColor'
 import './MaturityRoadmap.css'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
@@ -106,6 +113,11 @@ export default function MaturityRoadmap({
   const [drawerChantierId, setDrawerChantierId] = useState<string | null>(null)
   /** Jalon tout juste créé (évite un tiroir bloqué si le cache réseau était encore en cours). */
   const [drawerSeedJalon, setDrawerSeedJalon] = useState<Jalon | null>(null)
+  const [quickAdd, setQuickAdd] = useState<{
+    chantierId: string
+    column: TimelineColumn | typeof UNSCHEDULED_KEY
+  } | null>(null)
+  const [quickAddSaving, setQuickAddSaving] = useState(false)
 
   const yearOptions = useMemo(() => {
     const y = new Date().getFullYear()
@@ -156,6 +168,8 @@ export default function MaturityRoadmap({
 
   const directionById = useMemo(() => new Map(directions.map((d) => [d.id, d.nom])), [directions])
 
+  const projetRoadmapColor = useMemo(() => getRoadmapProjectColorHex(projetId), [projetId])
+
   async function refreshChantierJalons(chantierId: string) {
     const list = await getChantierJalons(chantierId)
     setJalonsByChantier((prev) => ({ ...prev, [chantierId]: list }))
@@ -191,6 +205,42 @@ export default function MaturityRoadmap({
     const updated = await updateChantier(id, { nom })
     setChantiers((prev) => prev.map((c) => (c.id === id ? updated : c)))
     setEditingChantierId(null)
+  }
+
+  async function handleQuickAddSubmit(data: {
+    nom: string
+    axe: Axe
+    mois_cible: number | null
+    annee_cible: number | null
+  }) {
+    if (!quickAdd || readOnly) return
+    const { chantierId } = quickAdd
+    setQuickAddSaving(true)
+    try {
+      const j = await createJalon({
+        chantier_id: chantierId,
+        axe: data.axe,
+        nom: data.nom,
+        mois_cible: data.mois_cible,
+        annee_cible: data.annee_cible,
+        direction_id: directionId,
+        projet_id: projetId,
+        workspace_id: workspaceId,
+      })
+      setQuickAdd(null)
+      setDrawerSeedJalon(j)
+      setDrawerChantierId(chantierId)
+      setDrawerJalonId(j.id)
+      await refreshChantierJalons(chantierId)
+    } catch (e) {
+      const msg =
+        typeof e === 'object' && e !== null && 'message' in e
+          ? String((e as { message?: unknown }).message ?? '').trim()
+          : ''
+      window.alert(msg || 'Impossible de créer le jalon.')
+    } finally {
+      setQuickAddSaving(false)
+    }
   }
 
   async function handleNewJalon(chantierId: string, axe: Axe) {
@@ -282,8 +332,31 @@ export default function MaturityRoadmap({
         jalonsByChantier={jalonsByChantier}
         axeFilter={axeFilter}
         readOnly={readOnly}
+        legendProjects={[{ id: projetId, nom: projetNom || 'Projet', color: projetRoadmapColor }]}
         onOpenJalon={(j, chId) => void openDrawer(j, chId)}
-        onAddJalon={(chId, axe) => void handleNewJalon(chId, axe)}
+        onQuickAddInCell={(chId, col) => setQuickAdd({ chantierId: chId, column: col })}
+      />
+
+      <JalonQuickAddModal
+        open={quickAdd !== null}
+        onClose={() => setQuickAdd(null)}
+        chantierNom={chantiers.find((c) => c.id === quickAdd?.chantierId)?.nom ?? ''}
+        echeanceLabel={
+          quickAdd
+            ? quickAdd.column === UNSCHEDULED_KEY
+              ? 'Sans date'
+              : quickAdd.column.label
+            : ''
+        }
+        defaultMonthYear={
+          quickAdd && quickAdd.column !== UNSCHEDULED_KEY
+            ? defaultTargetMonthYearForColumn(quickAdd.column)
+            : null
+        }
+        saving={quickAddSaving}
+        onSubmit={async (data) => {
+          await handleQuickAddSubmit(data)
+        }}
       />
 
       <details className="mr-axes-detail">

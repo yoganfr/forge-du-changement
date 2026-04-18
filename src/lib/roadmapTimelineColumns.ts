@@ -5,7 +5,7 @@ export type TimelineColumn =
   | { kind: 'year'; key: string; label: string; start: Date; end: Date }
   | { kind: 'later'; key: 'later'; label: string; start: Date; end: Date }
 
-const MONTH_FR = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc']
+const MONTH_FR = ['Janv', 'Fév', 'Mars', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc']
 
 function startOfQuarter(year: number, q: 1 | 2 | 3 | 4): Date {
   const m = (q - 1) * 3
@@ -37,10 +37,20 @@ function addQuarters(start: { y: number; q: 1 | 2 | 3 | 4 }, delta: number): { y
   return { y, q: q as 1 | 2 | 3 | 4 }
 }
 
-function quarterLabel(y: number, q: 1 | 2 | 3 | 4): string {
-  const sm = (q - 1) * 3
-  const em = q * 3 - 1
-  return `${MONTH_FR[sm]}–${MONTH_FR[em]} ${y}`
+/** Libellé « arrivée » : mois de fin de trimestre uniquement (ex. Sept 2026). */
+function quarterArrivalLabel(y: number, q: 1 | 2 | 3 | 4): string {
+  const lastMonthIdx = q * 3 - 1
+  return `${MONTH_FR[lastMonthIdx]} ${y}`
+}
+
+/** Mois / année cibles par défaut (fin de période) pour préremplir une création de jalon. */
+export function defaultTargetMonthYearForColumn(col: TimelineColumn): { mois: number; annee: number } | null {
+  if (col.kind === 'later') {
+    const y = new Date().getFullYear() + 3
+    return { mois: 12, annee: y }
+  }
+  const end = col.end
+  return { mois: end.getMonth() + 1, annee: end.getFullYear() }
 }
 
 /**
@@ -48,8 +58,7 @@ function quarterLabel(y: number, q: 1 | 2 | 3 | 4): string {
  * puis la fin de la première année civile après le 4e trimestre, puis une année complète,
  * puis « Plus tard ».
  *
- * Ex. (18 avr. 2026) : Juil–Sept 26, Oct–Déc 26, Jan–Mar 27, Avr–Juin 27, puis 2027 (juil–déc),
- * 2028 (année pleine), Plus tard.
+ * Ex. (18 avr. 2026) : Sept 2026, Déc 2026, Mars 2027, Juin 2027, puis Déc 2027, Déc 2028, Plus tard.
  */
 export function buildTimelineColumns(now: Date = new Date()): TimelineColumn[] {
   const cols: TimelineColumn[] = []
@@ -59,7 +68,7 @@ export function buildTimelineColumns(now: Date = new Date()): TimelineColumn[] {
     cols.push({
       kind: 'quarter',
       key: `q-${y}-${q}`,
-      label: quarterLabel(y, q),
+      label: quarterArrivalLabel(y, q),
       start: startOfQuarter(y, q),
       end: endOfQuarter(y, q),
     })
@@ -73,7 +82,7 @@ export function buildTimelineColumns(now: Date = new Date()): TimelineColumn[] {
   cols.push({
     kind: 'year',
     key: `y-${yFirst}-s`,
-    label: String(yFirst),
+    label: `Déc ${yFirst}`,
     start: dayAfter,
     end: endFirstYearSlice,
   })
@@ -82,7 +91,7 @@ export function buildTimelineColumns(now: Date = new Date()): TimelineColumn[] {
   cols.push({
     kind: 'year',
     key: `y-${ySecond}-full`,
-    label: String(ySecond),
+    label: `Déc ${ySecond}`,
     start: new Date(ySecond, 0, 1, 0, 0, 0, 0),
     end: new Date(ySecond, 11, 31, 23, 59, 59, 999),
   })
