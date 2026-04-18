@@ -4,7 +4,8 @@ export type ChantierLineModalProps = {
   open: boolean
   onClose: () => void
   mode: 'create' | 'edit'
-  projects: { id: string; nom: string }[]
+  /** Projets BUILD éligibles, avec couleur roadmap pour repérage visuel. */
+  projects: { id: string; nom: string; color: string }[]
   initialNom: string
   initialProjetId: string | null
   saving: boolean
@@ -63,12 +64,23 @@ export default function ChantierLineModal({
     await onSubmit(projetId, n)
   }
 
+  function toggleProjet(id: string, nextChecked: boolean) {
+    if (readOnly) return
+    if (nextChecked) {
+      setProjetId(id)
+      return
+    }
+    if (projetId !== id) return
+    const alt = projects.find((p) => p.id !== id)
+    if (alt) setProjetId(alt.id)
+  }
+
   const title = mode === 'create' ? 'Chantier et projet transformant' : 'Chantier'
 
   return (
     <div className="mr-modal-overlay" role="presentation" onClick={onClose}>
       <div
-        className="mr-modal"
+        className="mr-modal mr-modal--chantier"
         role="dialog"
         aria-labelledby="mr-chantier-modal-title"
         onClick={(ev) => ev.stopPropagation()}
@@ -83,7 +95,7 @@ export default function ChantierLineModal({
               <br />
             </>
           ) : null}
-          Choisissez le <strong>projet transformant</strong> parent (BUILD validé DG) — la couleur des jalons suivra ce
+          Cochez le <strong>projet transformant</strong> auquel rattacher le chantier — la couleur des jalons suivra ce
           projet.
           {axeTypeLabel ? (
             <>
@@ -93,25 +105,35 @@ export default function ChantierLineModal({
           ) : null}
         </p>
         <form onSubmit={(e) => void handleSubmit(e)} className="mr-modal__form">
-          <label className="mr-modal__field">
-            Projet parent
-            <select
-              value={projetId}
-              onChange={(e) => setProjetId(e.target.value)}
-              required
-              disabled={readOnly || projects.length === 0}
-            >
-              {projects.length === 0 ? (
-                <option value="">Aucun projet éligible</option>
-              ) : (
-                projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nom}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
+          <div className="mr-modal__field">
+            <span className="mr-modal__field-label">Projet transformant</span>
+            {projects.length === 0 ? (
+              <p className="mr-modal__empty-hint">Aucun projet BUILD éligible.</p>
+            ) : (
+              <ul className="mr-modal__project-list" role="list">
+                {projects.map((p) => (
+                  <li key={p.id}>
+                    <label className="mr-modal__project-row">
+                      <input
+                        type="checkbox"
+                        className="mr-modal__project-check"
+                        checked={projetId === p.id}
+                        disabled={readOnly}
+                        onChange={(e) => toggleProjet(p.id, e.target.checked)}
+                        aria-label={`Rattacher au projet ${p.nom}`}
+                      />
+                      <span
+                        className="mr-modal__project-swatch"
+                        style={{ background: p.color }}
+                        aria-hidden
+                      />
+                      <span className="mr-modal__project-name">{p.nom}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <label className="mr-modal__field">
             Intitulé du chantier (ligne de roadmap)
             <input

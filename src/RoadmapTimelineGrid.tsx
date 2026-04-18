@@ -197,9 +197,9 @@ export default function RoadmapTimelineGrid({
                           className="mr-tgrid__chantier-add-placeholder"
                           onClick={() => onChantierCellClick?.(null, axe)}
                           disabled={!onChantierCellClick}
-                          aria-label="Définir la ligne : nom du chantier et projet transformant"
+                          aria-label="Ajouter un chantier — nom et projet transformant"
                         >
-                          Cliquer ici — chantier et projet transformant
+                          Ajoutez un chantier
                         </button>
                       </th>
                       {headerCells.map((h) => (

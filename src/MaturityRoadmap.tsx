@@ -515,7 +515,11 @@ export default function MaturityRoadmap({
         open={chantierModal !== null}
         onClose={() => setChantierModal(null)}
         mode={chantierModal?.mode ?? 'create'}
-        projects={roadmapProjects.map((p) => ({ id: p.id, nom: p.nom }))}
+        projects={roadmapProjects.map((p) => ({
+          id: p.id,
+          nom: p.nom,
+          color: projectColorById[p.id] ?? '#8E3B46',
+        }))}
         initialNom={
           chantierModal?.mode === 'edit' && chantierModal.chantierId
             ? chantiers.find((c) => c.id === chantierModal.chantierId)?.nom ?? ''
