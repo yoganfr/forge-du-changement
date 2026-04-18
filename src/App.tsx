@@ -146,6 +146,19 @@ function App() {
   /** Paramètres globaux de l’espace : consultants et administrateurs. */
   const canAccessSettings = currentUserRole === 'consultant' || currentUserRole === 'admin'
 
+  const exitRoadmap = useCallback(() => {
+    setActiveProjetId(null)
+    setActiveRoadmapDirectionId(null)
+  }, [])
+
+  const navigateToMainNav = useCallback(
+    (navId: string) => {
+      exitRoadmap()
+      setActiveNav(navId)
+    },
+    [exitRoadmap],
+  )
+
   useLayoutEffect(() => {
     applyThemeToDocument(theme)
     persistTheme(theme)
@@ -153,9 +166,9 @@ function App() {
 
   useEffect(() => {
     if (activeNav === 'settings' && !canAccessSettings) {
-      setActiveNav('home')
+      navigateToMainNav('home')
     }
-  }, [activeNav, canAccessSettings])
+  }, [activeNav, canAccessSettings, navigateToMainNav])
 
   const refreshWorkspacesCatalog = useCallback(async () => {
     if (!canAccessSettings) return
@@ -184,18 +197,18 @@ function App() {
   const handleSelectWorkspaceFromSettings = useCallback((id: string) => {
     localStorage.setItem('workspaceId', id)
     setWorkspaceId(id)
-    setActiveNav('company')
-  }, [])
+    navigateToMainNav('company')
+  }, [navigateToMainNav])
 
   const handleOpenRoadmapFromWorkspace = useCallback(async () => {
     if (!workspaceId) {
-      setActiveNav('fabrique')
+      navigateToMainNav('fabrique')
       return
     }
 
     const directions = await getWorkspaceDirections(workspaceId)
     if (directions.length === 0) {
-      setActiveNav('fabrique')
+      navigateToMainNav('fabrique')
       window.alert('Aucune direction disponible. Créez d’abord vos directions et projets dans La Fabrique.')
       return
     }
@@ -217,7 +230,7 @@ function App() {
       const pendingDg = directionProjects.some(
         (p) => p.type === 'BUILD' && p.selected_for_transfo && !p.dg_validated_transfo,
       )
-      setActiveNav(pendingDg ? 'dg' : 'fabrique')
+      navigateToMainNav(pendingDg ? 'dg' : 'fabrique')
       window.alert(
         pendingDg
           ? 'Votre projet BUILD est soumis au DG mais pas encore validé pour la roadmap. Ouvrez la Vue DG et validez le projet (section « Projets BUILD soumis pour la roadmap »).'
@@ -228,7 +241,7 @@ function App() {
 
     setActiveProjetId(targetProject.id)
     setActiveRoadmapDirectionId(selectedDirection.id)
-  }, [workspaceId, storedProfile?.directionName])
+  }, [workspaceId, storedProfile?.directionName, navigateToMainNav])
 
   const reconcileAuthSession = useCallback(async (user: User) => {
     const email = user.email ?? ''
@@ -459,7 +472,7 @@ function App() {
             setStoredProfile(nextProfile)
             setUserInitials(profileInitials(nextProfile))
             setWorkspaceData(data)
-            setActiveNav('company')
+            navigateToMainNav('company')
             setShowWorkspaceOnboarding(false)
             void refreshWorkspacesCatalog()
           }}
@@ -475,7 +488,7 @@ function App() {
           <button
             type="button"
             className="dashboard__brand"
-            onClick={() => setActiveNav('home')}
+            onClick={() => navigateToMainNav('home')}
             aria-label="Retour à l'accueil"
           >
             <div className="dashboard__brand-mark">
@@ -492,11 +505,7 @@ function App() {
             </span>
           </button>
 
-          <nav
-            className="dashboard__nav dashboard__nav--top"
-            aria-label="Navigation principale"
-            hidden={Boolean(activeProjetId && activeRoadmapDirectionId)}
-          >
+          <nav className="dashboard__nav dashboard__nav--top" aria-label="Navigation principale">
             {navItems.filter((item) => item.group === null).map((item) => (
               <button
                 key={item.id}
@@ -509,7 +518,7 @@ function App() {
                     .filter(Boolean)
                     .join(' ')
                 }
-                onClick={() => setActiveNav(item.id)}
+                onClick={() => navigateToMainNav(item.id)}
               >
                 {item.label}
               </button>
@@ -529,7 +538,7 @@ function App() {
                     .filter(Boolean)
                     .join(' ')
                 }
-                onClick={() => setActiveNav(item.id)}
+                onClick={() => navigateToMainNav(item.id)}
               >
                 {item.label}
               </button>
@@ -558,7 +567,7 @@ function App() {
             <button
               type="button"
               className="company-badge"
-              onClick={() => setActiveNav('company')}
+              onClick={() => navigateToMainNav('company')}
             >
               <span className="company-badge-initials">
                 {workspaceName.slice(0, 2).toUpperCase()}
@@ -588,7 +597,7 @@ function App() {
                     .filter(Boolean)
                     .join(' ')
                 }
-                onClick={() => setActiveNav('settings')}
+                onClick={() => navigateToMainNav('settings')}
                 aria-label="Paramètres"
                 title="Paramètres"
               >
@@ -607,9 +616,7 @@ function App() {
                 setWorkspaceData(null)
                 setCompanyLogo(null)
                 setWorkspaceName('La Forge')
-                setActiveNav('home')
-                setActiveProjetId(null)
-                setActiveRoadmapDirectionId(null)
+                navigateToMainNav('home')
                 setAuthUser(null)
               }}
             >
@@ -627,10 +634,7 @@ function App() {
                 workspaceId={workspaceId}
                 projetId={activeProjetId}
                 directionId={activeRoadmapDirectionId}
-                onBack={() => {
-                  setActiveProjetId(null)
-                  setActiveRoadmapDirectionId(null)
-                }}
+                onBack={exitRoadmap}
               />
             ) : normalizedActiveNav === 'home' ? (
             <div className="dashboard__module-panel">
@@ -654,7 +658,7 @@ function App() {
                       type="button"
                       className={`dashboard__card dashboard__card--${card.id}`}
                       role="listitem"
-                      onClick={() => setActiveNav(card.id)}
+                      onClick={() => navigateToMainNav(card.id)}
                     >
                       <span className="dashboard__card-icon" aria-hidden="true">
                         {card.icon}
@@ -740,7 +744,7 @@ function App() {
                 firstName={storedProfile?.firstName}
                 direction={storedProfile?.directionName || 'votre direction'}
                 role="codir"
-                onNavigate={setActiveNav}
+                onNavigate={navigateToMainNav}
                 onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
               />
             ) : (

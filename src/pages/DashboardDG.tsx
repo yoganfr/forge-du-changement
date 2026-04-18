@@ -86,28 +86,34 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
     void load()
   }, [load])
 
-  const pendingRoadmap = useMemo(() => {
-    const out: Array<{ projet: Projet; directionName: string }> = []
+  const pendingByDirection = useMemo(() => {
+    const groups: Array<{ directionId: string; directionName: string; projects: Projet[] }> = []
     for (const d of directions) {
-      for (const p of d.projects) {
-        if (p.type === 'BUILD' && p.selected_for_transfo && !p.dg_validated_transfo) {
-          out.push({ projet: p, directionName: d.name })
-        }
-      }
+      const pending = d.projects.filter(
+        (p) => p.type === 'BUILD' && p.selected_for_transfo && !p.dg_validated_transfo,
+      )
+      if (pending.length === 0) continue
+      groups.push({
+        directionId: d.id,
+        directionName: d.name,
+        projects: [...pending].sort((a, b) => computeProjectScore(b) - computeProjectScore(a)),
+      })
     }
-    return out.sort((a, b) => computeProjectScore(b.projet) - computeProjectScore(a.projet))
+    return groups.sort((a, b) => a.directionName.localeCompare(b.directionName, 'fr'))
   }, [directions])
 
-  const validatedRoadmap = useMemo(() => {
-    const out: Array<{ projet: Projet; directionName: string }> = []
+  const validatedByDirection = useMemo(() => {
+    const groups: Array<{ directionId: string; directionName: string; projects: Projet[] }> = []
     for (const d of directions) {
-      for (const p of d.projects) {
-        if (p.type === 'BUILD' && p.dg_validated_transfo) {
-          out.push({ projet: p, directionName: d.name })
-        }
-      }
+      const val = d.projects.filter((p) => p.type === 'BUILD' && p.dg_validated_transfo)
+      if (val.length === 0) continue
+      groups.push({
+        directionId: d.id,
+        directionName: d.name,
+        projects: [...val].sort((a, b) => computeProjectScore(b) - computeProjectScore(a)),
+      })
     }
-    return out.sort((a, b) => computeProjectScore(b.projet) - computeProjectScore(a.projet))
+    return groups.sort((a, b) => a.directionName.localeCompare(b.directionName, 'fr'))
   }, [directions])
 
   async function handleValidate(projetId: string, validated: boolean) {
@@ -221,61 +227,73 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
               Les directions marquent des projets comme &laquo; retenus pour le DG &raquo; dans La Fabrique. Validez ici ceux qui passent en
               Maturity Roadmap (chantiers et jalons sur 4 axes).
             </p>
-            {pendingRoadmap.length === 0 ? (
+            {pendingByDirection.length === 0 ? (
               <p className="dg__empty">Aucun projet en attente de validation.</p>
             ) : (
-              <ul className="dg__validation-list">
-                {pendingRoadmap.map(({ projet, directionName }) => {
-                  const score = computeProjectScore(projet)
-                  return (
-                    <li key={projet.id} className="dg__validation-row">
-                      <div className="dg__validation-main">
-                        <span className="dg__validation-dir">{directionName}</span>
-                        <strong className="dg__validation-name">{projet.nom || 'Sans titre'}</strong>
-                        <span className="dg__validation-meta">{projet.thematique || '—'}</span>
-                        <span className="dg__validation-score">{score}/100</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="dg__validate-btn"
-                        disabled={savingId === projet.id}
-                        onClick={() => void handleValidate(projet.id, true)}
-                      >
-                        {savingId === projet.id ? '…' : 'Valider pour la roadmap'}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+              <div className="dg__direction-groups">
+                {pendingByDirection.map((group) => (
+                  <section key={group.directionId} className="dg__direction-group">
+                    <h4 className="dg__direction-heading">{group.directionName}</h4>
+                    <ul className="dg__validation-list">
+                      {group.projects.map((projet) => {
+                        const score = computeProjectScore(projet)
+                        return (
+                          <li key={projet.id} className="dg__validation-row">
+                            <div className="dg__validation-main">
+                              <strong className="dg__validation-name">{projet.nom || 'Sans titre'}</strong>
+                              <span className="dg__validation-meta">{projet.thematique || '—'}</span>
+                              <span className="dg__validation-score">{score}/100</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="dg__validate-btn"
+                              disabled={savingId === projet.id}
+                              onClick={() => void handleValidate(projet.id, true)}
+                            >
+                              {savingId === projet.id ? '…' : 'Valider pour la roadmap'}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </section>
+                ))}
+              </div>
             )}
           </article>
 
-          {validatedRoadmap.length > 0 && (
+          {validatedByDirection.length > 0 && (
             <article className="dg__card dg__card--wide">
               <h3>Projets validés pour la roadmap</h3>
               <p className="dg__hint">Ces projets sont disponibles dans <strong>Mon Espace → Ma roadmap</strong> (et le bouton roadmap dans La Fabrique).</p>
-              <ul className="dg__validation-list dg__validation-list--muted">
-                {validatedRoadmap.map(({ projet, directionName }) => (
-                  <li key={projet.id} className="dg__validation-row">
-                    <div className="dg__validation-main">
-                      <span className="dg__validation-dir">{directionName}</span>
-                      <strong className="dg__validation-name">{projet.nom || 'Sans titre'}</strong>
-                      <span className="dg__validation-meta">{computeProjectScore(projet)}/100</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="dg__validate-btn dg__validate-btn--ghost"
-                      disabled={savingId === projet.id}
-                      onClick={() => {
-                        if (!window.confirm('Retirer la validation DG ? Le projet ne sera plus accessible depuis Ma roadmap tant qu’il n’est pas validé à nouveau.')) return
-                        void handleValidate(projet.id, false)
-                      }}
-                    >
-                      Retirer la validation
-                    </button>
-                  </li>
+              <div className="dg__direction-groups">
+                {validatedByDirection.map((group) => (
+                  <section key={group.directionId} className="dg__direction-group">
+                    <h4 className="dg__direction-heading">{group.directionName}</h4>
+                    <ul className="dg__validation-list dg__validation-list--muted">
+                      {group.projects.map((projet) => (
+                        <li key={projet.id} className="dg__validation-row">
+                          <div className="dg__validation-main">
+                            <strong className="dg__validation-name">{projet.nom || 'Sans titre'}</strong>
+                            <span className="dg__validation-meta">{computeProjectScore(projet)}/100</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="dg__validate-btn dg__validate-btn--ghost"
+                            disabled={savingId === projet.id}
+                            onClick={() => {
+                              if (!window.confirm('Retirer la validation DG ? Le projet ne sera plus accessible depuis Ma roadmap tant qu’il n’est pas validé à nouveau.')) return
+                              void handleValidate(projet.id, false)
+                            }}
+                          >
+                            Retirer la validation
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-              </ul>
+              </div>
             </article>
           )}
 
