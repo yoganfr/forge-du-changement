@@ -1297,14 +1297,9 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
 
         if (directions.length === 0) {
           const appUser = await getCurrentUser()
-          if (!appUser?.id) {
-            throw new Error(
-              "Impossible d'initialiser les directions: profil utilisateur introuvable dans l'espace.",
-            )
-          }
           const createdDirection = await createDirection({
             workspace_id: workspaceId,
-            user_id: appUser.id,
+            user_id: appUser?.id ?? null,
             nom: memberDirectionName.trim() || 'Ma direction',
             type: 'Fonctionnel',
             mission: null,
@@ -1314,7 +1309,7 @@ export default function ProjectSelector({ memberDirectionName = 'Ma direction', 
           })
           const createdTransverse = await createDirection({
             workspace_id: workspaceId,
-            user_id: appUser.id,
+            user_id: appUser?.id ?? null,
             nom: 'Projets transverses',
             type: null,
             mission: null,
