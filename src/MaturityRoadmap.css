@@ -403,6 +403,34 @@
   color: var(--theme-text-muted);
 }
 
+.mr-tgrid-legend__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+}
+
+.mr-tgrid-legend__link {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--theme-accent, #8e3b46);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mr-tgrid-legend__link:hover {
+  opacity: 0.88;
+}
+
+.mr-tgrid-legend__sep {
+  color: var(--theme-text-muted);
+  user-select: none;
+}
+
 .mr-tgrid-legend__list {
   list-style: none;
   margin: 0;
@@ -419,6 +447,23 @@
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--theme-text);
+}
+
+.mr-tgrid-legend__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.mr-tgrid-legend__check input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--theme-accent, #8e3b46);
+  cursor: pointer;
 }
 
 .mr-tgrid-legend__swatch {
@@ -509,6 +554,25 @@
   font-family: var(--font-display);
   font-size: 0.88rem;
   line-height: 1.3;
+}
+
+.mr-tgrid__chantier-projet {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--theme-text-muted);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mr-tgrid__empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--theme-text-muted);
+  line-height: 1.45;
 }
 
 .mr-tgrid__cell {

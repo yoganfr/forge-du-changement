@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Axe, Direction, Jalon, JalonFacette, JalonStatut, RaciRole } from './lib/types'
+import type { Axe, Direction, Jalon, JalonFacette, JalonStatut, Projet, RaciRole } from './lib/types'
 import {
   createChantier,
   createJalon,
@@ -7,9 +7,9 @@ import {
   deleteJalon,
   getChantierJalons,
   getJalonRaci,
-  getProjet,
   getProjetChantiers,
   getProjetJalons,
+  getRoadmapEligibleProjects,
   getWorkspaceDirections,
   monthToQuarter,
   removeRaci,
@@ -17,6 +17,7 @@ import {
   updateChantier,
   updateJalon,
 } from './lib/api'
+import ChantierCreateModal from './ChantierCreateModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
 import {
@@ -85,26 +86,27 @@ function jalonMatchesFilters(
 
 export type MaturityRoadmapProps = {
   workspaceId: string
-  projetId: string
-  directionId: string
+  /** Ouverture depuis un projet : ne coche que ce projet dans la légende. */
+  focusProjetId?: string | null
   readOnly?: boolean
   onBack: () => void
 }
 
 export default function MaturityRoadmap({
   workspaceId,
-  projetId,
-  directionId,
+  focusProjetId = null,
   readOnly = false,
   onBack,
 }: MaturityRoadmapProps) {
-  const [projetNom, setProjetNom] = useState('')
-  const [directionNom, setDirectionNom] = useState('')
+  const [roadmapProjects, setRoadmapProjects] = useState<Projet[]>([])
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([])
   const [chantiers, setChantiers] = useState<Awaited<ReturnType<typeof getProjetChantiers>>>([])
   const [jalonsByChantier, setJalonsByChantier] = useState<Record<string, Jalon[]>>({})
   const [directions, setDirections] = useState<Direction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [chantierModalOpen, setChantierModalOpen] = useState(false)
+  const [chantierSaving, setChantierSaving] = useState(false)
   const [trimestre, setTrimestre] = useState<'all' | 'Q1' | 'Q2' | 'Q3' | 'Q4'>('all')
   const [axeFilter, setAxeFilter] = useState<'all' | Axe>('all')
   const [filterYear, setFilterYear] = useState(() => new Date().getFullYear())
@@ -128,25 +130,47 @@ export default function MaturityRoadmap({
     setLoading(true)
     setError(null)
     try {
-      const p = await getProjet(projetId)
-      if (p.type === 'BUILD' && !p.dg_validated_transfo) {
+      const [dirs, projects] = await Promise.all([
+        getWorkspaceDirections(workspaceId),
+        getRoadmapEligibleProjects(workspaceId),
+      ])
+      setDirections(dirs)
+      if (projects.length === 0) {
+        setRoadmapProjects([])
+        setSelectedProjectIds([])
+        setChantiers([])
+        setJalonsByChantier({})
         setError(
-          'Ce projet BUILD n’est pas validé par le DG pour la Maturity Roadmap. Ouvrez la Vue DG et validez-le dans « Projets BUILD soumis pour la roadmap ».',
+          'Aucun projet BUILD validé par le DG pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le DG, puis validez-le dans la Vue DG (section « Projets BUILD soumis pour la roadmap »).',
         )
         return
       }
-      const [dirs, chs] = await Promise.all([
-        getWorkspaceDirections(workspaceId),
-        getProjetChantiers(projetId),
-      ])
-      setProjetNom(p.nom)
-      const dir = dirs.find((d) => d.id === directionId)
-      setDirectionNom(dir?.nom ?? 'Direction')
-      setDirections(dirs)
-      setChantiers(chs)
+      setRoadmapProjects(projects)
+      const ids = projects.map((p) => p.id)
+      const focus =
+        focusProjetId && ids.includes(focusProjetId) ? [focusProjetId] : [...ids]
+      setSelectedProjectIds(focus)
+
+      const projectOrder = new Map(projects.map((p, i) => [p.id, i]))
+      const allChs: Awaited<ReturnType<typeof getProjetChantiers>> = []
       const jMap: Record<string, Jalon[]> = {}
       await Promise.all(
-        chs.map(async (c) => {
+        projects.map(async (p) => {
+          const chs = await getProjetChantiers(p.id)
+          for (const c of chs) {
+            allChs.push(c)
+          }
+        }),
+      )
+      allChs.sort((a, b) => {
+        const oa = projectOrder.get(a.projet_id) ?? 999
+        const ob = projectOrder.get(b.projet_id) ?? 999
+        if (oa !== ob) return oa - ob
+        return a.ordre - b.ordre || a.created_at.localeCompare(b.created_at)
+      })
+      setChantiers(allChs)
+      await Promise.all(
+        allChs.map(async (c) => {
           jMap[c.id] = await getChantierJalons(c.id)
         }),
       )
@@ -160,7 +184,7 @@ export default function MaturityRoadmap({
     } finally {
       setLoading(false)
     }
-  }, [projetId, workspaceId, directionId])
+  }, [workspaceId, focusProjetId])
 
   useEffect(() => {
     void loadAll()
@@ -168,24 +192,84 @@ export default function MaturityRoadmap({
 
   const directionById = useMemo(() => new Map(directions.map((d) => [d.id, d.nom])), [directions])
 
-  const projetRoadmapColor = useMemo(() => getRoadmapProjectColorHex(projetId), [projetId])
+  const projectsById = useMemo(
+    () => new Map(roadmapProjects.map((p) => [p.id, p])),
+    [roadmapProjects],
+  )
+
+  const visibleChantiers = useMemo(
+    () => chantiers.filter((c) => selectedProjectIds.includes(c.projet_id)),
+    [chantiers, selectedProjectIds],
+  )
+
+  const projectColorById = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const p of roadmapProjects) {
+      m[p.id] = getRoadmapProjectColorHex(p.id)
+    }
+    return m
+  }, [roadmapProjects])
+
+  const projetNomById = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const p of roadmapProjects) {
+      m[p.id] = p.nom
+    }
+    return m
+  }, [roadmapProjects])
+
+  function toggleLegendProject(id: string) {
+    setSelectedProjectIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+  }
+
+  function selectAllLegendProjects() {
+    setSelectedProjectIds(roadmapProjects.map((p) => p.id))
+  }
+
+  function deselectAllLegendProjects() {
+    setSelectedProjectIds([])
+  }
 
   async function refreshChantierJalons(chantierId: string) {
     const list = await getChantierJalons(chantierId)
     setJalonsByChantier((prev) => ({ ...prev, [chantierId]: list }))
   }
 
-  async function handleNewChantier() {
+  async function handleCreateChantierSubmit(projetId: string, nom: string) {
     if (readOnly) return
-    const ordre = (chantiers.reduce((m, c) => Math.max(m, c.ordre), 0) || 0) + 1
-    const c = await createChantier({
-      projet_id: projetId,
-      workspace_id: workspaceId,
-      nom: 'Nouveau chantier',
-      ordre,
-    })
-    setChantiers((prev) => [...prev, c].sort((a, b) => a.ordre - b.ordre || a.created_at.localeCompare(b.created_at)))
-    setJalonsByChantier((prev) => ({ ...prev, [c.id]: [] }))
+    setChantierSaving(true)
+    try {
+      const sameCh = chantiers.filter((c) => c.projet_id === projetId)
+      const ordre = (sameCh.reduce((m, c) => Math.max(m, c.ordre), 0) || 0) + 1
+      const c = await createChantier({
+        projet_id: projetId,
+        workspace_id: workspaceId,
+        nom,
+        ordre,
+      })
+      setChantierModalOpen(false)
+      setChantiers((prev) => {
+        const next = [...prev, c]
+        const order = new Map(roadmapProjects.map((p, i) => [p.id, i]))
+        return next.sort((a, b) => {
+          const oa = order.get(a.projet_id) ?? 999
+          const ob = order.get(b.projet_id) ?? 999
+          if (oa !== ob) return oa - ob
+          return a.ordre - b.ordre || a.created_at.localeCompare(b.created_at)
+        })
+      })
+      setJalonsByChantier((prev) => ({ ...prev, [c.id]: [] }))
+    } catch (e) {
+      const msg =
+        typeof e === 'object' && e !== null && 'message' in e
+          ? String((e as { message?: unknown }).message ?? '').trim()
+          : ''
+      window.alert(msg || 'Impossible de créer le chantier.')
+    } finally {
+      setChantierSaving(false)
+    }
   }
 
   async function handleDeleteChantier(id: string) {
@@ -215,6 +299,9 @@ export default function MaturityRoadmap({
   }) {
     if (!quickAdd || readOnly) return
     const { chantierId } = quickAdd
+    const ch = chantiers.find((c) => c.id === chantierId)
+    const proj = ch ? projectsById.get(ch.projet_id) : undefined
+    if (!ch || !proj) return
     setQuickAddSaving(true)
     try {
       const j = await createJalon({
@@ -223,8 +310,8 @@ export default function MaturityRoadmap({
         nom: data.nom,
         mois_cible: data.mois_cible,
         annee_cible: data.annee_cible,
-        direction_id: directionId,
-        projet_id: projetId,
+        direction_id: proj.direction_id,
+        projet_id: proj.id,
         workspace_id: workspaceId,
       })
       setQuickAdd(null)
@@ -245,12 +332,15 @@ export default function MaturityRoadmap({
 
   async function handleNewJalon(chantierId: string, axe: Axe) {
     if (readOnly) return
+    const ch = chantiers.find((c) => c.id === chantierId)
+    const proj = ch ? projectsById.get(ch.projet_id) : undefined
+    if (!ch || !proj) return
     try {
       const j = await createJalon({
         chantier_id: chantierId,
         axe,
-        direction_id: directionId,
-        projet_id: projetId,
+        direction_id: proj.direction_id,
+        projet_id: proj.id,
         workspace_id: workspaceId,
       })
       setDrawerSeedJalon(j)
@@ -275,6 +365,12 @@ export default function MaturityRoadmap({
   function filteredJalons(list: Jalon[]): Jalon[] {
     return list.filter((j) => jalonMatchesFilters(j, trimestre, axeFilter, filterYear))
   }
+
+  const drawerChantier = drawerChantierId
+    ? chantiers.find((c) => c.id === drawerChantierId)
+    : null
+  const drawerProjetId = drawerChantier?.projet_id ?? ''
+  const drawerProjetNom = drawerProjetId ? projectsById.get(drawerProjetId)?.nom ?? '' : ''
 
   if (loading) {
     return (
@@ -305,8 +401,11 @@ export default function MaturityRoadmap({
       <button type="button" className="mr-back" onClick={onBack}>
         ← Retour aux projets
       </button>
-      <h1 className="mr-title">Maturity Roadmap — {projetNom}</h1>
-      <p className="mr-sub">Direction : {directionNom}</p>
+      <h1 className="mr-title">Maturity Roadmap</h1>
+      <p className="mr-sub">
+        {roadmapProjects.length} projet{roadmapProjects.length > 1 ? 's' : ''} transformant
+        {roadmapProjects.length > 1 ? 's' : ''} dans l&apos;espace — filtrez par projet via la légende.
+      </p>
 
       <div className="mr-toolbar">
         <label>
@@ -321,26 +420,52 @@ export default function MaturityRoadmap({
           </select>
         </label>
         {!readOnly && (
-          <button type="button" className="mr-btn-primary" onClick={() => void handleNewChantier()}>
+          <button
+            type="button"
+            className="mr-btn-primary"
+            onClick={() => setChantierModalOpen(true)}
+            disabled={roadmapProjects.length === 0}
+          >
             + Nouveau chantier
           </button>
         )}
       </div>
 
       <RoadmapTimelineGrid
-        chantiers={chantiers}
+        chantiers={visibleChantiers}
         jalonsByChantier={jalonsByChantier}
         axeFilter={axeFilter}
         readOnly={readOnly}
-        legendProjects={[{ id: projetId, nom: projetNom || 'Projet', color: projetRoadmapColor }]}
+        legendProjects={roadmapProjects.map((p) => ({
+          id: p.id,
+          nom: p.nom,
+          color: projectColorById[p.id] ?? getRoadmapProjectColorHex(p.id),
+          checked: selectedProjectIds.includes(p.id),
+        }))}
+        onToggleLegendProject={toggleLegendProject}
+        onSelectAllLegendProjects={selectAllLegendProjects}
+        onDeselectAllLegendProjects={deselectAllLegendProjects}
+        projectColorById={projectColorById}
+        projetNomById={projetNomById}
         onOpenJalon={(j, chId) => void openDrawer(j, chId)}
         onQuickAddInCell={(chId, col) => setQuickAdd({ chantierId: chId, column: col })}
+      />
+
+      <ChantierCreateModal
+        open={chantierModalOpen}
+        onClose={() => setChantierModalOpen(false)}
+        projects={roadmapProjects.map((p) => ({ id: p.id, nom: p.nom }))}
+        defaultProjetId={selectedProjectIds[0] ?? roadmapProjects[0]?.id ?? null}
+        saving={chantierSaving}
+        onSubmit={async (projetId, nom) => {
+          await handleCreateChantierSubmit(projetId, nom)
+        }}
       />
 
       <JalonQuickAddModal
         open={quickAdd !== null}
         onClose={() => setQuickAdd(null)}
-        chantierNom={chantiers.find((c) => c.id === quickAdd?.chantierId)?.nom ?? ''}
+        chantierNom={visibleChantiers.find((c) => c.id === quickAdd?.chantierId)?.nom ?? chantiers.find((c) => c.id === quickAdd?.chantierId)?.nom ?? ''}
         echeanceLabel={
           quickAdd
             ? quickAdd.column === UNSCHEDULED_KEY
@@ -400,7 +525,7 @@ export default function MaturityRoadmap({
           </label>
         </div>
 
-      {chantiers.map((ch) => {
+      {visibleChantiers.map((ch) => {
         const allJalons = jalonsByChantier[ch.id] ?? []
         return (
           <section key={ch.id} className="mr-chantier">
@@ -480,19 +605,25 @@ export default function MaturityRoadmap({
       })}
 
       {!readOnly && (
-        <button type="button" className="mr-btn-primary" style={{ marginTop: 8 }} onClick={() => void handleNewChantier()}>
+        <button
+          type="button"
+          className="mr-btn-primary"
+          style={{ marginTop: 8 }}
+          onClick={() => setChantierModalOpen(true)}
+          disabled={roadmapProjects.length === 0}
+        >
           + Nouveau chantier
         </button>
       )}
       </details>
 
-      {drawerJalonId && drawerChantierId && (
+      {drawerJalonId && drawerChantierId && drawerProjetId && (
         <JalonDrawer
-          projetId={projetId}
+          projetId={drawerProjetId}
           chantierId={drawerChantierId}
           jalonId={drawerJalonId}
           seedJalon={drawerSeedJalon}
-          projetNom={projetNom}
+          projetNom={drawerProjetNom}
           chantierNom={chantiers.find((c) => c.id === drawerChantierId)?.nom ?? ''}
           directions={directions}
           readOnly={readOnly}

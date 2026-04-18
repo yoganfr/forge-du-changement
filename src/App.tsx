@@ -6,6 +6,7 @@ import type { OnboardingFlowProps } from './OnboardingFlow'
 import {
   getAcceptedInvitationAwaitingUserRow,
   getDirectionProjets,
+  getRoadmapEligibleProjects,
   getLatestPendingInvitationForEmail,
   getWorkspace,
   getWorkspaceDirections,
@@ -133,8 +134,8 @@ function App() {
     return known.includes(activeNav as (typeof known)[number]) ? activeNav : 'home'
   }, [activeNav])
 
-  const [activeProjetId, setActiveProjetId] = useState<string | null>(null)
-  const [activeRoadmapDirectionId, setActiveRoadmapDirectionId] = useState<string | null>(null)
+  const [maturityRoadmapOpen, setMaturityRoadmapOpen] = useState(false)
+  const [roadmapFocusProjetId, setRoadmapFocusProjetId] = useState<string | null>(null)
   const [showProfile, setShowProfile] = useState(false)
   const [showWorkspaceOnboarding, setShowWorkspaceOnboarding] = useState(false)
   const [workspacesCatalog, setWorkspacesCatalog] = useState<Workspace[]>([])
@@ -147,8 +148,8 @@ function App() {
   const canAccessSettings = currentUserRole === 'consultant' || currentUserRole === 'admin'
 
   const exitRoadmap = useCallback(() => {
-    setActiveProjetId(null)
-    setActiveRoadmapDirectionId(null)
+    setMaturityRoadmapOpen(false)
+    setRoadmapFocusProjetId(null)
   }, [])
 
   const navigateToMainNav = useCallback(
@@ -213,23 +214,20 @@ function App() {
       return
     }
 
-    const preferredDirectionName = (storedProfile?.directionName ?? '').trim().toLowerCase()
-    const selectedDirection =
-      directions.find((d) => d.nom.trim().toLowerCase() === preferredDirectionName)
-      ?? directions.find((d) => !d.is_transverse)
-      ?? directions[0]
-
-    const directionProjects = await getDirectionProjets(selectedDirection.id)
-    const targetProject =
-      directionProjects.find(
-        (p) => p.type === 'BUILD' && p.selected_for_transfo && p.dg_validated_transfo,
-      )
-      ?? directionProjects.find((p) => p.type === 'BUILD' && p.dg_validated_transfo)
-
-    if (!targetProject) {
-      const pendingDg = directionProjects.some(
-        (p) => p.type === 'BUILD' && p.selected_for_transfo && !p.dg_validated_transfo,
-      )
+    const eligible = await getRoadmapEligibleProjects(workspaceId)
+    if (eligible.length === 0) {
+      let pendingDg = false
+      for (const d of directions) {
+        const directionProjects = await getDirectionProjets(d.id)
+        if (
+          directionProjects.some(
+            (p) => p.type === 'BUILD' && p.selected_for_transfo && !p.dg_validated_transfo,
+          )
+        ) {
+          pendingDg = true
+          break
+        }
+      }
       navigateToMainNav(pendingDg ? 'dg' : 'fabrique')
       window.alert(
         pendingDg
@@ -239,9 +237,9 @@ function App() {
       return
     }
 
-    setActiveProjetId(targetProject.id)
-    setActiveRoadmapDirectionId(selectedDirection.id)
-  }, [workspaceId, storedProfile?.directionName, navigateToMainNav])
+    setRoadmapFocusProjetId(null)
+    setMaturityRoadmapOpen(true)
+  }, [workspaceId, navigateToMainNav])
 
   const reconcileAuthSession = useCallback(async (user: User) => {
     const email = user.email ?? ''
@@ -629,11 +627,10 @@ function App() {
       <div className="dashboard__main">
         <main className="dashboard__content">
           <Suspense fallback={<p>Chargement du module…</p>}>
-            {activeProjetId && workspaceId && activeRoadmapDirectionId ? (
+            {maturityRoadmapOpen && workspaceId ? (
               <MaturityRoadmap
                 workspaceId={workspaceId}
-                projetId={activeProjetId}
-                directionId={activeRoadmapDirectionId}
+                focusProjetId={roadmapFocusProjetId}
                 onBack={exitRoadmap}
               />
             ) : normalizedActiveNav === 'home' ? (
@@ -685,9 +682,9 @@ function App() {
               <ProjectSelector
                 memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
                 workspaceId={workspaceId}
-                onOpenRoadmap={(projetId, directionId) => {
-                  setActiveProjetId(projetId)
-                  setActiveRoadmapDirectionId(directionId)
+                onOpenRoadmap={(projetId) => {
+                  setRoadmapFocusProjetId(projetId)
+                  setMaturityRoadmapOpen(true)
                 }}
               />
             ) : normalizedActiveNav === 'dg' ? (

@@ -23,15 +23,28 @@ const STATUT_LABEL: Record<string, string> = {
   bloque: 'Bloqué',
 }
 
-export type RoadmapLegendProject = { id: string; nom: string; color: string }
+export type RoadmapLegendProject = {
+  id: string
+  nom: string
+  color: string
+  /** Case cochée = lignes de ce projet visibles dans le tableau. */
+  checked: boolean
+}
 
 type Props = {
   chantiers: Chantier[]
   jalonsByChantier: Record<string, Jalon[]>
   axeFilter: 'all' | Axe
   readOnly: boolean
-  /** Couleur du (ou des) projet(s) transformant(s) — pilules et légende. */
+  /** Projets transformants — cases à cocher pour filtrer les lignes. */
   legendProjects: RoadmapLegendProject[]
+  onToggleLegendProject: (projetId: string) => void
+  onSelectAllLegendProjects: () => void
+  onDeselectAllLegendProjects: () => void
+  /** Couleur des pilules par projet (clé = projet_id). */
+  projectColorById: Record<string, string>
+  /** Libellé court du projet sous le nom du chantier (clé = projet_id). */
+  projetNomById: Record<string, string>
   onOpenJalon: (jalon: Jalon, chantierId: string) => void
   /** Clic sur le + dans une cellule (création guidée en popin). */
   onQuickAddInCell: (chantierId: string, column: TimelineColumn | typeof UNSCHEDULED_KEY) => void
@@ -43,6 +56,11 @@ export default function RoadmapTimelineGrid({
   axeFilter,
   readOnly,
   legendProjects,
+  onToggleLegendProject,
+  onSelectAllLegendProjects,
+  onDeselectAllLegendProjects,
+  projectColorById,
+  projetNomById,
   onOpenJalon,
   onQuickAddInCell,
 }: Props) {
@@ -80,8 +98,7 @@ export default function RoadmapTimelineGrid({
     return map
   }
 
-  /** Couleur projet pour une ligne : un seul projet → legendProjects[0]. */
-  const projectColor = legendProjects[0]?.color ?? 'var(--theme-accent, #8e3b46)'
+  const defaultPillColor = 'var(--theme-accent, #8e3b46)'
 
   return (
     <div className="mr-tgrid-wrap">
@@ -102,11 +119,29 @@ export default function RoadmapTimelineGrid({
 
       <div className="mr-tgrid-legend" role="group" aria-label="Projets transformants">
         <span className="mr-tgrid-legend__label">Projets transformants</span>
+        <div className="mr-tgrid-legend__toolbar">
+          <button type="button" className="mr-tgrid-legend__link" onClick={onSelectAllLegendProjects}>
+            Tout afficher
+          </button>
+          <span className="mr-tgrid-legend__sep" aria-hidden>
+            ·
+          </span>
+          <button type="button" className="mr-tgrid-legend__link" onClick={onDeselectAllLegendProjects}>
+            Tout masquer
+          </button>
+        </div>
         <ul className="mr-tgrid-legend__list">
           {legendProjects.map((p) => (
             <li key={p.id} className="mr-tgrid-legend__item">
-              <span className="mr-tgrid-legend__swatch" style={{ background: p.color }} aria-hidden />
-              <span>{p.nom}</span>
+              <label className="mr-tgrid-legend__check">
+                <input
+                  type="checkbox"
+                  checked={p.checked}
+                  onChange={() => onToggleLegendProject(p.id)}
+                />
+                <span className="mr-tgrid-legend__swatch" style={{ background: p.color }} aria-hidden />
+                <span>{p.nom}</span>
+              </label>
             </li>
           ))}
         </ul>
@@ -134,12 +169,30 @@ export default function RoadmapTimelineGrid({
             </tr>
           </thead>
           <tbody>
+            {chantiers.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={headerCells.length + 1}
+                  className="mr-tgrid__empty"
+                >
+                  Aucun chantier à afficher pour les projets sélectionnés. Cochez un ou plusieurs projets dans la légende
+                  ou créez un chantier rattaché à un projet.
+                </td>
+              </tr>
+            ) : null}
             {chantiers.map((ch) => {
               const buckets = bucketForChantier(ch.id)
+              const projectColor = projectColorById[ch.projet_id] ?? defaultPillColor
+              const projetLabel = projetNomById[ch.projet_id] ?? ''
               return (
                 <tr key={ch.id}>
                   <th scope="row" className="mr-tgrid__sticky mr-tgrid__chantier-cell">
                     <span className="mr-tgrid__chantier-name">{ch.nom}</span>
+                    {projetLabel ? (
+                      <span className="mr-tgrid__chantier-projet" title="Projet parent">
+                        {projetLabel}
+                      </span>
+                    ) : null}
                   </th>
                   {headerCells.map((h) => (
                     <td key={h.key} className="mr-tgrid__cell">

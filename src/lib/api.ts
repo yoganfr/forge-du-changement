@@ -308,6 +308,22 @@ export async function getWorkspaceDirectionsWithProjects(workspaceId: string): P
   })
 }
 
+/** Projets BUILD validés DG — éligibles à la Maturity Roadmap (dédoublonnés, tri par nom). */
+export async function getRoadmapEligibleProjects(workspaceId: string): Promise<Projet[]> {
+  const rows = await getWorkspaceDirectionsWithProjects(workspaceId)
+  const seen = new Set<string>()
+  const out: Projet[] = []
+  for (const row of rows) {
+    for (const p of row.projects) {
+      if (p.type !== 'BUILD' || !p.dg_validated_transfo) continue
+      if (seen.has(p.id)) continue
+      seen.add(p.id)
+      out.push(p)
+    }
+  }
+  return out.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+}
+
 // -- PROJETS --
 export async function createProjet(data: Partial<Projet>): Promise<Projet> {
   const { data: projet, error } = await supabase
