@@ -140,8 +140,8 @@ export default function RoadmapTimelineGrid({
 
       <p className="mr-tgrid-intro">
         Quatre <strong>blocs d’axe</strong> : chaque <strong>ligne chantier</strong> se définit en cliquant sur son
-        intitulé ; les <strong>jalons</strong> sont des cartes par projet (case = réalisé). Le <strong>+</strong> dans une
-        case temps ajoute un jalon dans l’axe du bloc.
+        intitulé. Une case temps ne contient qu’<strong>un seul jalon</strong> : le <strong>+</strong> disparaît une fois le
+        jalon créé ; cliquez sur le jalon pour ouvrir le détail et le <strong>supprimer</strong>, ce qui réaffiche le +.
       </p>
 
       <div className="mr-tgrid-scroll" role="region" aria-label="Tableau roadmap par axe et temps">
@@ -243,11 +243,14 @@ export default function RoadmapTimelineGrid({
                             </>
                           )}
                         </th>
-                        {headerCells.map((h) => (
+                        {headerCells.map((h) => {
+                          const cellJalons = buckets.get(h.key) ?? []
+                          const cellEmpty = cellJalons.length === 0
+                          return (
                           <td key={h.key} className="mr-tgrid__cell">
                             <div className="mr-tgrid__cell-inner">
                               <div className="mr-tgrid__pills">
-                                {(buckets.get(h.key) ?? []).map((j) => {
+                                {cellJalons.map((j) => {
                                   const realised = j.statut === 'realise'
                                   return (
                                     <div
@@ -285,7 +288,7 @@ export default function RoadmapTimelineGrid({
                                   )
                                 })}
                               </div>
-                              {!readOnly && (
+                              {!readOnly && cellEmpty && (
                                 <button
                                   type="button"
                                   className="mr-tgrid__cell-plus"
@@ -299,7 +302,8 @@ export default function RoadmapTimelineGrid({
                               )}
                             </div>
                           </td>
-                        ))}
+                          )
+                        })}
                       </tr>
                     )
                   })}
