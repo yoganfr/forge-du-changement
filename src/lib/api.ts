@@ -1,3 +1,9 @@
+/**
+ * Client Supabase **anon** + JWT session. L’accès aux données repose sur les **RLS** Postgres
+ * (`auth.uid()` / `current_app_user_id()`), pas sur ce fichier.
+ * Requêtes à risque si policies incomplètes : `listWorkspaces`, `users`, `invitations` (filtre email),
+ * `projets` / `jalons` / `chantiers` par workspace.
+ */
 import { supabase } from './supabase'
 import type {
   Workspace,
@@ -14,6 +20,8 @@ import type {
 
 const STORAGE_BUCKET = 'assets'
 const CACHE_TTL_MS = 30_000
+/** Évite une croissance mémoire illimitée sur sessions longues (sessions SPA). */
+const MAX_RESPONSE_CACHE_ENTRIES = 250
 type ListOptions = { limit?: number; offset?: number }
 
 type CacheEntry<T> = { value: T; expiresAt: number }
@@ -30,10 +38,18 @@ function readCache<T>(key: string): T | null {
     responseCache.delete(key)
     return null
   }
+  // LRU : réinsérer pour repousser la clé en fin de Map (ordre d’insertion).
+  responseCache.delete(key)
+  responseCache.set(key, entry)
   return entry.value as T
 }
 
 function writeCache<T>(key: string, value: T, ttlMs = CACHE_TTL_MS): T {
+  const had = responseCache.has(key)
+  if (!had && responseCache.size >= MAX_RESPONSE_CACHE_ENTRIES) {
+    const oldest = responseCache.keys().next().value as string | undefined
+    if (oldest) responseCache.delete(oldest)
+  }
   responseCache.set(key, { value, expiresAt: Date.now() + ttlMs })
   return value
 }
@@ -173,7 +189,7 @@ export async function getWorkspace(id: string): Promise<Workspace> {
   })
 }
 
-/** Liste des espaces entreprise (consultant / admin). Nécessite une policy RLS SELECT adaptée. */
+/** Liste des espaces entreprise (consultant / admin). Exposer uniquement ce que la RLS autorise pour ce JWT. */
 export async function listWorkspaces(): Promise<Workspace[]> {
   return dedupedFetch('workspaces:list', async () => {
     const { data, error } = await supabase
@@ -234,14 +250,24 @@ export async function updateUser(
   data: Partial<User>,
   scope?: { workspace_id: string },
 ): Promise<User> {
+  let priorWorkspaceId: string | null = null
+  if (!scope?.workspace_id) {
+    const { data: prior } = await supabase.from('users').select('workspace_id').eq('id', id).maybeSingle()
+    priorWorkspaceId = (prior as { workspace_id?: string } | null)?.workspace_id ?? null
+  }
   let q = supabase.from('users').update(data).eq('id', id)
   if (scope?.workspace_id) {
     q = q.eq('workspace_id', scope.workspace_id)
   }
   const { data: user, error } = await q.select().single()
   if (error) throw error
-  if (scope?.workspace_id) invalidateCache([`workspace-users:${scope.workspace_id}`])
-  return user as User
+  const u = user as User
+  const workspacesToBump = new Set<string>()
+  if (scope?.workspace_id) workspacesToBump.add(scope.workspace_id)
+  if (priorWorkspaceId) workspacesToBump.add(priorWorkspaceId)
+  if (u.workspace_id) workspacesToBump.add(u.workspace_id)
+  invalidateCache([...workspacesToBump].map((w) => `workspace-users:${w}`))
+  return u
 }
 
 export async function getWorkspaceUsers(workspaceId: string, options?: ListOptions): Promise<User[]> {
@@ -367,11 +393,11 @@ export async function getDirectionProjets(directionId: string): Promise<Projet[]
 }
 
 export async function deleteProjet(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('projets')
-    .delete()
-    .eq('id', id)
+  const { data: row } = await supabase.from('projets').select('workspace_id').eq('id', id).maybeSingle()
+  const { error } = await supabase.from('projets').delete().eq('id', id)
   if (error) throw error
+  const wid = (row as { workspace_id?: string } | null)?.workspace_id
+  if (wid) invalidateCache([`workspace-directions-projects:${wid}`])
 }
 
 export async function getProjet(id: string): Promise<Projet> {
@@ -387,6 +413,16 @@ const AXE_PREFIX: Record<Axe, number> = {
   ORGANISATION: 2,
   OUTILS: 3,
   KPI: 4,
+}
+
+function sortJalonsByAxeAndOrder(list: Jalon[]): Jalon[] {
+  const rank = (axe: Axe) => AXE_ORDER.indexOf(axe)
+  return [...list].sort((a, b) => {
+    const ra = rank(a.axe)
+    const rb = rank(b.axe)
+    if (ra !== rb) return ra - rb
+    return (a.ordre_sequentiel ?? 0) - (b.ordre_sequentiel ?? 0)
+  })
 }
 
 /** Aligné sur la contrainte PostgreSQL `jalons_axe_check` (valeurs strictes en majuscules). */
@@ -549,29 +585,44 @@ export async function getNextJalonNumero(chantier_id: string, axe: Axe): Promise
 export async function getProjetJalons(projet_id: string): Promise<Jalon[]> {
   const { data, error } = await supabase.from('jalons').select('*').eq('projet_id', projet_id)
   if (error) throw error
-  const list = (data ?? []) as Jalon[]
-  const rank = (a: Axe) => AXE_ORDER.indexOf(a)
-  return list.sort((a, b) => {
-    const ra = rank(a.axe)
-    const rb = rank(b.axe)
-    if (ra !== rb) return ra - rb
-    return (a.ordre_sequentiel ?? 0) - (b.ordre_sequentiel ?? 0)
-  })
+  return sortJalonsByAxeAndOrder((data ?? []) as Jalon[])
 }
 
 export async function getChantierJalons(chantier_id: string): Promise<Jalon[]> {
   return dedupedFetch(`roadmap-jalons:${chantier_id}`, async () => {
     const { data, error } = await supabase.from('jalons').select('*').eq('chantier_id', chantier_id)
     if (error) throw error
-    const list = (data ?? []) as Jalon[]
-    const rank = (a: Axe) => AXE_ORDER.indexOf(a)
-    return list.sort((a, b) => {
-      const ra = rank(a.axe)
-      const rb = rank(b.axe)
-      if (ra !== rb) return ra - rb
-      return (a.ordre_sequentiel ?? 0) - (b.ordre_sequentiel ?? 0)
-    })
+    return sortJalonsByAxeAndOrder((data ?? []) as Jalon[])
   })
+}
+
+const JALONS_IN_CHUNK_SIZE = 200
+
+/**
+ * Jalons pour plusieurs chantiers en une ou plusieurs requêtes `.in()` (évite N+1 sur la roadmap).
+ * Les tableaux vides par chantier sont garantis pour chaque id demandé.
+ */
+export async function getJalonsByChantierIds(chantierIds: string[]): Promise<Record<string, Jalon[]>> {
+  const unique = [...new Set(chantierIds.filter(Boolean))]
+  const out: Record<string, Jalon[]> = Object.fromEntries(unique.map((id) => [id, [] as Jalon[]]))
+  if (unique.length === 0) return out
+
+  const merged: Jalon[] = []
+  for (let i = 0; i < unique.length; i += JALONS_IN_CHUNK_SIZE) {
+    const chunk = unique.slice(i, i + JALONS_IN_CHUNK_SIZE)
+    const { data, error } = await supabase.from('jalons').select('*').in('chantier_id', chunk)
+    if (error) throw error
+    merged.push(...((data ?? []) as Jalon[]))
+  }
+  for (const j of merged) {
+    const k = j.chantier_id
+    if (out[k]) out[k]!.push(j)
+    else out[k] = [j]
+  }
+  for (const id of unique) {
+    out[id] = sortJalonsByAxeAndOrder(out[id] ?? [])
+  }
+  return out
 }
 
 export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
@@ -742,7 +793,7 @@ export async function getWorkspaceInvitations(
   })
 }
 
-/** Dernière invitation en attente pour cet email (connexion magic link avant ligne `users`). */
+/** Invitation par email — la RLS doit limiter qui lit quelles lignes (éviter fuite cross-workspace). */
 export async function getLatestPendingInvitationForEmail(email: string): Promise<Invitation | null> {
   const normalized = email.trim().toLowerCase()
   const { data, error } = await supabase

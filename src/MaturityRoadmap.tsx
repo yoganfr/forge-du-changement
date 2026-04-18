@@ -6,6 +6,7 @@ import {
   deleteChantier,
   deleteJalon,
   getChantierJalons,
+  getJalonsByChantierIds,
   getJalonRaci,
   getProjetChantiers,
   getProjetJalons,
@@ -162,11 +163,10 @@ export default function MaturityRoadmap({
         return a.ordre - b.ordre || a.created_at.localeCompare(b.created_at)
       })
       setChantiers(allChs)
-      await Promise.all(
-        allChs.map(async (c) => {
-          jMap[c.id] = await getChantierJalons(c.id)
-        }),
-      )
+      const byChantier = await getJalonsByChantierIds(allChs.map((c) => c.id))
+      for (const c of allChs) {
+        jMap[c.id] = byChantier[c.id] ?? []
+      }
       setJalonsByChantier(jMap)
     } catch (e) {
       const msg =

@@ -24,6 +24,13 @@ import {
   writeWorkspaceSnapshot,
 } from './lib/workspaceSnapshot'
 import { appRoleFromDbUser, invitationRoleToStoredRole, type AppUserRole } from './lib/appRole'
+import type { User as AppDbUser } from './lib/types'
+
+/** Rôle issu de `public.users` ou d’une invitation ; pas de lecture depuis localStorage. */
+type ServerAccess =
+  | { source: 'users'; dbUser: AppDbUser }
+  | { source: 'invitation'; role: AppUserRole; workspaceId: string }
+  | { source: 'superadmin' }
 import { getCurrentUser, isPlatformSuperadmin, signOut } from './lib/auth'
 import { supabase } from './lib/supabase'
 import {
@@ -141,11 +148,25 @@ function App() {
   const [workspacesCatalog, setWorkspacesCatalog] = useState<Workspace[]>([])
   const [workspacesLoading, setWorkspacesLoading] = useState(false)
   const [workspacesError, setWorkspacesError] = useState<string | null>(null)
-  /* lfdc-user-role : cache UI seulement ; les écritures sensibles restent soumises à la RLS Supabase. */
-  const storedRole = localStorage.getItem('lfdc-user-role') as AppUserRole | null
-  const currentUserRole: AppUserRole = storedRole ?? 'consultant'
-  /** Paramètres globaux de l’espace : consultants et administrateurs. */
-  const canAccessSettings = currentUserRole === 'consultant' || currentUserRole === 'admin'
+  const [serverAccess, setServerAccess] = useState<ServerAccess | null>(null)
+
+  const currentUserRole: AppUserRole =
+    serverAccess?.source === 'superadmin'
+      ? 'consultant'
+      : serverAccess?.source === 'invitation'
+        ? serverAccess.role
+        : serverAccess?.source === 'users'
+          ? appRoleFromDbUser(serverAccess.dbUser)
+          : 'consultant'
+
+  /** Paramètres globaux : rôle issu du serveur ou super-admin (RPC). */
+  const canAccessSettings =
+    platformSuperadmin ||
+    (serverAccess?.source === 'users' &&
+      (serverAccess.dbUser.role === 'consultant' || serverAccess.dbUser.role === 'admin')) ||
+    (serverAccess?.source === 'invitation' &&
+      (serverAccess.role === 'consultant' || serverAccess.role === 'admin')) ||
+    serverAccess?.source === 'superadmin'
 
   const exitRoadmap = useCallback(() => {
     setMaturityRoadmapOpen(false)
@@ -254,17 +275,19 @@ function App() {
     if (platformSuper || invitedUser) {
       setPlatformSuperadmin(platformSuper)
       setAuthUser(user)
-      if (invitedUser?.workspace_id) {
-        const isConsultantMember = invitedUser.role === 'consultant'
-        if (!isConsultantMember) {
-          localStorage.setItem('workspaceId', invitedUser.workspace_id)
-          setWorkspaceId(invitedUser.workspace_id)
-          localStorage.setItem('lfdc-user-role', appRoleFromDbUser(invitedUser))
-        } else {
-          localStorage.setItem('lfdc-user-role', appRoleFromDbUser(invitedUser))
+      if (invitedUser) {
+        setServerAccess({ source: 'users', dbUser: invitedUser })
+        if (invitedUser.workspace_id) {
+          const isConsultantMember = invitedUser.role === 'consultant'
+          if (!isConsultantMember) {
+            localStorage.setItem('workspaceId', invitedUser.workspace_id)
+            setWorkspaceId(invitedUser.workspace_id)
+          }
         }
-      } else if (invitedUser) {
-        localStorage.setItem('lfdc-user-role', appRoleFromDbUser(invitedUser))
+      } else if (platformSuper) {
+        setServerAccess({ source: 'superadmin' })
+      } else {
+        setServerAccess(null)
       }
       try {
         if (invitedUser?.workspace_id && invitedUser.email) {
@@ -281,9 +304,14 @@ function App() {
       localStorage.setItem('workspaceId', invBootstrap.workspace_id)
       setWorkspaceId(invBootstrap.workspace_id)
       localStorage.removeItem('lfdc-user-id')
-      localStorage.setItem('lfdc-user-role', invitationRoleToStoredRole(invBootstrap.role))
+      setServerAccess({
+        source: 'invitation',
+        role: invitationRoleToStoredRole(invBootstrap.role),
+        workspaceId: invBootstrap.workspace_id,
+      })
       return
     }
+    setServerAccess(null)
     await signOut()
     setPlatformSuperadmin(false)
     setAuthUser(null)
@@ -298,6 +326,7 @@ function App() {
       if (!user) {
         setAuthUser(null)
         setPlatformSuperadmin(false)
+        setServerAccess(null)
         setAuthLoading(false)
         return
       }
@@ -315,6 +344,7 @@ function App() {
         if (!user) {
           setAuthUser(null)
           setPlatformSuperadmin(false)
+          setServerAccess(null)
           setAuthLoading(false)
           return
         }
@@ -450,7 +480,7 @@ function App() {
       <Suspense fallback={APP_SHELL_FALLBACK}>
         <OnboardingFlow
           onCancel={() => setShowWorkspaceOnboarding(false)}
-          onComplete={(data) => {
+            onComplete={async (data) => {
             localStorage.setItem('workspaceId', data.workspace.id)
             setWorkspaceId(data.workspace.id)
             setWorkspaceName(data.workspace.company_name)
@@ -473,6 +503,12 @@ function App() {
             navigateToMainNav('company')
             setShowWorkspaceOnboarding(false)
             void refreshWorkspacesCatalog()
+            const {
+              data: { session },
+            } = await supabase.auth.getSession()
+            if (session?.user) {
+              await reconcileAuthSession(session.user)
+            }
           }}
         />
       </Suspense>
@@ -614,6 +650,7 @@ function App() {
                 setWorkspaceData(null)
                 setCompanyLogo(null)
                 setWorkspaceName('La Forge')
+                setServerAccess(null)
                 navigateToMainNav('home')
                 setAuthUser(null)
               }}
@@ -767,10 +804,12 @@ function App() {
           managedCount={storedProfile?.managedCount}
           totalEffectif={storedProfile?.totalEffectif}
           avatarUrl={storedProfile?.avatar ?? null}
-          onSaved={() => {
+          onSaved={async () => {
             const nextProfile = readStoredProfile()
             setStoredProfile(nextProfile)
             setUserInitials(profileInitials(nextProfile))
+            const row = await getCurrentUser()
+            if (row) setServerAccess({ source: 'users', dbUser: row })
           }}
         />
       </Suspense>

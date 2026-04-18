@@ -1,6 +1,6 @@
 import type { Invitation, User } from './types'
 
-/** Rôle affiché dans l’UI (localStorage). La sécurité réelle = RLS Postgres, pas ce libellé. */
+/** Rôle pour l’UI ; la source de vérité côté app = état serveur (`public.users` / invitation), pas localStorage. */
 export type AppUserRole = 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
 
 export function invitationRoleToStoredRole(role: Invitation['role']): Exclude<AppUserRole, 'admin'> {
