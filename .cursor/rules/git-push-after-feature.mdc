@@ -1,0 +1,17 @@
+---
+description: Après chaque fonctionnalité, commit et push GitHub (déploiement Vercel)
+alwaysApply: true
+---
+
+# Livraison GitHub après fonctionnalité
+
+À la fin de tout travail sur une **fonctionnalité** (code, docs produit liés, scripts SQL à versionner) :
+
+1. **`git status`** — vérifier les fichiers modifiés ou non suivis.
+2. **`git add`** les fichiers pertinents (pas de fichiers sensibles ou jetables involontaires).
+3. **`git commit`** avec un message clair en français (une phrase : quoi / pourquoi).
+4. **`git push`** vers la branche distante utilisée pour la prod (souvent `main`), pour que **Vercel** (et le reste de l’équipe) voient les changements.
+
+Ne pas laisser le dépôt **en avance sur `origin`** sans raison après une session de dev sur une feature. Si le push échoue (auth, réseau), le signaler et proposer de réessayer ou de corriger.
+
+Les scripts SQL dans `docs/` sont versionnés avec le code quand ils font partie de la livraison de la fonctionnalité.
