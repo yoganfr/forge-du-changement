@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import DgProjectAccordion from '../DgProjectAccordion'
 import { getWorkspaceDirectionsWithProjects, updateProjet } from '../lib/api'
 import type { DashboardDgDirectionStats, DashboardDgKpis, Projet } from '../lib/types'
 
@@ -32,20 +33,10 @@ function computeProjectScore(project: Projet): number {
   return Math.round((raw / scoreMax) * 100)
 }
 
-function monthKeys(count: number): Array<{ key: string; label: string }> {
-  const now = new Date()
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
-    return {
-      key: `${d.getMonth()}-${d.getFullYear()}`,
-      label: d.toLocaleString('fr-FR', { month: 'short' }).replace('.', ''),
-    }
-  })
-}
-
 type DirectionBundle = {
   id: string
   name: string
+  color: string
   projects: Projet[]
 }
 
@@ -68,6 +59,7 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
         rows.map((r) => ({
           id: r.direction.id,
           name: r.direction.nom,
+          color: r.direction.color,
           projects: r.projects,
         })),
       )
@@ -87,7 +79,12 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
   }, [load])
 
   const pendingByDirection = useMemo(() => {
-    const groups: Array<{ directionId: string; directionName: string; projects: Projet[] }> = []
+    const groups: Array<{
+      directionId: string
+      directionName: string
+      directionColor: string
+      projects: Projet[]
+    }> = []
     for (const d of directions) {
       const pending = d.projects.filter(
         (p) => p.type === 'BUILD' && p.selected_for_transfo && !p.dg_validated_transfo,
@@ -96,6 +93,7 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
       groups.push({
         directionId: d.id,
         directionName: d.name,
+        directionColor: d.color,
         projects: [...pending].sort((a, b) => computeProjectScore(b) - computeProjectScore(a)),
       })
     }
@@ -103,13 +101,19 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
   }, [directions])
 
   const validatedByDirection = useMemo(() => {
-    const groups: Array<{ directionId: string; directionName: string; projects: Projet[] }> = []
+    const groups: Array<{
+      directionId: string
+      directionName: string
+      directionColor: string
+      projects: Projet[]
+    }> = []
     for (const d of directions) {
       const val = d.projects.filter((p) => p.type === 'BUILD' && p.dg_validated_transfo)
       if (val.length === 0) continue
       groups.push({
         directionId: d.id,
         directionName: d.name,
+        directionColor: d.color,
         projects: [...val].sort((a, b) => computeProjectScore(b) - computeProjectScore(a)),
       })
     }
@@ -170,21 +174,7 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
       .sort((a, b) => b.avgBuildScore - a.avgBuildScore || b.buildProjects - a.buildProjects)
       .slice(0, 5)
 
-    const months = monthKeys(12)
-    const ganttRows = top5.map((direction) => {
-      const dirData = directions.find((d) => d.name === direction.directionName)
-      const selectedBuilds = (dirData?.projects ?? []).filter((p) => p.type === 'BUILD')
-      const timeline = months.map((month) => {
-        const activeCount = selectedBuilds.reduce((count, project) => {
-          const active = project.planning?.[month.key] ?? false
-          return active ? count + 1 : count
-        }, 0)
-        return activeCount
-      })
-      return { directionName: direction.directionName, timeline }
-    })
-
-    return { kpis, top5, ganttRows, months }
+    return { kpis, top5 }
   }, [directions])
 
   return (
@@ -234,27 +224,20 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
                 {pendingByDirection.map((group) => (
                   <section key={group.directionId} className="dg__direction-group">
                     <h4 className="dg__direction-heading">{group.directionName}</h4>
-                    <ul className="dg__validation-list">
-                      {group.projects.map((projet) => {
-                        const score = computeProjectScore(projet)
-                        return (
-                          <li key={projet.id} className="dg__validation-row">
-                            <div className="dg__validation-main">
-                              <strong className="dg__validation-name">{projet.nom || 'Sans titre'}</strong>
-                              <span className="dg__validation-meta">{projet.thematique || '—'}</span>
-                              <span className="dg__validation-score">{score}/100</span>
-                            </div>
-                            <button
-                              type="button"
-                              className="dg__validate-btn"
-                              disabled={savingId === projet.id}
-                              onClick={() => void handleValidate(projet.id, true)}
-                            >
-                              {savingId === projet.id ? '…' : 'Valider pour la roadmap'}
-                            </button>
-                          </li>
-                        )
-                      })}
+                    <ul className="dg__proj-list">
+                      {group.projects.map((projet) => (
+                        <li key={projet.id} className="dg__proj-list-item">
+                          <DgProjectAccordion
+                            projet={projet}
+                            accentColor={group.directionColor}
+                            globalScore={computeProjectScore(projet)}
+                            mode="pending"
+                            saving={savingId === projet.id}
+                            onValidate={() => void handleValidate(projet.id, true)}
+                            onRevoke={() => {}}
+                          />
+                        </li>
+                      ))}
                     </ul>
                   </section>
                 ))}
@@ -270,24 +253,26 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
                 {validatedByDirection.map((group) => (
                   <section key={group.directionId} className="dg__direction-group">
                     <h4 className="dg__direction-heading">{group.directionName}</h4>
-                    <ul className="dg__validation-list dg__validation-list--muted">
+                    <ul className="dg__proj-list dg__proj-list--muted">
                       {group.projects.map((projet) => (
-                        <li key={projet.id} className="dg__validation-row">
-                          <div className="dg__validation-main">
-                            <strong className="dg__validation-name">{projet.nom || 'Sans titre'}</strong>
-                            <span className="dg__validation-meta">{computeProjectScore(projet)}/100</span>
-                          </div>
-                          <button
-                            type="button"
-                            className="dg__validate-btn dg__validate-btn--ghost"
-                            disabled={savingId === projet.id}
-                            onClick={() => {
-                              if (!window.confirm('Retirer la validation DG ? Le projet ne sera plus accessible depuis Ma roadmap tant qu’il n’est pas validé à nouveau.')) return
+                        <li key={projet.id} className="dg__proj-list-item">
+                          <DgProjectAccordion
+                            projet={projet}
+                            accentColor={group.directionColor}
+                            globalScore={computeProjectScore(projet)}
+                            mode="validated"
+                            saving={savingId === projet.id}
+                            onValidate={() => {}}
+                            onRevoke={() => {
+                              if (
+                                !window.confirm(
+                                  'Retirer la validation DG ? Le projet ne sera plus accessible depuis Ma roadmap tant qu’il n’est pas validé à nouveau.',
+                                )
+                              )
+                                return
                               void handleValidate(projet.id, false)
                             }}
-                          >
-                            Retirer la validation
-                          </button>
+                          />
                         </li>
                       ))}
                     </ul>
@@ -297,47 +282,20 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
             </article>
           )}
 
-          <div className="dg__grid">
-            <article className="dg__card">
-              <h3>Top 5 inter-directions (BUILD)</h3>
-              <ol className="dg__ranking">
-                {model.top5.length === 0 && <li>Aucune direction BUILD pour le moment.</li>}
-                {model.top5.map((item) => (
-                  <li key={item.directionId} className="dg__ranking-item">
-                    <span>{item.directionName}</span>
-                    <span>{item.avgBuildScore}/100 · {item.buildProjects} BUILD</span>
-                  </li>
-                ))}
-              </ol>
-            </article>
-
-            <article className="dg__card">
-              <h3>Gantt macro consolidé (12 mois)</h3>
-              <div className="dg__months">
-                {model.months.map((month) => (
-                  <span key={month.key}>{month.label}</span>
-                ))}
-              </div>
-              <div className="dg__gantt">
-                {model.ganttRows.map((row) => (
-                  <div key={row.directionName} className="dg__gantt-row">
-                    <span className="dg__gantt-label">{row.directionName}</span>
-                    <div className="dg__gantt-cells">
-                      {row.timeline.map((value, idx) => (
-                        <span
-                          key={`${row.directionName}-${idx}`}
-                          className={`dg__gantt-cell ${value > 0 ? 'dg__gantt-cell--on' : ''}`}
-                          title={value > 0 ? `${value} projet(s) actif(s)` : 'Aucun projet actif'}
-                        >
-                          {value > 0 ? value : ''}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </div>
+          <article className="dg__card">
+            <h3>Top 5 inter-directions (BUILD)</h3>
+            <ol className="dg__ranking">
+              {model.top5.length === 0 && <li>Aucune direction BUILD pour le moment.</li>}
+              {model.top5.map((item) => (
+                <li key={item.directionId} className="dg__ranking-item">
+                  <span>{item.directionName}</span>
+                  <span>
+                    {item.avgBuildScore}/100 · {item.buildProjects} BUILD
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </article>
         </>
       )}
     </section>

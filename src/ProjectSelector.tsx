@@ -8,7 +8,10 @@ import {
   updateProjet,
 } from './lib/api'
 import { getCurrentUser } from './lib/auth'
+import { generateGanttMonths } from './lib/ganttMonths'
 import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
+
+export { generateGanttMonths }
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -60,26 +63,6 @@ type Perimetre = {
 }
 
 // ─── Constantes ─────────────────────────────────────────────────────────────
-
-export function generateGanttMonths() {
-  const today = new Date()
-  const months: Array<{
-    key: string
-    label: string
-    year: number
-    monthIndex: number
-  }> = []
-  for (let i = 0; i < 24; i++) {
-    const d = new Date(today.getFullYear(), today.getMonth() + i, 1)
-    months.push({
-      key: `${d.getMonth()}-${d.getFullYear()}`,
-      label: d.toLocaleString('fr-FR', { month: 'short' }).replace('.', '').slice(0, 3),
-      year: d.getFullYear(),
-      monthIndex: d.getMonth(),
-    })
-  }
-  return months
-}
 
 const GANTT_MONTHS = generateGanttMonths()
 
