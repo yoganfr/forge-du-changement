@@ -23,6 +23,22 @@ const STATUT_LABEL: Record<string, string> = {
   bloque: 'Bloqué',
 }
 
+/**
+ * Un chantier avec `axe` renseigné n’apparaît que dans ce bloc (pas de copie sur les 4 axes).
+ * Chantiers sans axe (données antérieures) : visibles uniquement dans les blocs où ils ont au moins un jalon ;
+ * s’ils n’en ont aucun, une seule ligne sur Processus pour éviter les doublons vides.
+ */
+export function chantierVisibleInAxisBlock(c: Chantier, blockAxe: Axe, jalons: Jalon[]): boolean {
+  const typed = c.axe != null && String(c.axe).trim() !== ''
+  if (typed) {
+    return c.axe === blockAxe
+  }
+  if (jalons.length === 0) {
+    return blockAxe === 'PROCESSUS'
+  }
+  return jalons.some((j) => j.axe === blockAxe)
+}
+
 type Props = {
   chantiers: Chantier[]
   jalonsByChantier: Record<string, Jalon[]>
@@ -94,9 +110,9 @@ export default function RoadmapTimelineGrid({
   return (
     <div className="mr-tgrid-wrap">
       <p className="mr-tgrid-intro">
-        Chaque <strong>chantier</strong> est rattaché à un projet transformant ; le <strong>bloc d’axe</strong> où vous le
-        créez définit son type (Processus, Organisation, Outils, KPI). Les <strong>jalons</strong> reprennent la couleur du
-        projet parent. Un seul jalon par case temps — le <strong>+</strong> disparaît une fois le jalon créé. Faites défiler
+        Chaque <strong>chantier</strong> n’apparaît que dans le <strong>bloc d’axe</strong> où vous le créez (pas de doublon
+        sur les autres axes). Rattachement au projet transformant ; les <strong>jalons</strong> reprennent la couleur du
+        projet. Un seul jalon par case temps — le <strong>+</strong> disparaît une fois le jalon créé. Faites défiler
         horizontalement si besoin ; les colonnes sont condensées pour limiter la largeur.
       </p>
 
@@ -119,7 +135,9 @@ export default function RoadmapTimelineGrid({
             </tr>
           </thead>
           {axesToShow.map((axe, blockIndex) => {
-            const blockChantiers = chantiers.filter((c) => c.axe == null || c.axe === axe)
+            const blockChantiers = chantiers.filter((c) =>
+              chantierVisibleInAxisBlock(c, axe, jalonsByChantier[c.id] ?? []),
+            )
             const showEmptyReadonlyRow = readOnly && blockChantiers.length === 0
             const rowCount =
               showEmptyReadonlyRow ? 1 : blockChantiers.length + (readOnly ? 0 : 1)

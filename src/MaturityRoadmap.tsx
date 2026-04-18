@@ -241,23 +241,26 @@ export default function MaturityRoadmap({
         return
       }
       const axeForCreate = chantierModal?.axeForCreate
-      const sameCh = chantiers.filter((c) => {
-        if (c.projet_id !== projetId) return false
-        if (axeForCreate == null) return true
-        return c.axe === axeForCreate
-      })
+      if (axeForCreate == null) {
+        window.alert(
+          'L’axe du chantier est obligatoire. Fermez cette fenêtre et utilisez la ligne en bas du bloc d’axe souhaité (Processus, Organisation, Outils ou KPI).',
+        )
+        return
+      }
+      const sameCh = chantiers.filter((c) => c.projet_id === projetId && c.axe === axeForCreate)
       const ordre = (sameCh.reduce((m, c) => Math.max(m, c.ordre), 0) || 0) + 1
       const c = await createChantier({
         projet_id: projetId,
         workspace_id: workspaceId,
         nom,
         ordre,
-        ...(axeForCreate != null ? { axe: axeForCreate } : {}),
+        axe: axeForCreate,
       })
       setSelectedProjectIds((prev) => (prev.includes(projetId) ? prev : [...prev, projetId]))
       setChantierModal(null)
       setChantiers((prev) => {
-        const next = [...prev, c]
+        const created = { ...c, axe: c.axe ?? axeForCreate }
+        const next = [...prev, created]
         const order = new Map(roadmapProjects.map((p, i) => [p.id, i]))
         return next.sort((a, b) => {
           const oa = order.get(a.projet_id) ?? 999
