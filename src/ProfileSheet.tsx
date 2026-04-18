@@ -497,7 +497,7 @@ const CSS = `
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.45);
-  z-index: 49;
+  z-index: 1000;
 }
 
 .psd-drawer {
@@ -511,7 +511,7 @@ const CSS = `
   border-left: 1px solid var(--theme-border);
   box-shadow: -8px 0 32px rgba(0,0,0,0.2);
   padding: 32px;
-  z-index: 50;
+  z-index: 1001;
   overflow-y: auto;
   font-family: var(--font-body);
   color: var(--theme-text);

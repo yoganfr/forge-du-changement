@@ -856,8 +856,28 @@ function ProjectCard({
                   <div className="project-field">
                     <span>Type de projet *</span>
                     <div className="type-pills">
-                      <button type="button" className={draft.type === 'RUN' ? 'type-pill type-pill--active' : 'type-pill'} onClick={() => setDraft((p) => ({ ...p, type: 'RUN' }))}>RUN — Amélioration continue</button>
-                      <button type="button" className={draft.type === 'BUILD' ? 'type-pill type-pill--active' : 'type-pill'} onClick={() => setDraft((p) => ({ ...p, type: 'BUILD' }))}>BUILD — Projet transformant</button>
+                      <button
+                        type="button"
+                        className={draft.type === 'RUN' ? 'type-pill type-pill--active' : 'type-pill'}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setDraft((p) => ({ ...p, type: 'RUN' }))
+                        }}
+                      >
+                        RUN — Amélioration continue
+                      </button>
+                      <button
+                        type="button"
+                        className={draft.type === 'BUILD' ? 'type-pill type-pill--active' : 'type-pill'}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setDraft((p) => ({ ...p, type: 'BUILD' }))
+                        }}
+                      >
+                        BUILD — Projet transformant
+                      </button>
                     </div>
                     {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 DG</div>}
                   </div>

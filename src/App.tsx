@@ -105,6 +105,14 @@ function profileInitials(profile: StoredMemberProfile | null): string {
   return `${profile?.firstName?.[0] ?? ''}${profile?.lastName?.[0] ?? ''}`.toUpperCase() || '?'
 }
 
+function normalizeRoleLabel(role: AppUserRole): string {
+  if (role === 'consultant') return 'Consultant'
+  if (role === 'admin') return 'Admin'
+  if (role === 'pilote') return 'Pilote'
+  if (role === 'contributeur') return 'Contributeur'
+  return 'Membre CODIR'
+}
+
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authUser, setAuthUser] = useState<User | null>(null)
@@ -116,6 +124,7 @@ function App() {
   const [userInitials, setUserInitials] = useState(() => profileInitials(readStoredProfile()))
   const [activeNav, setActiveNav] = useState<string>('home')
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
+  const [platformSuperadmin, setPlatformSuperadmin] = useState(false)
   const normalizedActiveNav = useMemo(() => {
     const known = ['fabrique', 'workspace', 'sens', 'roles', 'company', 'settings', 'dg'] as const
     return known.includes(activeNav as (typeof known)[number]) ? activeNav : 'home'
@@ -184,6 +193,7 @@ function App() {
     const invBootstrap = pendingInv ?? acceptedInv
 
     if (platformSuper || invitedUser) {
+      setPlatformSuperadmin(platformSuper)
       setAuthUser(user)
       if (invitedUser?.workspace_id) {
         const isConsultantMember = invitedUser.role === 'consultant'
@@ -207,6 +217,7 @@ function App() {
       return
     }
     if (invBootstrap?.workspace_id) {
+      setPlatformSuperadmin(false)
       setAuthUser(user)
       localStorage.setItem('workspaceId', invBootstrap.workspace_id)
       setWorkspaceId(invBootstrap.workspace_id)
@@ -215,6 +226,7 @@ function App() {
       return
     }
     await signOut()
+    setPlatformSuperadmin(false)
     setAuthUser(null)
   }, [])
 
@@ -226,6 +238,7 @@ function App() {
       const user = session?.user ?? null
       if (!user) {
         setAuthUser(null)
+        setPlatformSuperadmin(false)
         setAuthLoading(false)
         return
       }
@@ -242,6 +255,7 @@ function App() {
         const user = session?.user ?? null
         if (!user) {
           setAuthUser(null)
+          setPlatformSuperadmin(false)
           setAuthLoading(false)
           return
         }
@@ -360,6 +374,17 @@ function App() {
       </Suspense>
     )
   }
+
+  const authMeta = (authUser.user_metadata ?? {}) as Record<string, unknown>
+  const fullName = typeof authMeta.full_name === 'string' ? authMeta.full_name.trim() : ''
+  const givenName = typeof authMeta.given_name === 'string' ? authMeta.given_name.trim() : ''
+  const familyName = typeof authMeta.family_name === 'string' ? authMeta.family_name.trim() : ''
+  const fallbackFirstName = storedProfile?.firstName || givenName || (fullName ? fullName.split(' ')[0] : '')
+  const fallbackLastName =
+    storedProfile?.lastName
+    || familyName
+    || (fullName && fullName.includes(' ') ? fullName.split(' ').slice(1).join(' ') : '')
+  const profileRoleLabel = platformSuperadmin ? 'Super admin plateforme' : normalizeRoleLabel(currentUserRole)
 
   if (showWorkspaceOnboarding) {
     return (
@@ -661,13 +686,13 @@ function App() {
           open={showProfile}
           onClose={() => setShowProfile(false)}
           workspaceId={workspaceId}
-          firstName={storedProfile?.firstName ?? ''}
-          lastName={storedProfile?.lastName ?? ''}
+          firstName={fallbackFirstName}
+          lastName={fallbackLastName}
           jobTitle={storedProfile?.jobTitle ?? ''}
           direction={storedProfile?.directionName ?? ''}
           mission={storedProfile?.mission ?? ''}
           vision={storedProfile?.vision ?? ''}
-          role="codir"
+          role={profileRoleLabel}
           directionType={storedProfile?.directionType}
           managedCount={storedProfile?.managedCount}
           totalEffectif={storedProfile?.totalEffectif}
