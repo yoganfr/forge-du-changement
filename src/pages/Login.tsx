@@ -25,6 +25,7 @@ function mapAuthErrorMessage(message: string): string {
 }
 
 export default function Login({ onAuthenticated }: LoginProps) {
+  const [showAuthForm, setShowAuthForm] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -97,75 +98,107 @@ export default function Login({ onAuthenticated }: LoginProps) {
       {/* Fonds décoratifs mesh — purement visuels */}
       <div className="login-page__mesh" aria-hidden="true" />
       <div className="login-card">
-        {error && <div className="login-error-banner">{error}</div>}
-        <div className="login-brand">
-          <p className="login-brand-kicker">Forge du Changement</p>
-          <div className="login-brand-mark">◈</div>
-          <h1>La Forge du Changement</h1>
-          <p className="login-brand-lead">
-            Accès réservé aux membres invités — pilotez votre transformation avec clarté et rythme.
-          </p>
-        </div>
+        {!showAuthForm ? (
+          <div className="login-landing">
+            <div className="login-brand">
+              <p className="login-brand-kicker">Forge du Changement</p>
+              <div className="login-brand-mark">◈</div>
+              <h1>Bienvenue sur la Forge du Changement</h1>
+              <p className="login-brand-lead">
+                Connectez-vous pour accéder à votre espace de pilotage.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="login-primary-btn"
+              onClick={() => setShowAuthForm(true)}
+            >
+              Se connecter
+            </button>
+          </div>
+        ) : (
+          <>
+            {error && <div className="login-error-banner">{error}</div>}
+            <div className="login-brand">
+              <p className="login-brand-kicker">Forge du Changement</p>
+              <div className="login-brand-mark">◈</div>
+              <h1>La Forge du Changement</h1>
+              <p className="login-brand-lead">
+                Accès réservé aux membres invités — pilotez votre transformation avec clarté et rythme.
+              </p>
+            </div>
 
-        <form
-          className="login-form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void handleEmailLogin()
-          }}
-        >
-          <label className="login-field">
-            <span>Email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="vous@entreprise.fr"
-              required
-            />
-          </label>
+            <form
+              className="login-form"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void handleEmailLogin()
+              }}
+            >
+              <label className="login-field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="vous@entreprise.fr"
+                  required
+                />
+              </label>
 
-          <label className="login-field">
-            <span>Mot de passe</span>
-            <div className="login-password-wrap">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Votre mot de passe"
-                required
-              />
+              <label className="login-field">
+                <span>Mot de passe</span>
+                <div className="login-password-wrap">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Votre mot de passe"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="login-toggle-password"
+                    onClick={() => setShowPassword((v) => !v)}
+                  >
+                    {showPassword ? 'Masquer' : 'Afficher'}
+                  </button>
+                </div>
+              </label>
+
+              <button type="button" className="login-forgot-link" onClick={() => setShowForgotModal(true)}>
+                Mot de passe oublie ?
+              </button>
+
+              <button type="submit" className="login-primary-btn" disabled={loading}>
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </button>
+
+              <div className="login-separator">
+                <span>ou</span>
+              </div>
+
+              <button type="button" className="login-google-btn" onClick={() => { void handleGoogleLogin() }}>
+                <span aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.2 0-5.9-2.7-5.9-5.9S8.8 5.9 12 5.9c1.8 0 3 .8 3.7 1.5l2.5-2.4C16.6 3.5 14.5 2.6 12 2.6 6.9 2.6 2.8 6.8 2.8 11.9S6.9 21.2 12 21.2c6.9 0 8.6-4.8 8.6-7.3 0-.5 0-.8-.1-1.2H12z" />
+                  </svg>
+                </span>
+                Continuer avec Google
+              </button>
               <button
                 type="button"
-                className="login-toggle-password"
-                onClick={() => setShowPassword((v) => !v)}
+                className="login-back-link"
+                onClick={() => {
+                  setError(null)
+                  setShowAuthForm(false)
+                }}
               >
-                {showPassword ? 'Masquer' : 'Afficher'}
+                ← Retour
               </button>
-            </div>
-          </label>
-
-          <button type="button" className="login-forgot-link" onClick={() => setShowForgotModal(true)}>
-            Mot de passe oublie ?
-          </button>
-
-          <button type="submit" className="login-primary-btn" disabled={loading}>
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
-
-          <div className="login-separator">
-            <span>ou</span>
-          </div>
-
-          <button type="button" className="login-google-btn" onClick={() => { void handleGoogleLogin() }}>
-            <span aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.2 0-5.9-2.7-5.9-5.9S8.8 5.9 12 5.9c1.8 0 3 .8 3.7 1.5l2.5-2.4C16.6 3.5 14.5 2.6 12 2.6 6.9 2.6 2.8 6.8 2.8 11.9S6.9 21.2 12 21.2c6.9 0 8.6-4.8 8.6-7.3 0-.5 0-.8-.1-1.2H12z" />
-              </svg>
-            </span>
-            Continuer avec Google
-          </button>
-        </form>
+            </form>
+          </>
+        )}
       </div>
 
       {showForgotModal && (
@@ -335,6 +368,12 @@ const CSS = `
   color: #470000;
 }
 
+.login-landing {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .login-form {
   display: flex;
   flex-direction: column;
@@ -387,6 +426,12 @@ const CSS = `
 
 .login-forgot-link {
   align-self: flex-end;
+  font-size: 13px;
+  color: #8E3B46;
+}
+
+.login-back-link {
+  align-self: center;
   font-size: 13px;
   color: #8E3B46;
 }
