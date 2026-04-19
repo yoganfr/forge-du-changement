@@ -3560,7 +3560,7 @@ const CSS = `
     font-size: clamp(1.06rem, 2.6vw, 1.24rem);
   }
   .critere-title-row {
-    padding: 0 var(--score-card-inset-x);
+    padding: 12px var(--score-card-inset-x) 0;
   }
   .critere-score-pill {
     min-width: 56px;
@@ -3614,7 +3614,7 @@ const CSS = `
   }
   .critere-title-row {
     margin: 0;
-    padding: 0 var(--score-card-inset-x);
+    padding: 12px var(--score-card-inset-x) 0;
   }
   .critere-title-above {
     font-size: clamp(1rem, 4.2vw, 1.14rem);
