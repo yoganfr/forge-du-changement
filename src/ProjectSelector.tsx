@@ -2791,7 +2791,7 @@ const CSS = `
   justify-content: space-between;
   gap: var(--space-sm);
   margin: 0;
-  padding: 6px var(--score-card-inset-x) 0;
+  padding: 12px var(--score-card-inset-x) 0;
 }
 
 .critere-title-above {
