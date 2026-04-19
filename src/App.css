@@ -462,6 +462,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .dashboard__mobile-nav-action-text {
@@ -488,6 +489,10 @@
   gap: var(--space-sm);
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.dashboard__topbar-user-orb {
+  flex-shrink: 0;
 }
 
 .dashboard__logout-btn {

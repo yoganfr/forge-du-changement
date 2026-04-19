@@ -647,6 +647,9 @@ function App() {
   const profileRoleLabel = platformSuperadmin ? 'Super admin plateforme' : normalizeRoleLabel(currentUserRole)
   const canViewDecideur = canViewDecideurView(currentUserRole, platformSuperadmin)
   const canActDecideur = canActOnDecideurValidation(currentUserRole, platformSuperadmin)
+  const avatarFromDb =
+    serverAccess?.source === 'users' ? serverAccess.dbUser.avatar_url?.trim() || null : null
+  const avatarDisplayUrl = storedProfile?.avatar?.trim() || avatarFromDb || null
 
   if (showWorkspaceOnboarding) {
     return (
@@ -754,6 +757,19 @@ function App() {
             >
               {theme === 'light' ? '☾' : '☀'}
             </button>
+            <button
+              type="button"
+              className="user-badge dashboard__topbar-user-orb"
+              onClick={() => setShowProfile(true)}
+              title="Mon profil"
+              aria-label="Mon profil"
+            >
+              <div className="user-badge-avatar">
+                {avatarDisplayUrl
+                  ? <img src={avatarDisplayUrl} alt="" referrerPolicy="no-referrer" />
+                  : userInitials}
+              </div>
+            </button>
             <div className="dashboard__topbar-actions-secondary">
               <button
                 type="button"
@@ -764,18 +780,6 @@ function App() {
                   {workspaceName.slice(0, 2).toUpperCase()}
                 </span>
                 <span className="company-badge-name">{workspaceName}</span>
-              </button>
-              <button
-                type="button"
-                className="user-badge"
-                onClick={() => setShowProfile(true)}
-                title="Mon profil"
-              >
-                <div className="user-badge-avatar">
-                  {storedProfile?.avatar
-                    ? <img src={storedProfile.avatar} alt="" />
-                    : userInitials}
-                </div>
               </button>
               {canAccessSettings && (
                 <button
@@ -866,8 +870,8 @@ function App() {
                 }}
               >
                 <span className="dashboard__mobile-nav-action-avatar" aria-hidden>
-                  {storedProfile?.avatar
-                    ? <img src={storedProfile.avatar} alt="" />
+                  {avatarDisplayUrl
+                    ? <img src={avatarDisplayUrl} alt="" referrerPolicy="no-referrer" />
                     : userInitials}
                 </span>
                 <span className="dashboard__mobile-nav-action-text">Mon profil</span>
@@ -1038,7 +1042,7 @@ function App() {
           directionType={storedProfile?.directionType}
           managedCount={storedProfile?.managedCount}
           totalEffectif={storedProfile?.totalEffectif}
-          avatarUrl={storedProfile?.avatar ?? null}
+          avatarUrl={avatarDisplayUrl}
           onSaved={async () => {
             const nextProfile = readStoredProfile()
             setStoredProfile(nextProfile)
