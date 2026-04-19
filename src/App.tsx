@@ -117,6 +117,37 @@ function profileInitials(profile: StoredMemberProfile | null): string {
   return `${profile?.firstName?.[0] ?? ''}${profile?.lastName?.[0] ?? ''}`.toUpperCase() || '?'
 }
 
+function asTrimmedString(v: unknown): string | null {
+  if (typeof v !== 'string') return null
+  const t = v.trim()
+  return t.length > 0 ? t : null
+}
+
+function avatarUrlFromMetadataRecord(rec: Record<string, unknown> | undefined | null): string | null {
+  if (!rec) return null
+  return (
+    asTrimmedString(rec.avatar_url)
+    ?? asTrimmedString(rec.picture)
+    ?? asTrimmedString((rec as { image_url?: unknown }).image_url)
+    ?? null
+  )
+}
+
+/**
+ * Photo fournie par le fournisseur OAuth (Google, etc.).
+ * Souvent visible sur le bureau via la session Auth, mais absente de `public.users` et du cache `localStorage` sur mobile.
+ */
+function resolveAuthUserAvatarUrl(user: User): string | null {
+  const fromUserMeta = avatarUrlFromMetadataRecord(user.user_metadata as Record<string, unknown>)
+  if (fromUserMeta) return fromUserMeta
+  for (const identity of user.identities ?? []) {
+    const data = identity.identity_data as Record<string, unknown> | undefined
+    const fromIdentity = avatarUrlFromMetadataRecord(data)
+    if (fromIdentity) return fromIdentity
+  }
+  return null
+}
+
 /** Champs profil issus de `public.users` (source de vérité hors appareil). */
 function profilePatchFromDbUser(db: AppDbUser): Partial<StoredMemberProfile> {
   const patch: Partial<StoredMemberProfile> = {}
@@ -370,14 +401,22 @@ function App() {
     void refreshWorkspacesCatalog()
   }, [activeNav, canAccessSettings, refreshWorkspacesCatalog])
 
-  /** Mobile / autre appareil : le cache `localStorage` peut être vide alors que le profil existe en base. */
+  /** Mobile / autre appareil : le cache `localStorage` peut être vide alors que le profil existe en base ou chez OAuth. */
   useEffect(() => {
     if (serverAccess?.source !== 'users') return
     const patch = profilePatchFromDbUser(serverAccess.dbUser)
-    if (Object.keys(patch).length === 0) return
+    const oauthAvatar = authUser ? resolveAuthUserAvatarUrl(authUser) : null
 
     const prev = readStoredProfile() ?? {}
-    const next: StoredMemberProfile = { ...prev, ...patch }
+    let next: StoredMemberProfile = { ...prev, ...patch }
+    if (!next.avatar?.trim() && oauthAvatar) {
+      next = { ...next, avatar: oauthAvatar }
+    }
+
+    const patchKeys = Object.keys(patch)
+    const fillsAvatarFromOAuth = Boolean(oauthAvatar && !prev.avatar?.trim())
+    if (patchKeys.length === 0 && !fillsAvatarFromOAuth) return
+
     try {
       localStorage.setItem(MEMBER_PROFILE_STORAGE_KEY, JSON.stringify(next))
     } catch {
@@ -385,7 +424,7 @@ function App() {
     }
     setStoredProfile(next)
     setUserInitials(profileInitials(next))
-  }, [serverAccess])
+  }, [serverAccess, authUser])
 
   const handleSelectWorkspaceFromSettings = useCallback((id: string) => {
     localStorage.setItem('workspaceId', id)
@@ -649,7 +688,9 @@ function App() {
   const canActDecideur = canActOnDecideurValidation(currentUserRole, platformSuperadmin)
   const avatarFromDb =
     serverAccess?.source === 'users' ? serverAccess.dbUser.avatar_url?.trim() || null : null
-  const avatarDisplayUrl = storedProfile?.avatar?.trim() || avatarFromDb || null
+  const avatarFromAuth = resolveAuthUserAvatarUrl(authUser)
+  const avatarDisplayUrl =
+    storedProfile?.avatar?.trim() || avatarFromDb || avatarFromAuth || null
 
   if (showWorkspaceOnboarding) {
     return (
@@ -766,7 +807,7 @@ function App() {
             >
               <div className="user-badge-avatar">
                 {avatarDisplayUrl
-                  ? <img src={avatarDisplayUrl} alt="" referrerPolicy="no-referrer" />
+                  ? <img src={avatarDisplayUrl} alt="" />
                   : userInitials}
               </div>
             </button>
@@ -871,7 +912,7 @@ function App() {
               >
                 <span className="dashboard__mobile-nav-action-avatar" aria-hidden>
                   {avatarDisplayUrl
-                    ? <img src={avatarDisplayUrl} alt="" referrerPolicy="no-referrer" />
+                    ? <img src={avatarDisplayUrl} alt="" />
                     : userInitials}
                 </span>
                 <span className="dashboard__mobile-nav-action-text">Mon profil</span>
