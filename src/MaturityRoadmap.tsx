@@ -103,6 +103,8 @@ export default function MaturityRoadmap({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [chantierSaving, setChantierSaving] = useState(false)
+  const [memberDirectionId, setMemberDirectionId] = useState<string | null>(null)
+  const [memberDirectionName, setMemberDirectionName] = useState<string | null>(null)
   const [memberDirectionLabel, setMemberDirectionLabel] = useState<string | null>(null)
   const [chantierModal, setChantierModal] = useState<{
     mode: 'create' | 'edit'
@@ -133,6 +135,8 @@ export default function MaturityRoadmap({
       setDirections(dirs)
       const memberDirId = resolveMemberDirectionId(dirs, appUser)
       const dirLabel = memberDirId ? dirs.find((d) => d.id === memberDirId)?.nom ?? null : null
+      setMemberDirectionId(memberDirId)
+      setMemberDirectionName(appUser?.direction_nom?.trim() ? appUser.direction_nom.trim() : null)
       setMemberDirectionLabel(dirLabel)
 
       const projects = memberDirId
@@ -591,6 +595,8 @@ export default function MaturityRoadmap({
           projetNom={drawerProjetNom}
           chantierNom={chantiers.find((c) => c.id === drawerChantierId)?.nom ?? ''}
           directions={directions}
+          memberDirectionId={memberDirectionId}
+          memberDirectionName={memberDirectionName}
           readOnly={readOnly}
           onDirectionsUpdated={async () => {
             const dirs = await getWorkspaceDirections(workspaceId)
@@ -620,6 +626,8 @@ function JalonDrawer({
   projetNom,
   chantierNom,
   directions,
+  memberDirectionId,
+  memberDirectionName,
   readOnly,
   onClose,
   onSaved,
@@ -634,6 +642,8 @@ function JalonDrawer({
   projetNom: string
   chantierNom: string
   directions: Direction[]
+  memberDirectionId: string | null
+  memberDirectionName: string | null
   readOnly: boolean
   onClose: () => void
   onSaved: () => Promise<void>
@@ -648,6 +658,7 @@ function JalonDrawer({
   const timelineCols = useMemo(() => buildTimelineColumns(), [])
   const [echeanceColKey, setEcheanceColKey] = useState('')
   const { onBackdropPointerDown } = useBackdropPointerClose(onClose, true)
+  const normalizedMemberDirectionName = (memberDirectionName ?? '').trim()
 
   useEffect(() => {
     let cancelled = false
@@ -660,14 +671,15 @@ function JalonDrawer({
         null
       setJalon(j)
       const pilote = raci.find((r) => r.role === 'PILOTE')
-      setPiloteId(pilote?.direction_id ?? '')
+      const fallbackPiloteId = memberDirectionId ?? directions[0]?.id ?? ''
+      setPiloteId(pilote?.direction_id ?? fallbackPiloteId)
       setImplIds(new Set(raci.filter((r) => r.role === 'IMPLIQUE').map((r) => r.direction_id)))
       setInfIds(new Set(raci.filter((r) => r.role === 'INFORME').map((r) => r.direction_id)))
     })()
     return () => {
       cancelled = true
     }
-  }, [chantierId, jalonId, projetId, seedJalon])
+  }, [chantierId, jalonId, projetId, seedJalon, directions, memberDirectionId])
 
   useEffect(() => {
     if (!jalon) {
@@ -812,6 +824,16 @@ function JalonDrawer({
     jalon.mois_cible && jalon.annee_cible
       ? `${monthToQuarter(jalon.mois_cible)} ${jalon.annee_cible}`
       : '—'
+
+  function directionDisplayLabel(d: Direction): string {
+    const isMemberDirection = memberDirectionId === d.id
+    const isGenericMine = d.nom.trim().toLowerCase() === 'ma direction'
+    const base =
+      isMemberDirection && isGenericMine && normalizedMemberDirectionName
+        ? normalizedMemberDirectionName
+        : d.nom
+    return isMemberDirection ? `${base} (ma direction)` : base
+  }
 
   return (
     <div
@@ -978,16 +1000,6 @@ function JalonDrawer({
         <div className="mr-field">
           <span className="mr-raci-block-title">Pilote (une direction)</span>
           <div className="mr-raci-cell-grid">
-            <label className="mr-raci-row">
-              <input
-                type="radio"
-                name={`mr-pilote-${jalonId}`}
-                checked={piloteId === ''}
-                disabled={readOnly}
-                onChange={() => setPiloteId('')}
-              />
-              <span>Aucun pilote</span>
-            </label>
             {directions.map((d) => (
               <label key={d.id} className="mr-raci-row">
                 <input
@@ -1009,7 +1021,7 @@ function JalonDrawer({
                     })
                   }}
                 />
-                <span>{d.nom}</span>
+                <span>{directionDisplayLabel(d)}</span>
               </label>
             ))}
           </div>
@@ -1041,7 +1053,7 @@ function JalonDrawer({
                       })
                     }}
                   />
-                  <span>{d.nom}</span>
+                  <span>{directionDisplayLabel(d)}</span>
                 </label>
               ))}
           </div>
@@ -1066,7 +1078,7 @@ function JalonDrawer({
                       })
                     }}
                   />
-                  <span>{d.nom}</span>
+                  <span>{directionDisplayLabel(d)}</span>
                 </label>
               ))}
           </div>
