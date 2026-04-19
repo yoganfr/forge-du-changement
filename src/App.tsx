@@ -15,6 +15,8 @@ import {
 } from './lib/api'
 import type { Workspace } from './lib/types'
 import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
+import { gravatarAvatarUrl } from './lib/gravatarUrl'
+import UserAvatarImg from './UserAvatarImg'
 import {
   clearWorkspaceSnapshot,
   readInitialCompanyLogo,
@@ -734,8 +736,13 @@ function App() {
   const avatarFromDb =
     serverAccess?.source === 'users' ? serverAccess.dbUser.avatar_url?.trim() || null : null
   const avatarFromAuth = resolveAuthUserAvatarUrl(authUser)
+  const avatarFromGravatar = gravatarAvatarUrl(authUser.email)
   const avatarDisplayUrl =
-    storedProfile?.avatar?.trim() || avatarFromDb || avatarFromAuth || null
+    storedProfile?.avatar?.trim()
+    || avatarFromDb
+    || avatarFromAuth
+    || avatarFromGravatar
+    || null
 
   if (showWorkspaceOnboarding) {
     return (
@@ -851,9 +858,7 @@ function App() {
               aria-label="Mon profil"
             >
               <div className="user-badge-avatar">
-                {avatarDisplayUrl
-                  ? <img src={avatarDisplayUrl} alt="" />
-                  : userInitials}
+                <UserAvatarImg src={avatarDisplayUrl} initials={userInitials} />
               </div>
             </button>
             <div className="dashboard__topbar-actions-secondary">
@@ -956,9 +961,7 @@ function App() {
                 }}
               >
                 <span className="dashboard__mobile-nav-action-avatar" aria-hidden>
-                  {avatarDisplayUrl
-                    ? <img src={avatarDisplayUrl} alt="" />
-                    : userInitials}
+                  <UserAvatarImg src={avatarDisplayUrl} initials={userInitials} />
                 </span>
                 <span className="dashboard__mobile-nav-action-text">Mon profil</span>
               </button>
