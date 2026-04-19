@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Projet } from './lib/types'
-import { buildGanttYearSpans, ganttYearTimelineMarkers, generateGanttMonths } from './lib/ganttMonths'
+import { buildGanttYearSpans, generateGanttMonths } from './lib/ganttMonths'
 import './dgGantt.css'
 
 const GANTT_MONTHS = generateGanttMonths()
@@ -19,20 +19,27 @@ const CRITERIA: Array<{
 ]
 
 function DgMiniGantt({ planning, color }: { planning: Record<string, boolean>; color: string }) {
-  const yearMarkers = ganttYearTimelineMarkers(GANTT_MONTHS)
+  const markers = [{ idx: 0 }, { idx: 5 }, { idx: 11 }, { idx: 17 }, { idx: 23 }]
   return (
     <div className="dg-mini-gantt-wrap" aria-hidden>
       <div className="dg-mini-gantt__markers">
-        {yearMarkers.map((mk) => (
-          <span
-            key={mk.key}
-            className={`dg-mini-gantt__marker ${mk.alignEnd ? 'dg-mini-gantt__marker--end' : ''}`}
-            style={{ left: `${mk.leftPct}%` }}
-            title={mk.title}
-          >
-            {mk.label}
-          </span>
-        ))}
+        {markers.map((marker) => {
+          const refMonth = GANTT_MONTHS[marker.idx]
+          const markerLabel = `${refMonth.label} ${String(refMonth.year).slice(-2)}`
+          const markerTitle = `${refMonth.label} ${refMonth.year}`
+          const left = `${(marker.idx / 23) * 100}%`
+          const isLast = marker.idx === 23
+          return (
+            <span
+              key={`m-${refMonth.key}`}
+              className={`dg-mini-gantt__marker ${isLast ? 'dg-mini-gantt__marker--end' : ''}`}
+              style={{ left }}
+              title={markerTitle}
+            >
+              {markerLabel}
+            </span>
+          )
+        })}
       </div>
       <div className="dg-mini-gantt">
         {GANTT_MONTHS.map((m) => {
@@ -65,6 +72,13 @@ function DgGanttFullReadOnly({ planning, color }: { planning: Record<string, boo
           >
             {s.year} ({s.count} mois)
           </div>
+        ))}
+      </div>
+      <div className="dg-gantt-full__months">
+        {GANTT_MONTHS.map((m) => (
+          <span key={m.key} className="dg-gantt-full__month">
+            {m.label}
+          </span>
         ))}
       </div>
       <div className="dg-gantt-full__grid">
