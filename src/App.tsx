@@ -290,6 +290,21 @@ function App() {
     setMobileNavOpen(false)
   }, [])
 
+  const handleLogout = useCallback(() => {
+    void signOut()
+    localStorage.removeItem('workspaceId')
+    clearWorkspaceSnapshot()
+    localStorage.removeItem(MEMBER_PROFILE_STORAGE_KEY)
+    setWorkspaceId(null)
+    setWorkspaceData(null)
+    setCompanyLogo(null)
+    setWorkspaceName('La Forge')
+    setServerAccess(null)
+    setMobileNavOpen(false)
+    navigateToMainNav('home')
+    setAuthUser(null)
+  }, [navigateToMainNav])
+
   useEffect(() => {
     if (!mobileNavOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -739,65 +754,51 @@ function App() {
             >
               {theme === 'light' ? '☾' : '☀'}
             </button>
-            <button
-              type="button"
-              className="company-badge"
-              onClick={() => navigateToMainNav('company')}
-            >
-              <span className="company-badge-initials">
-                {workspaceName.slice(0, 2).toUpperCase()}
-              </span>
-              <span className="company-badge-name">{workspaceName}</span>
-            </button>
-            <button
-              type="button"
-              className="user-badge"
-              onClick={() => setShowProfile(true)}
-              title="Mon profil"
-            >
-              <div className="user-badge-avatar">
-                {storedProfile?.avatar
-                  ? <img src={storedProfile.avatar} alt="" />
-                  : userInitials}
-              </div>
-            </button>
-            {canAccessSettings && (
+            <div className="dashboard__topbar-actions-secondary">
               <button
                 type="button"
-                className={
-                  [
-                    'dashboard__settings-btn',
-                    activeNav === 'settings' ? 'dashboard__settings-btn--active' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')
-                }
-                onClick={() => navigateToMainNav('settings')}
-                aria-label="Paramètres"
-                title="Paramètres"
+                className="company-badge"
+                onClick={() => navigateToMainNav('company')}
               >
-                ⚙
+                <span className="company-badge-initials">
+                  {workspaceName.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="company-badge-name">{workspaceName}</span>
               </button>
-            )}
-            <button
-              type="button"
-              className="dashboard__logout-btn"
-              onClick={() => {
-                void signOut()
-                localStorage.removeItem('workspaceId')
-                clearWorkspaceSnapshot()
-                localStorage.removeItem(MEMBER_PROFILE_STORAGE_KEY)
-                setWorkspaceId(null)
-                setWorkspaceData(null)
-                setCompanyLogo(null)
-                setWorkspaceName('La Forge')
-                setServerAccess(null)
-                navigateToMainNav('home')
-                setAuthUser(null)
-              }}
-            >
-              Déconnexion
-            </button>
+              <button
+                type="button"
+                className="user-badge"
+                onClick={() => setShowProfile(true)}
+                title="Mon profil"
+              >
+                <div className="user-badge-avatar">
+                  {storedProfile?.avatar
+                    ? <img src={storedProfile.avatar} alt="" />
+                    : userInitials}
+                </div>
+              </button>
+              {canAccessSettings && (
+                <button
+                  type="button"
+                  className={
+                    [
+                      'dashboard__settings-btn',
+                      activeNav === 'settings' ? 'dashboard__settings-btn--active' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')
+                  }
+                  onClick={() => navigateToMainNav('settings')}
+                  aria-label="Paramètres"
+                  title="Paramètres"
+                >
+                  ⚙
+                </button>
+              )}
+              <button type="button" className="dashboard__logout-btn" onClick={handleLogout}>
+                Déconnexion
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -840,6 +841,53 @@ function App() {
               className="dashboard__nav dashboard__nav--drawer"
               onItemPick={closeMobileNav}
             />
+
+            <div className="dashboard__mobile-nav-account">
+              <span className="dashboard__mobile-nav-account-label">Compte et espace</span>
+              <button
+                type="button"
+                className="dashboard__mobile-nav-action"
+                onClick={() => {
+                  navigateToMainNav('company')
+                  closeMobileNav()
+                }}
+              >
+                <span className="dashboard__mobile-nav-action-mark" aria-hidden>
+                  {workspaceName.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="dashboard__mobile-nav-action-text">{workspaceName}</span>
+              </button>
+              <button
+                type="button"
+                className="dashboard__mobile-nav-action"
+                onClick={() => {
+                  setShowProfile(true)
+                  closeMobileNav()
+                }}
+              >
+                <span className="dashboard__mobile-nav-action-avatar" aria-hidden>
+                  {storedProfile?.avatar
+                    ? <img src={storedProfile.avatar} alt="" />
+                    : userInitials}
+                </span>
+                <span className="dashboard__mobile-nav-action-text">Mon profil</span>
+              </button>
+              {canAccessSettings && (
+                <button
+                  type="button"
+                  className={`dashboard__mobile-nav-action ${activeNav === 'settings' ? 'dashboard__mobile-nav-action--active' : ''}`}
+                  onClick={() => {
+                    navigateToMainNav('settings')
+                    closeMobileNav()
+                  }}
+                >
+                  <span className="dashboard__mobile-nav-action-text">Paramètres</span>
+                </button>
+              )}
+              <button type="button" className="dashboard__mobile-nav-action dashboard__mobile-nav-action--danger" onClick={handleLogout}>
+                Déconnexion
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
