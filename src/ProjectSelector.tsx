@@ -1699,10 +1699,10 @@ const CSS = `
   border: none;
   background: var(--theme-accent);
   color: var(--theme-on-accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-control);
   padding: 10px 20px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   font-family: var(--font-body);
   transition: transform 0.15s, background 0.2s, filter 0.2s;
@@ -1711,6 +1711,11 @@ const CSS = `
 .ps-add-project:hover {
   filter: brightness(0.92);
   transform: translateY(-1px);
+}
+
+.ps-add-project:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
 }
 
 .ps-coef-fab {
@@ -1819,9 +1824,9 @@ const CSS = `
   border: 1px solid var(--theme-accent);
   background: var(--theme-accent);
   color: var(--theme-on-accent);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   padding: 9px 14px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.82rem;
 }
 
@@ -2220,10 +2225,10 @@ const CSS = `
 
 .type-badge {
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-badge);
 }
 
 .type-badge--build {
@@ -2350,7 +2355,7 @@ const CSS = `
 .roadmap-open-btn {
   appearance: none;
   border: 1px solid color-mix(in srgb, var(--perim-color) 45%, var(--glass-border));
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   padding: 6px 10px;
   min-width: 168px;
   font-size: 11px;
@@ -2491,7 +2496,7 @@ const CSS = `
 
 .eval-legend-card {
   border: none;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-panel);
   background: transparent;
   box-shadow: none;
   overflow: hidden;
@@ -2542,7 +2547,7 @@ const CSS = `
 .project-field input,
 .project-field textarea {
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   height: 48px;
   padding: 0 16px;
   font-family: var(--font-body);
@@ -2564,7 +2569,7 @@ const CSS = `
 .project-field textarea:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--brand-bordeaux) 55%, var(--glass-border));
-  box-shadow: var(--glass-highlight), 0 0 0 3px color-mix(in srgb, var(--brand-bordeaux) 18%, transparent);
+  box-shadow: var(--glass-highlight), var(--ui-focus-ring);
 }
 
 .input-prefix-wrap {
@@ -2622,7 +2627,7 @@ const CSS = `
   line-height: 1.45;
   color: var(--theme-text-muted);
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px dashed var(--glass-border);
   background: color-mix(in srgb, var(--theme-text) 4%, transparent);
 }
@@ -2633,7 +2638,7 @@ const CSS = `
   line-height: 1.45;
   color: var(--theme-text);
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, var(--glass-border));
   background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
 }
@@ -2662,7 +2667,7 @@ const CSS = `
 .critere-row--enhanced {
   padding: var(--space-md) var(--space-lg);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-panel);
   background: color-mix(in srgb, var(--glass-bg-chip) 55%, transparent);
   box-shadow: var(--glass-highlight);
   backdrop-filter: blur(14px) saturate(1.2);
@@ -2679,10 +2684,10 @@ const CSS = `
   display: grid;
   grid-template-columns: 94px 1fr 102px;
   min-height: 88px;
-  border-radius: 18px;
+  border-radius: var(--ui-radius-panel);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--glass-border) 65%, rgba(0,0,0,0.15));
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
 }
 
 .critere-icon-pane {
@@ -2793,7 +2798,7 @@ const CSS = `
   width: 34px;
   height: 34px;
   max-width: 100%;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid color-mix(in srgb, rgba(255,255,255,0.22), var(--theme-border) 35%);
   background: var(--critere-square-bg);
   cursor: pointer;
@@ -2887,7 +2892,7 @@ const CSS = `
 
 .competence-toggle {
   border: 1px solid var(--theme-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -2904,7 +2909,7 @@ const CSS = `
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .toggle-pill--yes {
@@ -2921,7 +2926,7 @@ const CSS = `
 
 .score-summary {
   background: var(--theme-bg-page);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   padding: 16px;
   border: 1px solid var(--theme-border);
 }
@@ -2946,10 +2951,10 @@ const CSS = `
 }
 
 .project-btn {
-  height: 40px;
-  border-radius: 10px;
+  height: var(--ui-control-height);
+  border-radius: var(--ui-radius-control);
   padding: 0 12px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.82rem;
 }
 
@@ -2988,7 +2993,7 @@ const CSS = `
   width: min(92vw, 420px);
   background: var(--theme-bg-card);
   border: 1px solid var(--theme-border);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-panel);
   padding: 18px;
   box-shadow: var(--shadow-lg);
 }
@@ -3015,7 +3020,7 @@ const CSS = `
 .recap-block {
   margin-top: 14px;
   background: var(--theme-bg-card);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   padding: 16px;
   border: 1px solid var(--theme-border);
   box-shadow: var(--shadow-sm);
@@ -3413,6 +3418,15 @@ const CSS = `
   background: var(--theme-accent);
   border-color: var(--theme-accent);
   color: var(--theme-on-accent);
+}
+
+.project-btn:focus-visible,
+.type-pill:focus-visible,
+.toggle-pill:focus-visible,
+.contrib-pill:focus-visible,
+.coef-dot:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
 }
 
 /* ── Responsive ── */

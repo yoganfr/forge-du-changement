@@ -85,13 +85,13 @@
 .dashboard__brand-mark {
   width: 56px;
   height: 56px;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-control);
   background: var(--brand-bordeaux, #8e3b46);
   display: grid;
   place-items: center;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .dashboard__brand-text {
@@ -451,13 +451,18 @@
 
 .settings-page__btn {
   appearance: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--ui-radius-control);
   padding: 10px 16px;
   font-size: var(--text-sm);
   font-weight: 600;
   font-family: var(--font-body);
   cursor: pointer;
   border: 1px solid transparent;
+}
+
+.settings-page__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
 }
 
 .settings-page__btn:disabled {
@@ -962,7 +967,7 @@
   .dashboard__brand-mark {
     width: 44px;
     height: 44px;
-    border-radius: 12px;
+    border-radius: var(--ui-radius-control);
   }
 
   .dashboard__nav--top {
@@ -1019,12 +1024,17 @@
 
 .dg__export {
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   background: var(--glass-bg-chip);
   color: var(--theme-text);
-  font-weight: 700;
+  font-weight: 600;
   padding: 10px 14px;
   cursor: pointer;
+}
+
+.dg__export:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
 }
 
 .dg__state {
@@ -1044,7 +1054,7 @@
 
 .dg__kpi {
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-panel);
   background: var(--glass-bg-card);
   padding: 14px;
 }
@@ -1070,7 +1080,7 @@
 
 .dg__card {
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: var(--ui-radius-panel);
   background: var(--glass-bg-card);
   padding: 14px;
 }
@@ -1209,7 +1219,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 12px 12px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: color-mix(in srgb, var(--theme-text) 3%, transparent);
 }
@@ -1248,14 +1258,19 @@
 .dg__validate-btn {
   appearance: none;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   padding: 10px 14px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.82rem;
   cursor: pointer;
   background: var(--theme-accent, var(--caramel-candy-600));
   color: var(--theme-on-accent);
   flex-shrink: 0;
+}
+
+.dg__validate-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
 }
 
 .dg__validate-btn:disabled {
@@ -1290,7 +1305,7 @@
 }
 
 .dg-proj {
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: color-mix(in srgb, var(--theme-text) 3%, transparent);
   overflow: hidden;
@@ -1331,10 +1346,10 @@
 
 .dg .type-badge {
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-badge);
   flex-shrink: 0;
 }
 

@@ -75,6 +75,11 @@
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 20px;
+  --ui-control-height: 40px;
+  --ui-radius-control: var(--radius-md);
+  --ui-radius-panel: 16px;
+  --ui-radius-badge: var(--radius-sm);
+  --ui-focus-ring: 0 0 0 3px color-mix(in srgb, var(--theme-accent) 18%, transparent);
   --transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   --max-width: 1280px;
   --card-min: 240px;

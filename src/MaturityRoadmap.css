@@ -80,7 +80,7 @@
   width: 100%;
   max-width: 320px;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-card);
   color: var(--theme-text);
@@ -90,7 +90,7 @@
 .mr-toolbar__projects-panel {
   margin-top: 6px;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-card);
   box-shadow: var(--glass-shadow, 0 4px 20px rgba(0, 0, 0, 0.06));
@@ -191,7 +191,7 @@
 .mr-toolbar__project-swatch--legend {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--ui-radius-badge);
   border-width: 2px;
   border-color: color-mix(in srgb, var(--theme-text) 22%, transparent);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -208,7 +208,7 @@
 .mr-btn-primary {
   appearance: none;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   padding: 10px 16px;
   font-family: var(--font-body);
   font-weight: 600;
@@ -227,7 +227,7 @@
 .mr-btn-ghost {
   appearance: none;
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   padding: 6px 10px;
   font-size: var(--text-xs);
   background: transparent;
@@ -247,7 +247,7 @@
 
 .mr-chantier {
   background: var(--theme-bg-card);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-panel);
   padding: var(--space-lg);
   margin-bottom: var(--space-lg);
   box-shadow: var(--glass-shadow, 0 4px 24px rgba(0, 0, 0, 0.06));
@@ -274,7 +274,7 @@
   width: 100%;
   max-width: 420px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-page);
   color: var(--theme-text);
@@ -282,7 +282,7 @@
 }
 
 .mr-axe {
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   padding: var(--space-md);
   margin-bottom: var(--space-md);
 }
@@ -307,7 +307,7 @@
   gap: 8px 12px;
   padding: 10px 12px;
   margin-bottom: 8px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border: 1px solid transparent;
@@ -455,7 +455,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-page);
   color: var(--theme-text);
@@ -514,7 +514,7 @@
 .mr-error {
   padding: var(--space-md);
   background: color-mix(in srgb, var(--score-critical) 12%, transparent);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   font-size: var(--text-sm);
 }
 
@@ -542,7 +542,7 @@
 }
 
 .mr-four-axes__item {
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   border-left-width: 4px;
   padding: 10px 12px;
@@ -562,7 +562,7 @@
   gap: 12px 20px;
   margin-bottom: var(--space-md);
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: color-mix(in srgb, var(--theme-text) 3%, transparent);
 }
@@ -668,7 +668,7 @@
   margin: 0;
   padding: 8px 10px;
   text-align: left;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px dashed color-mix(in srgb, var(--theme-accent, #8e3b46) 45%, var(--glass-border));
   background: color-mix(in srgb, var(--theme-accent, #8e3b46) 6%, transparent);
   color: var(--theme-text-muted);
@@ -692,7 +692,7 @@
 
 .mr-tgrid-scroll {
   overflow-x: auto;
-  border-radius: 14px;
+  border-radius: var(--ui-radius-panel);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-card);
   -webkit-overflow-scrolling: touch;
@@ -1075,7 +1075,7 @@
 .mr-modal {
   width: 100%;
   max-width: 420px;
-  border-radius: 16px;
+  border-radius: var(--ui-radius-panel);
   padding: var(--space-lg);
   background: var(--theme-bg-card);
   border: 1px solid var(--glass-border);
@@ -1147,7 +1147,7 @@
   gap: 10px;
   margin: 0;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: color-mix(in srgb, var(--theme-text) 3%, transparent);
   cursor: pointer;
@@ -1173,7 +1173,7 @@
 .mr-modal__project-swatch {
   width: 14px;
   height: 14px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-badge);
   border: 1px solid color-mix(in srgb, var(--theme-text) 18%, transparent);
   flex-shrink: 0;
 }
@@ -1187,7 +1187,7 @@
 .mr-modal__field input,
 .mr-modal__field select {
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-page);
   color: var(--theme-text);
@@ -1226,10 +1226,24 @@
 
 .mr-axes-detail {
   margin-top: var(--space-lg);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-control);
   border: 1px dashed var(--glass-border);
   padding: var(--space-md);
   background: color-mix(in srgb, var(--theme-text) 2%, transparent);
+}
+
+.mr-btn-primary:focus-visible,
+.mr-btn-ghost:focus-visible,
+.mr-btn-danger:focus-visible,
+.mr-field input:focus-visible,
+.mr-field textarea:focus-visible,
+.mr-field select:focus-visible,
+.mr-modal__field input:focus-visible,
+.mr-modal__field select:focus-visible,
+.mr-modal__project-row:focus-visible,
+.mr-tgrid-legend__link:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
 }
 
 .mr-axes-detail__summary {
