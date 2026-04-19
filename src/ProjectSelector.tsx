@@ -2494,7 +2494,8 @@ const CSS = `
   flex-direction: column;
   gap: var(--space-md);
   min-width: 0;
-  padding: 18px 18px 20px;
+  --score-card-inset-x: 18px;
+  padding: 20px 20px 22px;
   border-radius: var(--ui-radius-panel);
   border: 1px solid color-mix(in srgb, var(--theme-border) 48%, transparent);
   background:
@@ -2737,12 +2738,15 @@ const CSS = `
   padding: 0;
   border: none;
   background: transparent;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  row-gap: 11px;
 }
 
 .critere-bar {
   display: grid;
-  grid-template-columns: 76px 1fr;
-  min-height: 86px;
+  grid-template-columns: 70px 1fr;
+  min-height: 78px;
   border-radius: var(--ui-radius-panel);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, #0d171d 80%, var(--theme-border));
@@ -2762,8 +2766,8 @@ const CSS = `
 }
 
 .critere-icon {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
 }
@@ -2773,7 +2777,7 @@ const CSS = `
     linear-gradient(180deg,
       color-mix(in srgb, #23343d 88%, var(--theme-bg-card)) 0%,
       color-mix(in srgb, #1a2931 92%, var(--theme-bg-card)) 100%);
-  padding: 10px 11px;
+  padding: 9px 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2784,29 +2788,29 @@ const CSS = `
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  margin: 0 0 12px;
-  padding: 0 14px;
+  margin: 0;
+  padding: 0 var(--score-card-inset-x);
 }
 
 .critere-title-above {
-  font-size: clamp(1.38rem, 1.15vw, 1.58rem);
+  font-size: clamp(1.12rem, 1vw, 1.34rem);
   font-weight: 760;
-  letter-spacing: -0.012em;
-  line-height: 1.05;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
   color: var(--theme-text);
   text-align: left;
   margin: 0;
 }
 
 .critere-score-pill {
-  min-width: 62px;
-  height: 34px;
+  min-width: 60px;
+  height: 32px;
   padding: 0 14px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.12rem;
+  font-size: 1.02rem;
   font-weight: 820;
   letter-spacing: 0.01em;
   border: 1px solid color-mix(in srgb, #ffffff 22%, transparent);
@@ -2814,6 +2818,7 @@ const CSS = `
     inset 0 1px 0 color-mix(in srgb, #ffffff 38%, transparent),
     0 3px 10px color-mix(in srgb, #1b2a37 16%, transparent);
   transition: transform 140ms ease, box-shadow 140ms ease;
+  margin-inline-end: 4px;
 }
 
 .critere-score-pill--0 {
@@ -2850,19 +2855,19 @@ const CSS = `
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
-  width: min(100%, 222px);
+  width: min(100%, 216px);
   margin-inline: auto;
   justify-content: center;
 }
 
 .critere-grid--six {
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  width: min(100%, 222px);
+  width: min(100%, 216px);
 }
 
 .critere-square {
   width: 100%;
-  height: 38px;
+  height: 34px;
   max-width: 100%;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, #d8e2ea 14%, #111a20);
@@ -2925,7 +2930,12 @@ const CSS = `
   font-style: normal;
   text-align: center;
   line-height: 1.34;
-  margin: 12px 10px 4px;
+  min-height: 2.7em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 var(--score-card-inset-x) 2px;
 }
 
 .project-scoring-head {
@@ -3513,6 +3523,10 @@ const CSS = `
   .project-eval-grid {
     grid-template-columns: 1fr;
   }
+  .project-eval-card {
+    --score-card-inset-x: 14px;
+    padding: 16px 16px 18px;
+  }
   .project-field input,
   .project-field textarea {
     font-size: 16px;
@@ -3536,7 +3550,7 @@ const CSS = `
   }
   .critere-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    width: min(100%, 210px);
+    width: min(100%, 202px);
     gap: 7px;
   }
   .critere-square {
@@ -3545,22 +3559,24 @@ const CSS = `
     font-size: 0.9rem;
   }
   .critere-bar {
-    grid-template-columns: 74px 1fr;
+    grid-template-columns: 66px 1fr;
+    min-height: 72px;
   }
   .critere-icon {
-    width: 48px;
-    height: 48px;
+    width: 42px;
+    height: 42px;
   }
   .critere-title-above {
-    font-size: clamp(1.22rem, 2.8vw, 1.4rem);
+    font-size: clamp(1.06rem, 2.6vw, 1.24rem);
   }
   .critere-title-row {
-    padding: 0 10px;
+    padding: 0 var(--score-card-inset-x);
   }
   .critere-score-pill {
-    min-width: 58px;
-    height: 32px;
-    font-size: 1.02rem;
+    min-width: 56px;
+    height: 30px;
+    font-size: 0.96rem;
+    margin-inline-end: 2px;
   }
   .score-summary-value {
     font-size: 24px;
@@ -3600,32 +3616,33 @@ const CSS = `
     width: 100%;
   }
   .critere-bar {
-    grid-template-columns: 62px 1fr;
-    min-height: 72px;
+    grid-template-columns: 58px 1fr;
+    min-height: 66px;
   }
   .critere-middle-pane {
-    padding: 8px 10px;
+    padding: 7px 8px;
   }
   .critere-title-row {
-    margin: 0 0 8px;
-    padding: 0 8px;
+    margin: 0;
+    padding: 0 var(--score-card-inset-x);
   }
   .critere-title-above {
-    font-size: clamp(1.08rem, 4.5vw, 1.24rem);
+    font-size: clamp(1rem, 4.2vw, 1.14rem);
     letter-spacing: -0.01em;
   }
   .critere-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
   }
   .critere-grid {
-    width: min(100%, 194px);
+    width: min(100%, 186px);
     gap: 6px;
   }
   .critere-score-pill {
-    min-width: 52px;
+    min-width: 50px;
     height: 28px;
-    font-size: 0.92rem;
+    font-size: 0.88rem;
+    margin-inline-end: 1px;
   }
   .mini-gantt-24-wrap {
     order: 3;
