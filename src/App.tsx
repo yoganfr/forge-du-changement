@@ -208,10 +208,11 @@ function profilePatchFromDbUser(db: AppDbUser): Partial<StoredMemberProfile> {
           ? 'geographique'
           : 'fonctionnel'
   }
-  if (typeof db.managed_count === 'number' && Number.isFinite(db.managed_count)) {
+  // Ne pas pousser des 0 depuis la base : souvent un doublon email « stub » écrase alors le cache local à chaque reco.
+  if (typeof db.managed_count === 'number' && Number.isFinite(db.managed_count) && db.managed_count > 0) {
     patch.managedCount = db.managed_count
   }
-  if (typeof db.total_effectif === 'number' && Number.isFinite(db.total_effectif)) {
+  if (typeof db.total_effectif === 'number' && Number.isFinite(db.total_effectif) && db.total_effectif > 0) {
     patch.totalEffectif = db.total_effectif
   }
   return patch
@@ -440,6 +441,12 @@ function App() {
     void refreshWorkspacesCatalog()
   }, [activeNav, canAccessSettings, refreshWorkspacesCatalog])
 
+  /** OAuth : ne pas recalculer à chaque TOKEN_REFRESHED (nouvelle ref `user`) si l’URL photo est inchangée. */
+  const oauthAvatarHydrationKey = useMemo(() => {
+    if (!authUser) return ''
+    return `${authUser.id}|${resolveAuthUserAvatarUrl(authUser) ?? ''}`
+  }, [authUser])
+
   /** Mobile / autre appareil : le cache `localStorage` peut être vide alors que le profil existe en base ou chez OAuth. */
   useEffect(() => {
     const dbRow =
@@ -469,7 +476,7 @@ function App() {
     }
     setStoredProfile(next)
     setUserInitials(profileInitials(next))
-  }, [serverAccess, authUser])
+  }, [serverAccess, oauthAvatarHydrationKey])
 
   const handleSelectWorkspaceFromSettings = useCallback((id: string) => {
     localStorage.setItem('workspaceId', id)

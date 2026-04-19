@@ -82,22 +82,71 @@ export async function getSession() {
   return session
 }
 
-// Récupérer l'utilisateur courant depuis la table users
+function readBrowserWorkspaceId(): string | null {
+  if (typeof localStorage === 'undefined') return null
+  const w = localStorage.getItem('workspaceId')?.trim()
+  return w || null
+}
+
+function readBrowserMemberUserId(): string | null {
+  if (typeof localStorage === 'undefined') return null
+  const id = localStorage.getItem('lfdc-user-id')?.trim()
+  return id || null
+}
+
+/**
+ * Ligne `public.users` pour l’email de la session.
+ * Plusieurs lignes peuvent exister (même email, espaces différents) : on évite de prendre
+ * la plus « récente » si c’est un stub vide qui écraserait le profil à chaque reco Google.
+ */
 export async function getCurrentUser() {
   const session = await getSession()
   if (!session?.user.email) return null
 
   const email = session.user.email.trim().toLowerCase()
-  const { data, error } = await supabase
+
+  const storedUserId = readBrowserMemberUserId()
+  if (storedUserId) {
+    const { data: byId, error: errId } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', storedUserId)
+      .maybeSingle()
+    if (!errId && byId && byId.email?.trim().toLowerCase() === email) {
+      return byId
+    }
+  }
+
+  const ws = readBrowserWorkspaceId()
+  if (ws) {
+    const { data: byWs, error: errWs } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('workspace_id', ws)
+      .maybeSingle()
+    if (!errWs && byWs) return byWs
+  }
+
+  const { data: candidates, error } = await supabase
     .from('users')
     .select('*')
     .eq('email', email)
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+    .limit(25)
 
-  if (error) return null
-  return data
+  if (error || !candidates?.length) return null
+
+  const withAvatar = candidates.find((r) => Boolean(r.avatar_url?.trim()))
+  if (withAvatar) return withAvatar
+
+  const scoreProfile = (u: (typeof candidates)[number]) =>
+    (u.prenom?.trim() ? 4 : 0)
+    + (u.nom?.trim() ? 4 : 0)
+    + (u.job_title?.trim() ? 2 : 0)
+    + (u.direction_nom?.trim() ? 2 : 0)
+
+  return [...candidates].sort((a, b) => scoreProfile(b) - scoreProfile(a))[0] ?? null
 }
 
 /**
