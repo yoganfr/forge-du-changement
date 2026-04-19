@@ -2489,7 +2489,7 @@ const CSS = `
   flex-direction: column;
   gap: var(--space-sm);
   min-width: 0;
-  padding: 14px;
+  padding: 16px;
   border-radius: var(--ui-radius-panel);
   border: 1px solid color-mix(in srgb, var(--theme-border) 36%, transparent);
   background: color-mix(in srgb, var(--glass-bg-chip) 68%, transparent);
@@ -2724,7 +2724,7 @@ const CSS = `
 
 .critere-bar {
   display: grid;
-  grid-template-columns: 86px 1fr;
+  grid-template-columns: 78px 1fr;
   min-height: 84px;
   border-radius: var(--ui-radius-panel);
   overflow: hidden;
@@ -2743,8 +2743,8 @@ const CSS = `
 }
 
 .critere-icon {
-  width: 60px;
-  height: 60px;
+  width: 54px;
+  height: 54px;
   display: grid;
   place-items: center;
 }
@@ -2754,7 +2754,7 @@ const CSS = `
     linear-gradient(180deg,
       color-mix(in srgb, #233238 86%, var(--theme-bg-card)) 0%,
       color-mix(in srgb, #1a282d 90%, var(--theme-bg-card)) 100%);
-  padding: 12px 18px 12px 14px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2765,8 +2765,8 @@ const CSS = `
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  margin: 0 8px 10px;
-  padding-right: 2px;
+  margin: 0 0 10px;
+  padding: 0 12px;
 }
 
 .critere-title-above {
@@ -2775,7 +2775,6 @@ const CSS = `
   color: var(--theme-text);
   text-align: left;
   margin: 0;
-  padding-left: 2px;
 }
 
 .critere-score-pill {
@@ -2825,16 +2824,16 @@ const CSS = `
 
 .critere-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(36px, 1fr));
-  gap: 10px;
-  width: min(100%, 260px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 228px);
   margin-inline: auto;
   justify-content: center;
 }
 
 .critere-grid--six {
-  grid-template-columns: repeat(5, minmax(36px, 1fr));
-  width: min(100%, 260px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: min(100%, 228px);
 }
 
 .critere-square {
@@ -3496,9 +3495,9 @@ const CSS = `
     width: 100%;
   }
   .critere-grid {
-    grid-template-columns: repeat(5, minmax(32px, 1fr));
-    width: min(100%, 228px);
-    gap: 8px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: min(100%, 210px);
+    gap: 7px;
   }
   .critere-square {
     width: 100%;
@@ -3506,11 +3505,11 @@ const CSS = `
     font-size: 0.9rem;
   }
   .critere-bar {
-    grid-template-columns: 80px 1fr;
+    grid-template-columns: 74px 1fr;
   }
   .critere-icon {
-    width: 54px;
-    height: 54px;
+    width: 48px;
+    height: 48px;
   }
   .score-summary-value {
     font-size: 24px;
@@ -3550,18 +3549,23 @@ const CSS = `
     width: 100%;
   }
   .critere-bar {
-    grid-template-columns: 64px 1fr;
+    grid-template-columns: 62px 1fr;
     min-height: 72px;
   }
   .critere-middle-pane {
-    padding: 8px 12px 8px 10px;
+    padding: 8px 10px;
   }
   .critere-title-row {
-    margin: 0 6px 8px;
+    margin: 0 0 8px;
+    padding: 0 8px;
   }
   .critere-icon {
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
+  }
+  .critere-grid {
+    width: min(100%, 194px);
+    gap: 6px;
   }
   .critere-score-pill {
     min-width: 50px;
