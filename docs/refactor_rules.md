@@ -90,6 +90,7 @@ prête à commit sans débat
 
 10. ESLint : ne pas hacker, challenger
 
+- **Pas de solution « lint-driven »** : le lint informe, il ne pilote pas le design du code sans problème produit ou perf derrière.
 - **Interdit** : contourner une règle par artifices techniques (`queueMicrotask`, `setTimeout(0)`, etc.) lorsque le seul « gain » est de faire taire le linter sans problème produit ou perf derrière.
 - **Avant modification** : expliciter en une phrase le **problème concret** (bug, perf, duplication, complexité bloquante) — comme en §1.
 - **`useEffect`** : en cas de doute, privilégier **suppression** ou **calcul / synchro inline** (dérivation depuis props/state, handler) plutôt qu’un effet supplémentaire.
@@ -98,3 +99,10 @@ prête à commit sans débat
 11. Niveau d’exigence (précédent validé)
 
 Décisions d’audit validées — par ex. retrait des `queueMicrotask` et ajustement de la règle `react-hooks/set-state-in-effect` lorsqu’elle imposait un hack sans gain mesurable — servent de **référence** : conserver ce niveau d’exigence pour la suite.
+
+
+12. Ligne directrice (résumé)
+
+- Pas de solution « lint-driven ».
+- Problème concret obligatoire (cf. §1).
+- Suppression > ajout (cf. §7).
