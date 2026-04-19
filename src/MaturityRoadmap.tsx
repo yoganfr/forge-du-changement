@@ -32,7 +32,11 @@ import {
 } from './lib/roadmapTimelineColumns'
 import { assignRoadmapProjectColors } from './lib/projectRoadmapColor'
 import { mrBackdropProps, useBackdropPointerClose } from './lib/useBackdropPointerClose'
-import { buildKpiMirrorNom, syncKpiMirrorForParentJalon } from './lib/kpiMirrorSync'
+import {
+  buildKpiMirrorNom,
+  findKpiMirrorJalonByParent,
+  syncKpiMirrorForParentJalon,
+} from './lib/kpiMirrorSync'
 import './MaturityRoadmap.css'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
@@ -681,8 +685,8 @@ function JalonDrawer({
 
   const axeLabel = jalon ? AXE_META[jalon.axe].title : ''
 
-  async function syncRaci() {
-    const raci = await getJalonRaci(jalonId)
+  async function syncRaci(targetJalonId: string) {
+    const raci = await getJalonRaci(targetJalonId)
     const desired = new Map<string, RaciRole>()
     if (piloteId) desired.set(piloteId, 'PILOTE')
     for (const id of implIds) {
@@ -693,11 +697,11 @@ function JalonDrawer({
     }
     for (const row of raci) {
       if (!desired.has(row.direction_id)) {
-        await removeRaci(jalonId, row.direction_id)
+        await removeRaci(targetJalonId, row.direction_id)
       }
     }
     for (const [dirId, role] of desired) {
-      await setRaci(jalonId, dirId, role)
+      await setRaci(targetJalonId, dirId, role)
     }
   }
 
@@ -707,30 +711,49 @@ function JalonDrawer({
     try {
       const isMirror = Boolean(jalon.kpi_source_jalon_id)
       if (isMirror) {
-        const parent = await getJalonById(jalon.kpi_source_jalon_id!)
+        const parentId = jalon.kpi_source_jalon_id!
+        const parent = await getJalonById(parentId)
         if (!parent) {
           window.alert('Jalon parent introuvable.')
           return
         }
-        const d = (parent.kpi_description ?? '').trim()
-        const v = (parent.kpi_valeur_cible ?? '').trim()
-        const nomLocked = d && v ? buildKpiMirrorNom(d, v) : jalon.nom
-        await updateJalon(jalonId, {
-          chantier_id: jalon.chantier_id,
-          nom: nomLocked,
-          description: jalon.description,
-          mois_cible: parent.mois_cible,
-          annee_cible: parent.annee_cible,
-          statut: jalon.statut,
-          facette: jalon.facette,
-          responsable: jalon.responsable,
-          decideur: jalon.decideur,
+        const d = (jalon.kpi_description ?? '').trim()
+        const v = (jalon.kpi_valeur_cible ?? '').trim()
+        const parentSaved = await updateJalon(parentId, {
           kpi_description: d || null,
           kpi_valeur_cible: v || null,
-          note_contexte: jalon.note_contexte,
-          jalon_dependance_id: jalon.jalon_dependance_id,
-          direction_id: jalon.direction_id,
         })
+        const parentChantiers = await getProjetChantiers(parentSaved.projet_id)
+        const parentChantierNom =
+          parentChantiers.find((c) => c.id === parentSaved.chantier_id)?.nom ?? 'Chantier'
+        await syncKpiMirrorForParentJalon({ parent: parentSaved, parentChantierNom })
+        const mirror = await findKpiMirrorJalonByParent(parentId)
+        if (mirror) {
+          const nomLocked = d && v ? buildKpiMirrorNom(d, v) : mirror.nom
+          await updateJalon(mirror.id, {
+            chantier_id: mirror.chantier_id,
+            nom: nomLocked,
+            description: jalon.description,
+            mois_cible: parentSaved.mois_cible,
+            annee_cible: parentSaved.annee_cible,
+            statut: jalon.statut,
+            facette: jalon.facette,
+            responsable: jalon.responsable,
+            decideur: jalon.decideur,
+            kpi_description: d || null,
+            kpi_valeur_cible: v || null,
+            note_contexte: jalon.note_contexte,
+            jalon_dependance_id: jalon.jalon_dependance_id,
+            direction_id: jalon.direction_id,
+          })
+          await syncRaci(mirror.id)
+          await onSaved()
+          onClose()
+          return
+        }
+        await onSaved()
+        onClose()
+        return
       } else {
         const saved = await updateJalon(jalonId, {
           nom: jalon.nom,
@@ -748,10 +771,11 @@ function JalonDrawer({
           direction_id: jalon.direction_id,
         })
         await syncKpiMirrorForParentJalon({ parent: saved, parentChantierNom: chantierNom })
+        await syncRaci(jalonId)
+        await onSaved()
+        onClose()
+        return
       }
-      await syncRaci()
-      await onSaved()
-      onClose()
     } finally {
       setSaving(false)
     }
@@ -853,7 +877,7 @@ function JalonDrawer({
             ))}
           </select>
           <p className="mr-hint">
-            Même maille que la grille (trimestres / années / « Plus tard »). Trimestre calculé : {trimLabel}
+            Choisissez l'échéance de ce jalon avec le même repère que le tableau. Repère actuel : {trimLabel}.
           </p>
         </div>
 
@@ -919,40 +943,36 @@ function JalonDrawer({
           />
         </div>
 
-        {!jalon.kpi_source_jalon_id ? (
-          <>
-            <h3 className="mr-drawer-section-title">KPI de suivi</h3>
-            <div className="mr-field">
-              <label htmlFor="kpi-desc">Indicateur</label>
-              <input
-                id="kpi-desc"
-                value={jalon.kpi_description ?? ''}
-                disabled={readOnly}
-                placeholder="% de décrochés sous 3 sonneries"
-                onChange={(e) =>
-                  setJalon((prev) => (prev ? { ...prev, kpi_description: e.target.value || null } : null))
-                }
-              />
-            </div>
-            <div className="mr-field">
-              <label htmlFor="kpi-val">Valeur cible</label>
-              <input
-                id="kpi-val"
-                value={jalon.kpi_valeur_cible ?? ''}
-                disabled={readOnly}
-                placeholder="90%"
-                onChange={(e) =>
-                  setJalon((prev) => (prev ? { ...prev, kpi_valeur_cible: e.target.value || null } : null))
-                }
-              />
-            </div>
-          </>
-        ) : (
+        <h3 className="mr-drawer-section-title">KPI de suivi</h3>
+        <div className="mr-field">
+          <label htmlFor="kpi-desc">Indicateur</label>
+          <input
+            id="kpi-desc"
+            value={jalon.kpi_description ?? ''}
+            disabled={readOnly}
+            placeholder="% de décrochés sous 3 sonneries"
+            onChange={(e) =>
+              setJalon((prev) => (prev ? { ...prev, kpi_description: e.target.value || null } : null))
+            }
+          />
+        </div>
+        <div className="mr-field">
+          <label htmlFor="kpi-val">Valeur cible</label>
+          <input
+            id="kpi-val"
+            value={jalon.kpi_valeur_cible ?? ''}
+            disabled={readOnly}
+            placeholder="90%"
+            onChange={(e) =>
+              setJalon((prev) => (prev ? { ...prev, kpi_valeur_cible: e.target.value || null } : null))
+            }
+          />
+        </div>
+        {jalon.kpi_source_jalon_id ? (
           <p className="mr-hint">
-            Ce jalon KPI est lié au suivi du jalon parent : modifiez l’indicateur et la cible sur le jalon d’origine
-            (autre axe).
+            Ce jalon KPI est lié au jalon parent: modifier l'indicateur ou la cible ici met aussi à jour le parent.
           </p>
-        )}
+        ) : null}
 
         <h3 className="mr-drawer-section-title">Macro RACI</h3>
         <div className="mr-field">
@@ -966,7 +986,7 @@ function JalonDrawer({
                 disabled={readOnly}
                 onChange={() => setPiloteId('')}
               />
-              <span>—</span>
+              <span>Aucun pilote</span>
             </label>
             {directions.map((d) => (
               <label key={d.id} className="mr-raci-row">
