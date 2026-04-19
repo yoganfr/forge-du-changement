@@ -192,6 +192,25 @@ function resolveAuthUserAvatarUrl(user: User): string | null {
   return null
 }
 
+/** Prénom / nom / photo issus du JWT Auth (Google, etc.) — utile sur un appareil sans cache `localStorage`. */
+function profilePatchFromAuthUser(user: User): Partial<StoredMemberProfile> {
+  const patch: Partial<StoredMemberProfile> = {}
+  const meta = user.user_metadata as Record<string, unknown> | undefined
+  const gn = asTrimmedString(meta?.given_name)
+  const fn = asTrimmedString(meta?.family_name)
+  const full = asTrimmedString(meta?.full_name)
+  if (gn) patch.firstName = gn
+  if (fn) patch.lastName = fn
+  if (!patch.firstName && full) {
+    const parts = full.split(/\s+/).filter(Boolean)
+    if (parts[0]) patch.firstName = parts[0]
+    if (parts.length > 1) patch.lastName = parts.slice(1).join(' ')
+  }
+  const av = resolveAuthUserAvatarUrl(user)
+  if (av) patch.avatar = av
+  return patch
+}
+
 /** Champs profil issus de `public.users` (source de vérité hors appareil). */
 function profilePatchFromDbUser(db: AppDbUser): Partial<StoredMemberProfile> {
   const patch: Partial<StoredMemberProfile> = {}
@@ -466,45 +485,61 @@ function App() {
     setUserInitials(profileInitials(p))
   }, [authUser?.email])
 
-  /** Mobile / autre appareil : le cache `localStorage` peut être vide alors que le profil existe en base ou chez OAuth. */
+  /**
+   * Mobile / autre appareil : pas de `localStorage` partagé avec le desktop — on remplit depuis
+   * `public.users` (getCurrentUser si besoin) puis les métadonnées OAuth. Le cache local (`prev`) gagne en dernier.
+   */
   useEffect(() => {
     const email = authUser?.email?.trim().toLowerCase()
-    if (!email) return
+    if (!email || !authUser) return
 
-    const dbRow =
-      serverAccess?.source === 'users'
-        ? serverAccess.dbUser
-        : serverAccess?.source === 'superadmin'
-          ? serverAccess.dbProfile
-          : null
-    if (!dbRow) return
-    const patch = profilePatchFromDbUser(dbRow)
-    const oauthAvatar = authUser ? resolveAuthUserAvatarUrl(authUser) : null
+    let cancelled = false
 
-    const prev = readStoredProfile(email) ?? {}
-    // Le cache local (`prev`) gagne sur le patch base : évite qu’une ligne « vide » ou un cache API obsolète écrase prénom / photo à chaque reco Google.
-    let next: StoredMemberProfile = { ...patch, ...prev }
-    if (!next.avatar?.trim() && oauthAvatar) {
-      next = { ...next, avatar: oauthAvatar }
+    void (async () => {
+      let dbRow: AppDbUser | null =
+        serverAccess?.source === 'users'
+          ? serverAccess.dbUser
+          : serverAccess?.source === 'superadmin'
+            ? serverAccess.dbProfile
+            : null
+
+      if (!dbRow) {
+        const row = await getCurrentUser()
+        if (cancelled) return
+        dbRow = row
+      }
+
+      const patchDb = dbRow ? profilePatchFromDbUser(dbRow) : {}
+      const patchAuth = profilePatchFromAuthUser(authUser)
+      const prev = readStoredProfile(email) ?? {}
+      // Auth → base → cache : la base bat Google sur les champs renseignés ; le cache bat tout pour les retouches locales.
+      let next: StoredMemberProfile = { ...patchAuth, ...patchDb, ...prev }
+
+      const nDb = Object.keys(patchDb).length
+      const nAuth = Object.keys(patchAuth).length
+      if (nDb === 0 && nAuth === 0) return
+
+      try {
+        if (JSON.stringify(prev) === JSON.stringify(next)) return
+      } catch {
+        /* continuer */
+      }
+
+      try {
+        localStorage.setItem(memberProfileStorageKey(email), JSON.stringify(next))
+      } catch {
+        /* quota ou mode privé */
+      }
+      if (!cancelled) {
+        setStoredProfile(next)
+        setUserInitials(profileInitials(next))
+      }
+    })()
+
+    return () => {
+      cancelled = true
     }
-
-    const patchKeys = Object.keys(patch)
-    const fillsAvatarFromOAuth = Boolean(oauthAvatar && !prev.avatar?.trim())
-    if (patchKeys.length === 0 && !fillsAvatarFromOAuth) return
-    try {
-      if (JSON.stringify(prev) === JSON.stringify(next)) return
-    } catch {
-      /* continuer */
-    }
-
-    try {
-      localStorage.setItem(memberProfileStorageKey(email), JSON.stringify(next))
-    } catch {
-      /* quota ou mode privé : l’état React reste utile pour la session courante */
-    }
-    setStoredProfile(next)
-    setUserInitials(profileInitials(next))
-  }, [serverAccess, oauthAvatarHydrationKey, authUser?.email])
+  }, [serverAccess, oauthAvatarHydrationKey, authUser?.email, authUser?.id])
 
   const handleSelectWorkspaceFromSettings = useCallback((id: string) => {
     localStorage.setItem('workspaceId', id)
