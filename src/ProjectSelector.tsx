@@ -2770,6 +2770,8 @@ const CSS = `
   height: 46px;
   display: grid;
   place-items: center;
+  color: color-mix(in srgb, var(--theme-accent) 88%, #ffffff 12%);
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--theme-accent) 32%, transparent));
 }
 
 .critere-middle-pane {
@@ -2907,18 +2909,6 @@ const CSS = `
     inset 0 0 0 1px color-mix(in srgb, #ffffff 44%, transparent),
     0 0 0 3px color-mix(in srgb, var(--theme-accent) 36%, transparent),
     0 6px 14px color-mix(in srgb, var(--theme-accent) 30%, transparent);
-}
-
-.critere-row--urgence .critere-icon,
-.critere-row--etp .critere-icon,
-.critere-row--investissement .critere-icon {
-  color: color-mix(in srgb, #f6ebf4 92%, transparent);
-}
-
-.critere-row--criticite .critere-icon,
-.critere-row--recurrence .critere-icon,
-.critere-row--temps .critere-icon {
-  color: color-mix(in srgb, #f8fbff 94%, transparent);
 }
 
 .critere-level-desc {
