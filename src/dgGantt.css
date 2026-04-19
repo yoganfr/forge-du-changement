@@ -31,11 +31,11 @@
 }
 
 .dg-mini-gantt__marker--start {
-  transform: translateX(0);
+  transform: translateX(-50%);
 }
 
 .dg-mini-gantt__marker--end {
-  transform: translateX(-100%);
+  transform: translateX(-50%);
 }
 
 .dg-mini-gantt {

@@ -36,20 +36,25 @@ export default function GanttRangeMarkers({
   const { start, end } = resolvePlanningRange(months, planning)
   const startMonth = months[start]!
   const endMonth = months[end]!
-  const denom = Math.max(1, months.length - 1)
+  const total = Math.max(1, months.length)
+  // Ancrage sur les bords du segment actif :
+  // - début : bord gauche du premier bloc actif
+  // - fin   : bord droit du dernier bloc actif
+  const startEdgePct = (start / total) * 100
+  const endEdgePct = ((end + 1) / total) * 100
 
   return (
     <>
       <span
         className={`${markerClassName} ${markerStartClassName}`}
-        style={{ left: `${(start / denom) * 100}%` }}
+        style={{ left: `${startEdgePct}%` }}
         title={`Début prévu: ${startMonth.label} ${startMonth.year}`}
       >
         {formatMonthYearShort(startMonth)}
       </span>
       <span
         className={`${markerClassName} ${markerEndClassName}`}
-        style={{ left: `${(end / denom) * 100}%` }}
+        style={{ left: `${endEdgePct}%` }}
         title={`Fin prévue: ${endMonth.label} ${endMonth.year}`}
       >
         {formatMonthYearShort(endMonth)}

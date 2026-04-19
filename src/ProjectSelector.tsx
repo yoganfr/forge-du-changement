@@ -2051,11 +2051,11 @@ const CSS = `
 }
 
 .mini-gantt-24__marker--start {
-  transform: translateX(0);
+  transform: translateX(-50%);
 }
 
 .mini-gantt-24__marker--end {
-  transform: translateX(-100%);
+  transform: translateX(-50%);
 }
 
 .mini-gantt-24 {
