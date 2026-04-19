@@ -914,9 +914,14 @@ function ProjectCard({
                     <table className="eval-legend-table">
                       <tbody>
                         {evalLevels.map((lvl) => (
-                          <tr key={`${k}-${lvl}`}>
-                            <td className="eval-legend-level">{lvl}</td>
-                            <td>{CRITERIA_DESCRIPTIONS[k][lvl]}</td>
+                          <tr
+                            key={`${k}-${lvl}`}
+                            className={`eval-legend-row ${lvl === draft.scores[k] ? 'eval-legend-row--active' : ''}`}
+                          >
+                            <td className={`eval-legend-level ${lvl === draft.scores[k] ? 'eval-legend-level--active' : ''}`}>{lvl}</td>
+                            <td className={`eval-legend-text ${lvl === draft.scores[k] ? 'eval-legend-text--active' : ''}`}>
+                              {CRITERIA_DESCRIPTIONS[k][lvl]}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -2515,6 +2520,7 @@ const CSS = `
 .eval-legend-table {
   width: 100%;
   border-collapse: collapse;
+  border-spacing: 0;
 }
 
 .eval-legend-table td {
@@ -2525,10 +2531,34 @@ const CSS = `
   border-top: 1px solid color-mix(in srgb, var(--theme-border) 12%, transparent);
 }
 
+.eval-legend-row--active td {
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  border-top-color: color-mix(in srgb, var(--theme-accent) 36%, transparent);
+}
+
+.eval-legend-row--active td:first-child {
+  border-top-left-radius: var(--ui-radius-control);
+  border-bottom-left-radius: var(--ui-radius-control);
+}
+
+.eval-legend-row--active td:last-child {
+  border-top-right-radius: var(--ui-radius-control);
+  border-bottom-right-radius: var(--ui-radius-control);
+}
+
 .eval-legend-level {
   width: 32px;
   text-align: center;
   font-weight: 800;
+  color: var(--theme-text);
+}
+
+.eval-legend-level--active {
+  color: var(--theme-accent);
+}
+
+.eval-legend-text--active {
+  font-weight: 700;
   color: var(--theme-text);
 }
 
@@ -2814,29 +2844,30 @@ const CSS = `
 }
 
 .critere-square--active {
-  color: #ffffff;
-  border-color: rgba(255,255,255,0.34);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+  color: var(--theme-on-accent);
+  border-color: color-mix(in srgb, var(--theme-accent) 55%, rgba(255, 255, 255, 0.22));
+  box-shadow: var(--glass-highlight), 0 4px 12px color-mix(in srgb, var(--theme-accent) 26%, transparent);
+  transform: translateY(-1px);
 }
 
 .critere-square--level-1 {
-  color: var(--score-caramel-1);
+  background: color-mix(in srgb, var(--score-caramel-1) 42%, var(--critere-square-bg));
 }
 
 .critere-square--level-2 {
-  color: var(--score-caramel-2);
+  background: color-mix(in srgb, var(--score-caramel-2) 48%, var(--critere-square-bg));
 }
 
 .critere-square--level-3 {
-  color: var(--score-caramel-3);
+  background: color-mix(in srgb, var(--score-caramel-3) 52%, var(--critere-square-bg));
 }
 
 .critere-square--level-4 {
-  color: var(--score-caramel-4);
+  background: color-mix(in srgb, var(--score-caramel-4) 54%, var(--critere-square-bg));
 }
 
 .critere-square--level-5 {
-  color: var(--score-critical);
+  background: color-mix(in srgb, var(--score-critical) 80%, var(--critere-square-bg));
 }
 
 .critere-value-pane--low .critere-val,
@@ -2862,10 +2893,14 @@ const CSS = `
 }
 
 .critere-level-desc {
-  font-size: 12px;
-  color: var(--theme-text-muted);
-  font-style: italic;
-  margin: 8px 12px 10px;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: color-mix(in srgb, var(--theme-text) 92%, var(--theme-accent) 8%);
+  font-style: normal;
+  text-align: center;
+  line-height: 1.4;
+  margin: 10px 10px 8px;
 }
 
 .project-scoring-head {
