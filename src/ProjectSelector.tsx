@@ -896,14 +896,16 @@ function ProjectCard({
               </div>
             </div>
 
-            <div className="eval-section-opener">Indice de criticité</div>
+            <div className="eval-criticite-hero">
+              <div className="eval-section-opener">Indice de criticité</div>
+              <div className="score-badge-wrap">
+                <ScoreBadge score={score} />
+              </div>
+            </div>
 
             <div className="project-eval-layout">
               <div className="project-eval-header">
                 <div className="section-title">Tables d&apos;évaluation (1 à 5)</div>
-                <div className="score-badge-wrap score-badge-wrap--side">
-                  <ScoreBadge score={score} />
-                </div>
               </div>
               <div className="project-eval-grid">
                 {(Object.keys(CRITERIA_META) as Array<keyof Scores>).map((k) => (
@@ -2450,14 +2452,22 @@ const CSS = `
 }
 
 .eval-section-opener {
-  grid-column: 1 / -1;
   text-align: center;
   font-size: 0.86rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: none;
   color: var(--theme-text-muted);
-  margin-top: 2px;
+  margin: 0;
+}
+
+.eval-criticite-hero {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 10px;
 }
 
 .project-eval-layout {
@@ -2468,10 +2478,9 @@ const CSS = `
 }
 
 .project-eval-header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--space-lg);
-  align-items: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .project-eval-header .section-title {
