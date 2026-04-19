@@ -267,13 +267,22 @@ export default function ProfileSheet({
         if (cancelled || !selected) return
         setCurrentUserId(selected.id)
         localStorage.setItem('lfdc-user-id', selected.id)
-        setFirstName(selected.prenom ?? firstNameProp)
-        setLastName(selected.nom ?? lastNameProp)
-        setJobTitle(selected.job_title ?? jobTitleProp)
-        setDirectionName(selected.direction_nom ?? directionProp)
-        setManagedCount(selected.managed_count ?? managedCountProp)
-        setTotalEffectif(selected.total_effectif ?? totalEffectifProp)
-        setAvatarUrl(selected.avatar_url ?? avatarUrlProp ?? null)
+        // Ne pas écraser avec '' : `??` ne traite pas la chaîne vide ; le cache liste peut être obsolète après reco.
+        setFirstName((prev) => selected.prenom?.trim() || prev || firstNameProp)
+        setLastName((prev) => selected.nom?.trim() || prev || lastNameProp)
+        setJobTitle((prev) => selected.job_title?.trim() || prev || jobTitleProp)
+        setDirectionName((prev) => selected.direction_nom?.trim() || prev || directionProp)
+        setManagedCount((prev) => {
+          const n = selected.managed_count
+          if (typeof n === 'number' && Number.isFinite(n) && n > 0) return n
+          return prev
+        })
+        setTotalEffectif((prev) => {
+          const n = selected.total_effectif
+          if (typeof n === 'number' && Number.isFinite(n) && n > 0) return n
+          return prev
+        })
+        setAvatarUrl((prev) => selected.avatar_url?.trim() || prev || avatarUrlProp || null)
       } catch {
         // Keep local fallback if Supabase fetch fails
       }

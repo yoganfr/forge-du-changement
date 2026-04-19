@@ -13,6 +13,7 @@ import {
   listWorkspaces,
   markInvitationsAcceptedForWorkspaceEmail,
 } from './lib/api'
+import { invalidateCache } from './lib/api/cache'
 import type { Workspace } from './lib/types'
 import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
 import { gravatarAvatarUrl } from './lib/gravatarUrl'
@@ -460,7 +461,8 @@ function App() {
     const oauthAvatar = authUser ? resolveAuthUserAvatarUrl(authUser) : null
 
     const prev = readStoredProfile() ?? {}
-    let next: StoredMemberProfile = { ...prev, ...patch }
+    // Le cache local (`prev`) gagne sur le patch base : évite qu’une ligne « vide » ou un cache API obsolète écrase prénom / photo à chaque reco Google.
+    let next: StoredMemberProfile = { ...patch, ...prev }
     if (!next.avatar?.trim() && oauthAvatar) {
       next = { ...next, avatar: oauthAvatar }
     }
@@ -468,6 +470,11 @@ function App() {
     const patchKeys = Object.keys(patch)
     const fillsAvatarFromOAuth = Boolean(oauthAvatar && !prev.avatar?.trim())
     if (patchKeys.length === 0 && !fillsAvatarFromOAuth) return
+    try {
+      if (JSON.stringify(prev) === JSON.stringify(next)) return
+    } catch {
+      /* continuer */
+    }
 
     try {
       localStorage.setItem(MEMBER_PROFILE_STORAGE_KEY, JSON.stringify(next))
@@ -525,58 +532,62 @@ function App() {
   }, [workspaceId, navigateToMainNav])
 
   const reconcileAuthSession = useCallback(async (user: User) => {
-    const email = user.email ?? ''
-    const emailNorm = email.trim().toLowerCase()
-    const invitedUser = await getCurrentUser()
-    const platformSuper = await isPlatformSuperadmin()
-    const skipInvFetch = Boolean(invitedUser) || platformSuper
-    const pendingInv = skipInvFetch ? null : await getLatestPendingInvitationForEmail(emailNorm)
-    const acceptedInv = skipInvFetch ? null : await getAcceptedInvitationAwaitingUserRow(emailNorm)
-    const invBootstrap = pendingInv ?? acceptedInv
+    try {
+      const email = user.email ?? ''
+      const emailNorm = email.trim().toLowerCase()
+      const invitedUser = await getCurrentUser()
+      const platformSuper = await isPlatformSuperadmin()
+      const skipInvFetch = Boolean(invitedUser) || platformSuper
+      const pendingInv = skipInvFetch ? null : await getLatestPendingInvitationForEmail(emailNorm)
+      const acceptedInv = skipInvFetch ? null : await getAcceptedInvitationAwaitingUserRow(emailNorm)
+      const invBootstrap = pendingInv ?? acceptedInv
 
-    if (platformSuper || invitedUser) {
-      setPlatformSuperadmin(platformSuper)
-      setAuthUser(user)
-      if (invitedUser) {
-        setServerAccess({ source: 'users', dbUser: invitedUser })
-        if (invitedUser.workspace_id) {
-          const isConsultantMember = invitedUser.role === 'consultant'
-          if (!isConsultantMember) {
-            localStorage.setItem('workspaceId', invitedUser.workspace_id)
-            setWorkspaceId(invitedUser.workspace_id)
+      if (platformSuper || invitedUser) {
+        setPlatformSuperadmin(platformSuper)
+        setAuthUser(user)
+        if (invitedUser) {
+          setServerAccess({ source: 'users', dbUser: invitedUser })
+          if (invitedUser.workspace_id) {
+            const isConsultantMember = invitedUser.role === 'consultant'
+            if (!isConsultantMember) {
+              localStorage.setItem('workspaceId', invitedUser.workspace_id)
+              setWorkspaceId(invitedUser.workspace_id)
+            }
           }
+        } else if (platformSuper) {
+          setServerAccess({ source: 'superadmin', dbProfile: invitedUser ?? null })
+        } else {
+          setServerAccess(null)
         }
-      } else if (platformSuper) {
-        setServerAccess({ source: 'superadmin', dbProfile: invitedUser ?? null })
-      } else {
-        setServerAccess(null)
-      }
-      try {
-        if (invitedUser?.workspace_id && invitedUser.email) {
-          await markInvitationsAcceptedForWorkspaceEmail(invitedUser.workspace_id, invitedUser.email)
+        try {
+          if (invitedUser?.workspace_id && invitedUser.email) {
+            await markInvitationsAcceptedForWorkspaceEmail(invitedUser.workspace_id, invitedUser.email)
+          }
+        } catch {
+          /* alignement statut invitation : best-effort */
         }
-      } catch {
-        /* alignement statut invitation : best-effort */
+        return
       }
-      return
-    }
-    if (invBootstrap?.workspace_id) {
+      if (invBootstrap?.workspace_id) {
+        setPlatformSuperadmin(false)
+        setAuthUser(user)
+        localStorage.setItem('workspaceId', invBootstrap.workspace_id)
+        setWorkspaceId(invBootstrap.workspace_id)
+        localStorage.removeItem('lfdc-user-id')
+        setServerAccess({
+          source: 'invitation',
+          role: invitationRoleToStoredRole(invBootstrap.role),
+          workspaceId: invBootstrap.workspace_id,
+        })
+        return
+      }
+      setServerAccess(null)
+      await signOut()
       setPlatformSuperadmin(false)
-      setAuthUser(user)
-      localStorage.setItem('workspaceId', invBootstrap.workspace_id)
-      setWorkspaceId(invBootstrap.workspace_id)
-      localStorage.removeItem('lfdc-user-id')
-      setServerAccess({
-        source: 'invitation',
-        role: invitationRoleToStoredRole(invBootstrap.role),
-        workspaceId: invBootstrap.workspace_id,
-      })
-      return
+      setAuthUser(null)
+    } finally {
+      invalidateCache(['workspace-users:'])
     }
-    setServerAccess(null)
-    await signOut()
-    setPlatformSuperadmin(false)
-    setAuthUser(null)
   }, [])
 
   useEffect(() => {
