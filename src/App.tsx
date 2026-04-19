@@ -14,6 +14,7 @@ import {
   markInvitationsAcceptedForWorkspaceEmail,
 } from './lib/api'
 import type { Workspace } from './lib/types'
+import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
 import {
   clearWorkspaceSnapshot,
   readInitialCompanyLogo,
@@ -105,7 +106,7 @@ const APP_SHELL_FALLBACK = (
 
 function readStoredProfile(): StoredMemberProfile | null {
   try {
-    const raw = localStorage.getItem('lfdc-member-onboarding')
+    const raw = localStorage.getItem(MEMBER_PROFILE_STORAGE_KEY)
     return raw ? (JSON.parse(raw) as StoredMemberProfile) : null
   } catch {
     return null
@@ -114,6 +115,36 @@ function readStoredProfile(): StoredMemberProfile | null {
 
 function profileInitials(profile: StoredMemberProfile | null): string {
   return `${profile?.firstName?.[0] ?? ''}${profile?.lastName?.[0] ?? ''}`.toUpperCase() || '?'
+}
+
+/** Champs profil issus de `public.users` (source de vérité hors appareil). */
+function profilePatchFromDbUser(db: AppDbUser): Partial<StoredMemberProfile> {
+  const patch: Partial<StoredMemberProfile> = {}
+  const prenom = db.prenom?.trim()
+  const nom = db.nom?.trim()
+  if (prenom) patch.firstName = prenom
+  if (nom) patch.lastName = nom
+  const job = db.job_title?.trim()
+  if (job) patch.jobTitle = job
+  const dir = db.direction_nom?.trim()
+  if (dir) patch.directionName = dir
+  const av = db.avatar_url?.trim()
+  if (av) patch.avatar = av
+  if (db.direction_type) {
+    patch.directionType =
+      db.direction_type === 'Métier'
+        ? 'metier'
+        : db.direction_type === 'Géographique'
+          ? 'geographique'
+          : 'fonctionnel'
+  }
+  if (typeof db.managed_count === 'number' && Number.isFinite(db.managed_count)) {
+    patch.managedCount = db.managed_count
+  }
+  if (typeof db.total_effectif === 'number' && Number.isFinite(db.total_effectif)) {
+    patch.totalEffectif = db.total_effectif
+  }
+  return patch
 }
 
 function normalizeRoleLabel(role: AppUserRole): string {
@@ -230,6 +261,23 @@ function App() {
     if (activeNav !== 'settings' || !canAccessSettings) return
     void refreshWorkspacesCatalog()
   }, [activeNav, canAccessSettings, refreshWorkspacesCatalog])
+
+  /** Mobile / autre appareil : le cache `localStorage` peut être vide alors que le profil existe en base. */
+  useEffect(() => {
+    if (serverAccess?.source !== 'users') return
+    const patch = profilePatchFromDbUser(serverAccess.dbUser)
+    if (Object.keys(patch).length === 0) return
+
+    const prev = readStoredProfile() ?? {}
+    const next: StoredMemberProfile = { ...prev, ...patch }
+    try {
+      localStorage.setItem(MEMBER_PROFILE_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      /* quota ou mode privé : l’état React reste utile pour la session courante */
+    }
+    setStoredProfile(next)
+    setUserInitials(profileInitials(next))
+  }, [serverAccess])
 
   const handleSelectWorkspaceFromSettings = useCallback((id: string) => {
     localStorage.setItem('workspaceId', id)
@@ -665,7 +713,7 @@ function App() {
                 void signOut()
                 localStorage.removeItem('workspaceId')
                 clearWorkspaceSnapshot()
-                localStorage.removeItem('lfdc-member-onboarding')
+                localStorage.removeItem(MEMBER_PROFILE_STORAGE_KEY)
                 setWorkspaceId(null)
                 setWorkspaceData(null)
                 setCompanyLogo(null)

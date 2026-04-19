@@ -8,6 +8,7 @@ import {
   updateProjet,
 } from './lib/api'
 import { getCurrentUser } from './lib/auth'
+import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
 import { buildGanttYearSpans, generateGanttMonths } from './lib/ganttMonths'
 import GanttRangeMarkers from './GanttRangeMarkers'
 import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
@@ -327,7 +328,7 @@ function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Per
 
 function applyMemberDirectionPrefill(data: Perimetre[]): Perimetre[] {
   if (typeof window === 'undefined') return data
-  const raw = window.localStorage.getItem('lfdc-member-onboarding')
+  const raw = window.localStorage.getItem(MEMBER_PROFILE_STORAGE_KEY)
   if (!raw) return data
 
   try {

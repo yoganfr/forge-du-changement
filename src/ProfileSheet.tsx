@@ -9,10 +9,9 @@ import {
 } from './lib/api'
 import { supabase } from './lib/supabase'
 import type { User } from './lib/types'
+import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
 
 export type DirectionType = 'fonctionnel' | 'metier' | 'geographique'
-
-const STORAGE_KEY = 'lfdc-member-onboarding'
 
 export interface StoredMemberProfile {
   firstName?: string
@@ -47,7 +46,7 @@ export interface ProfileSheetProps {
 
 function loadStored(): StoredMemberProfile {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(MEMBER_PROFILE_STORAGE_KEY)
     if (!raw) return {}
     return JSON.parse(raw) as StoredMemberProfile
   } catch {
@@ -57,7 +56,7 @@ function loadStored(): StoredMemberProfile {
 
 function saveStored(data: StoredMemberProfile) {
   const prev = loadStored()
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prev, ...data }))
+  localStorage.setItem(MEMBER_PROFILE_STORAGE_KEY, JSON.stringify({ ...prev, ...data }))
 }
 
 function roleBadgeClass(role: string) {
