@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+﻿import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   createDirection,
   deleteProjet,
@@ -12,7 +12,7 @@ import { buildGanttYearSpans, generateGanttMonths } from './lib/ganttMonths'
 import GanttRangeMarkers from './GanttRangeMarkers'
 import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type ProjectType = 'RUN' | 'BUILD'
 
@@ -61,7 +61,7 @@ type Perimetre = {
   projects: Project[]
 }
 
-// ─── Constantes ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const GANTT_MONTHS = generateGanttMonths()
 
@@ -75,49 +75,49 @@ const DEFAULT_COEFFICIENTS: Coefficients = {
 }
 
 const CRITERIA_META = {
-  criticite: { label: 'Criticité', desc: 'Impact si non réalisé' },
-  urgence: { label: 'Urgence', desc: 'Délai avant problème' },
-  recurrence: { label: 'Récurrence', desc: 'Fréquence du problème' },
-  temps: { label: 'Temps', desc: 'Durée de réalisation' },
+  criticite: { label: 'CriticitÃ©', desc: 'Impact si non rÃ©alisÃ©' },
+  urgence: { label: 'Urgence', desc: 'DÃ©lai avant problÃ¨me' },
+  recurrence: { label: 'RÃ©currence', desc: 'FrÃ©quence du problÃ¨me' },
+  temps: { label: 'Temps', desc: 'DurÃ©e de rÃ©alisation' },
   etp: { label: 'ETP', desc: 'Ressources humaines' },
-  investissement: { label: 'Investissement', desc: 'Coût capital' },
+  investissement: { label: 'Investissement', desc: 'CoÃ»t capital' },
 }
 
 const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
   criticite: {
-    0: 'Non évalué',
-    1: 'Conséquences mineures, insignifiantes',
-    2: 'Conséquences sans gravité (courte durée, faible coût)',
-    3: 'Impacts modérés nécessitant un investissement modéré',
-    4: 'Multiples impacts nécessitant un investissement conséquent',
-    5: 'Menace pour la viabilité du business model',
+    0: 'Non Ã©valuÃ©',
+    1: 'ConsÃ©quences mineures, insignifiantes',
+    2: 'ConsÃ©quences sans gravitÃ© (courte durÃ©e, faible coÃ»t)',
+    3: 'Impacts modÃ©rÃ©s nÃ©cessitant un investissement modÃ©rÃ©',
+    4: 'Multiples impacts nÃ©cessitant un investissement consÃ©quent',
+    5: 'Menace pour la viabilitÃ© du business model',
   },
   urgence: {
-    0: 'Non évalué',
+    0: 'Non Ã©valuÃ©',
     1: 'Dans plus de 2 ans',
-    2: 'Dans 1 à 2 ans',
-    3: 'Dans 6 mois à 1 an',
-    4: 'Dans 3 à 6 mois',
+    2: 'Dans 1 Ã  2 ans',
+    3: 'Dans 6 mois Ã  1 an',
+    4: 'Dans 3 Ã  6 mois',
     5: 'Dans moins de 3 mois',
   },
   recurrence: {
-    0: 'Non évalué',
-    1: 'Pas de récurrence',
-    2: 'Faiblement récurrent',
-    3: 'Modérément récurrent',
-    4: 'Fortement récurrent',
-    5: 'Très fortement récurrent',
+    0: 'Non Ã©valuÃ©',
+    1: 'Pas de rÃ©currence',
+    2: 'Faiblement rÃ©current',
+    3: 'ModÃ©rÃ©ment rÃ©current',
+    4: 'Fortement rÃ©current',
+    5: 'TrÃ¨s fortement rÃ©current',
   },
   temps: {
-    0: 'Non évalué',
+    0: 'Non Ã©valuÃ©',
     1: 'Moins de 3 mois',
-    2: 'De 3 à 6 mois',
-    3: 'De 6 mois à 1 an',
-    4: 'De 1 an à 2 ans',
+    2: 'De 3 Ã  6 mois',
+    3: 'De 6 mois Ã  1 an',
+    4: 'De 1 an Ã  2 ans',
     5: '2 ans et plus',
   },
   etp: {
-    0: 'Non évalué',
+    0: 'Non Ã©valuÃ©',
     1: 'Moins de 50 jours homme',
     2: 'Entre 50 et 100 jours homme',
     3: 'Entre 100 et 250 jours homme',
@@ -125,12 +125,12 @@ const CRITERIA_DESCRIPTIONS: Record<keyof Scores, Record<number, string>> = {
     5: 'Plus de 500 jours homme',
   },
   investissement: {
-    0: 'Non évalué',
-    1: 'Moins de 20 000€',
-    2: 'Entre 20 000€ et 30 000€',
-    3: 'Entre 30 000€ et 50 000€',
-    4: 'Entre 50 000€ et 200 000€',
-    5: 'Plus de 200 000€',
+    0: 'Non Ã©valuÃ©',
+    1: 'Moins de 20 000â‚¬',
+    2: 'Entre 20 000â‚¬ et 30 000â‚¬',
+    3: 'Entre 30 000â‚¬ et 50 000â‚¬',
+    4: 'Entre 50 000â‚¬ et 200 000â‚¬',
+    5: 'Plus de 200 000â‚¬',
   },
 }
 
@@ -140,10 +140,10 @@ const DIR_PERIM_ID = 'perim-direction'
 const TRANS_PERIM_ID = 'perim-transverse'
 
 const SIMULATED_DIRECTIONS = [
-  'Direction Financière',
+  'Direction FinanciÃ¨re',
   'Direction IT',
   'Direction Marketing',
-  'Direction Opérations',
+  'Direction OpÃ©rations',
 ] as const
 
 function emptyPlanning(): Record<string, boolean> {
@@ -261,7 +261,7 @@ function mapProjectToDbProjet(
   } as Partial<DbProjet>
 }
 
-// ─── Calcul du score ────────────────────────────────────────────────────────
+// â”€â”€â”€ Calcul du score â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function computeScore(project: Project, coefs: Coefficients): number {
   if (Object.values(project.scores).reduce((a, b) => a + b, 0) === 0) return 0
@@ -296,14 +296,14 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number): string {
-  if (score === 0) return 'Non évalué'
+  if (score === 0) return 'Non Ã©valuÃ©'
   if (score >= 75) return 'Critique'
-  if (score >= 50) return 'Élevé'
-  if (score >= 25) return 'Modéré'
+  if (score >= 50) return 'Ã‰levÃ©'
+  if (score >= 25) return 'ModÃ©rÃ©'
   return 'Faible'
 }
 
-// ─── Données de démo ─────────────────────────────────────────────────────────
+// â”€â”€â”€ DonnÃ©es de dÃ©mo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Perimetre[] {
   return data.map((perimetre) => {
@@ -355,7 +355,7 @@ function applyMemberDirectionPrefill(data: Perimetre[]): Perimetre[] {
   }
 }
 
-// ─── Composant Gantt Pilules ─────────────────────────────────────────────────
+// â”€â”€â”€ Composant Gantt Pilules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function GanttPilules({
   planning,
@@ -477,13 +477,13 @@ function ScoreRing40({ score }: { score: number }) {
         />
       </svg>
       <span className="score-ring-40__val" style={{ color: isZero ? 'var(--theme-text-muted)' : getScoreColor(score) }}>
-        {isZero ? '—' : score}
+        {isZero ? 'â€”' : score}
       </span>
     </div>
   )
 }
 
-// ─── Score Badge ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Score Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ScoreBadge({ score }: { score: number }) {
   const isZero = score === 0
@@ -501,12 +501,12 @@ function ScoreBadge({ score }: { score: number }) {
           transform="rotate(-90 18 18)"
         />
       </svg>
-      <span className="score-value" style={{ color: isZero ? 'var(--theme-text-muted)' : color }}>{isZero ? '—' : score}</span>
+      <span className="score-value" style={{ color: isZero ? 'var(--theme-text-muted)' : color }}>{isZero ? 'â€”' : score}</span>
     </div>
   )
 }
 
-// ─── Critère Slider ───────────────────────────────────────────────────────────
+// â”€â”€â”€ CritÃ¨re Slider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CritereSlider({
   criteriaKey,
@@ -571,7 +571,7 @@ function CritereSlider({
   }
 
   return (
-    <div className={`critere-row critere-row--enhanced critere-row--bar critere-row--${criteriaKey}`} title={`Coefficient: ×${coef}`}>
+    <div className={`critere-row critere-row--enhanced critere-row--bar critere-row--${criteriaKey}`} title={`Coefficient: Ã—${coef}`}>
       <div className="critere-title-above">{meta.label}</div>
       <div className="critere-bar">
         <div className="critere-icon-pane" aria-hidden>
@@ -602,7 +602,7 @@ function CritereSlider({
   )
 }
 
-// ─── Fiche Projet (édition) ───────────────────────────────────────────────────
+// â”€â”€â”€ Fiche Projet (Ã©dition) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ProjectCard({
   project,
@@ -631,7 +631,7 @@ function ProjectCard({
   onDeleteProject: () => void
   onPatchProject: (updates: Partial<Project>) => void
   onOpenRoadmap?: () => void
-  /** BUILD retenu mais pas encore validé DG pour la roadmap */
+  /** BUILD retenu mais pas encore validÃ© DG pour la roadmap */
   roadmapPendingDg?: boolean
 }) {
   const [draft, setDraft] = useState<Project>(project)
@@ -697,7 +697,7 @@ function ProjectCard({
     setPilotageError(false)
   }
 
-  const formula = `${(Object.keys(coefs) as Array<keyof Coefficients>).map((k) => `${draft.scores[k]}×${coefs[k]}`).join(' + ')}`
+  const formula = `${(Object.keys(coefs) as Array<keyof Coefficients>).map((k) => `${draft.scores[k]}Ã—${coefs[k]}`).join(' + ')}`
   const criteriaRows = (Object.keys(CRITERIA_META) as Array<keyof Scores>).map((key) => {
     const level = draft.scores[key]
     const description = CRITERIA_DESCRIPTIONS[key][level] ?? ''
@@ -771,14 +771,14 @@ function ProjectCard({
                 }}
                 title="Retenir pour le DG"
               >
-                {project.selected_for_transfo ? `★ #${dgRank} DG` : '☆ Retenir'}
+                {project.selected_for_transfo ? `â˜… #${dgRank} DG` : 'â˜† Retenir'}
               </button>
             ) : (
               <span className="transfo-toggle transfo-toggle--placeholder" aria-hidden>
-                ☆ Retenir
+                â˜† Retenir
               </span>
             )}
-            {onOpenRoadmap && (
+            {onOpenRoadmap ? (
               <button
                 type="button"
                 className="roadmap-open-btn"
@@ -787,20 +787,23 @@ function ProjectCard({
                   onOpenRoadmap()
                 }}
               >
-                → Construire la roadmap
+                â†’ Construire la roadmap
               </button>
-            )}
-            {roadmapPendingDg && !onOpenRoadmap && (
+            ) : roadmapPendingDg ? (
               <button
                 type="button"
                 className="roadmap-open-btn roadmap-open-btn--pending"
                 disabled
-                title="En attente de validation DG (Vue DG → projets soumis pour la roadmap)"
+                title="En attente de validation DG (Vue DG â†’ projets soumis pour la roadmap)"
               >
                 Roadmap (attente DG)
               </button>
+            ) : (
+              <span className="roadmap-open-btn roadmap-open-btn--placeholder" aria-hidden>
+                Construire la roadmap
+              </span>
             )}
-            <span className="expand-icon">{expanded ? '▲' : '▼'}</span>
+            <span className="expand-icon">{expanded ? 'â–²' : 'â–¼'}</span>
           </div>
         </div>
       </div>
@@ -813,7 +816,7 @@ function ProjectCard({
               <div className="identification-grid">
                 <div className="identification-cell">
                   <label className="project-field">
-                    <span>Thématique *</span>
+                    <span>ThÃ©matique *</span>
                     <input value={draft.thematique} onChange={(e) => setDraft((p) => ({ ...p, thematique: e.target.value }))} placeholder="Ex: Digitalisation RH" />
                   </label>
                 </div>
@@ -830,7 +833,7 @@ function ProjectCard({
                           setDraft((p) => ({ ...p, type: 'RUN' }))
                         }}
                       >
-                        RUN — Amélioration continue
+                        RUN â€” AmÃ©lioration continue
                       </button>
                       <button
                         type="button"
@@ -841,17 +844,17 @@ function ProjectCard({
                           setDraft((p) => ({ ...p, type: 'BUILD' }))
                         }}
                       >
-                        BUILD — Projet transformant
+                        BUILD â€” Projet transformant
                       </button>
                     </div>
-                    {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 DG</div>}
+                    {draft.type === 'BUILD' && <div className="eligible-note">â­ Ã‰ligible top 5 DG</div>}
                     {draft.type === 'BUILD' && project.selected_for_transfo && !project.dg_validated_transfo && (
                       <div className="dg-pending-hint">
                         Soumis au DG : la validation se fait dans <strong>Vue DG</strong> avant d&apos;ouvrir la Maturity Roadmap.
                       </div>
                     )}
                     {draft.type === 'BUILD' && project.dg_validated_transfo && (
-                      <div className="dg-ok-hint">Validé DG — le projet est prêt pour la roadmap (chantiers & jalons).</div>
+                      <div className="dg-ok-hint">ValidÃ© DG â€” le projet est prÃªt pour la roadmap (chantiers & jalons).</div>
                     )}
                   </div>
                 </div>
@@ -872,9 +875,9 @@ function ProjectCard({
                 </div>
                 <div className="identification-cell">
                   <label className="project-field">
-                    <span>Gains quantitatifs (€)</span>
+                    <span>Gains quantitatifs (â‚¬)</span>
                     <div className="input-prefix-wrap">
-                      <span className="input-prefix">€</span>
+                      <span className="input-prefix">â‚¬</span>
                       <input type="number" value={draft.gains_quantitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_quantitatifs: Number(e.target.value || 0) }))} placeholder="0" />
                     </div>
                   </label>
@@ -882,24 +885,24 @@ function ProjectCard({
 
                 <div className="identification-cell">
                   <label className="project-field">
-                    <span>Description / Problématique *</span>
-                    <textarea rows={4} value={draft.problematique} onChange={(e) => setDraft((p) => ({ ...p, problematique: e.target.value }))} placeholder="Décrivez le problème que ce projet résout..." />
+                    <span>Description / ProblÃ©matique *</span>
+                    <textarea rows={4} value={draft.problematique} onChange={(e) => setDraft((p) => ({ ...p, problematique: e.target.value }))} placeholder="DÃ©crivez le problÃ¨me que ce projet rÃ©sout..." />
                   </label>
                 </div>
                 <div className="identification-cell">
                   <label className="project-field">
                     <span>Gains qualitatifs</span>
-                    <textarea rows={2} value={draft.gains_qualitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_qualitatifs: e.target.value }))} placeholder="Bénéfices non financiers attendus..." />
+                    <textarea rows={2} value={draft.gains_qualitatifs ?? ''} onChange={(e) => setDraft((p) => ({ ...p, gains_qualitatifs: e.target.value }))} placeholder="BÃ©nÃ©fices non financiers attendus..." />
                   </label>
                 </div>
               </div>
             </div>
 
-            <div className="eval-section-opener">Indice de criticité</div>
+            <div className="eval-section-opener">Indice de criticitÃ©</div>
 
             <div className="project-eval-layout">
               <div className="project-eval-header">
-                <div className="section-title">Tables d&apos;évaluation (1 à 5)</div>
+                <div className="section-title">Tables d'evaluation (1 a 5)</div>
                 <div className="score-badge-wrap score-badge-wrap--side">
                   <ScoreBadge score={score} />
                 </div>
@@ -931,7 +934,7 @@ function ProjectCard({
 
               <div className="project-eval-extras">
                 <div className="competence-toggle">
-                  <span>Compétences disponibles en interne ?</span>
+                  <span>CompÃ©tences disponibles en interne ?</span>
                   <div className="toggle-options">
                     <button type="button" className={draft.competences_dispo ? 'toggle-pill toggle-pill--yes' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: true }))}>OUI</button>
                     <button type="button" className={!draft.competences_dispo ? 'toggle-pill toggle-pill--no' : 'toggle-pill'} onClick={() => setDraft((p) => ({ ...p, competences_dispo: false }))}>NON</button>
@@ -940,7 +943,7 @@ function ProjectCard({
 
                 <div className="score-summary">
                   <div className="score-summary-formula">
-                    Score = ({formula}) normalisé
+                    Score = ({formula}) normalisÃ©
                   </div>
                   <div className="score-summary-value" style={{ color: getScoreColor(score) }}>{score}/100</div>
                 </div>
@@ -949,10 +952,10 @@ function ProjectCard({
           </div>
 
           <div className="project-planning project-planning--section-a">
-            <div className="section-title">Planning prévisionnel</div>
+            <div className="section-title">Planning prÃ©visionnel</div>
             <GanttPilules planning={draft.planning} color={perimColor} editable onChange={toggleDraftPlanning} />
             <div className="recap-block">
-              <div className="recap-title">Récapitulatif de l&apos;évaluation</div>
+              <div className="recap-title">RÃ©capitulatif de l&apos;Ã©valuation</div>
               <table className="recap-table">
                 <thead>
                   <tr>
@@ -969,7 +972,7 @@ function ProjectCard({
                       <td>{row.label}</td>
                       <td>{row.level}/5</td>
                       <td>{row.description}</td>
-                      <td>×{row.coef}</td>
+                      <td>Ã—{row.coef}</td>
                       <td className="recap-points">{row.points}</td>
                     </tr>
                   ))}
@@ -983,8 +986,8 @@ function ProjectCard({
                 </tbody>
               </table>
               <div className="recap-lines">
-                <div>Score brut : {scoreRaw} / {scoreMax} (max pondéré)</div>
-                <div>Score final : <span className="recap-final-badge" style={{ background: scoreFinal === 0 ? 'color-mix(in srgb, var(--theme-text-muted) 35%, var(--theme-border))' : getScoreColor(scoreFinal) }}>{scoreFinal} — {getScoreLabel(scoreFinal)}</span></div>
+                <div>Score brut : {scoreRaw} / {scoreMax} (max pondÃ©rÃ©)</div>
+                <div>Score final : <span className="recap-final-badge" style={{ background: scoreFinal === 0 ? 'color-mix(in srgb, var(--theme-text-muted) 35%, var(--theme-border))' : getScoreColor(scoreFinal) }}>{scoreFinal} â€” {getScoreLabel(scoreFinal)}</span></div>
               </div>
             </div>
           </div>
@@ -993,7 +996,7 @@ function ProjectCard({
             <div className="section-title">Pilotage &amp; contributeurs</div>
             {isTransverse && (
               <div className="pilotage-transverse-note">
-                Un projet transverse implique plusieurs directions. Il apparaîtra dans l&apos;espace de chaque direction co-pilote sélectionnée.
+                Un projet transverse implique plusieurs directions. Il apparaÃ®tra dans l&apos;espace de chaque direction co-pilote sÃ©lectionnÃ©e.
               </div>
             )}
             <label className="project-field">
@@ -1017,9 +1020,9 @@ function ProjectCard({
                 ))}
               </div>
               {pilotageError && contribRequired && (
-                <div className="pilotage-err">Sélectionnez au moins une direction co-pilote.</div>
+                <div className="pilotage-err">SÃ©lectionnez au moins une direction co-pilote.</div>
               )}
-              <p className="pilotage-hint">Ces directions seront notifiées et auront accès à ce projet</p>
+              <p className="pilotage-hint">Ces directions seront notifiees et auront acces a ce projet</p>
             </div>
           </div>
 
@@ -1032,10 +1035,10 @@ function ProjectCard({
             <div className="project-delete-popin-backdrop" onClick={() => setConfirmDelete(false)}>
               <div className="project-delete-popin" onClick={(e) => e.stopPropagation()}>
                 <h4>Supprimer ce projet ?</h4>
-                <p>Cette action est définitive. Voulez-vous continuer ?</p>
+                <p>Cette action est dÃ©finitive. Voulez-vous continuer ?</p>
                 <div className="project-delete-popin-actions">
                   <button type="button" className="project-btn project-btn--ghost" onClick={() => setConfirmDelete(false)}>Annuler</button>
-                  <button type="button" className="project-btn project-btn--danger" onClick={handleDelete}>Supprimer définitivement</button>
+                  <button type="button" className="project-btn project-btn--danger" onClick={handleDelete}>Supprimer dÃ©finitivement</button>
                 </div>
               </div>
             </div>
@@ -1046,7 +1049,7 @@ function ProjectCard({
   )
 }
 
-// ─── Vue Synthèse ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Vue SynthÃ¨se â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coefficients }) {
   const selected = perimetre.projects
@@ -1060,11 +1063,11 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
       <div className="synthese-header">
         <div className="synthese-bloc">
           <div className="synthese-bloc-label">Mission</div>
-          <p className="synthese-bloc-text">{perimetre.mission || '— Non renseignée —'}</p>
+          <p className="synthese-bloc-text">{perimetre.mission || 'â€” Non renseignÃ©e â€”'}</p>
         </div>
         <div className="synthese-bloc">
           <div className="synthese-bloc-label">Vision</div>
-          <p className="synthese-bloc-text">{perimetre.vision || '— Non renseignée —'}</p>
+          <p className="synthese-bloc-text">{perimetre.vision || 'â€” Non renseignÃ©e â€”'}</p>
         </div>
       </div>
 
@@ -1088,11 +1091,11 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
                   <strong className="synthese-project-name">{project.name}</strong>
                   <span className="synthese-thematique">{project.thematique}</span>
                   {project.dg_validated_transfo ? (
-                    <span className="synthese-dg-ok" title="Validé DG pour la roadmap">Validé DG</span>
+                    <span className="synthese-dg-ok" title="ValidÃ© DG pour la roadmap">ValidÃ© DG</span>
                   ) : (
                     <span className="synthese-dg-wait" title="En attente validation DG">Attente DG</span>
                   )}
-                  <span className="synthese-score" style={{ color: getScoreColor(score) }}>{score === 0 ? '—' : score}pts</span>
+                  <span className="synthese-score" style={{ color: getScoreColor(score) }}>{score === 0 ? 'â€”' : score}pts</span>
                 </div>
                 <p className="synthese-problematique">{project.problematique}</p>
                 <GanttPilules planning={project.planning} color={perimetre.color} />
@@ -1105,7 +1108,7 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
   )
 }
 
-// ─── Vue Périmètre ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Vue PÃ©rimÃ¨tre â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function PerimetreView({
   perimetre,
@@ -1144,7 +1147,7 @@ function PerimetreView({
       <div className="perimetre-toolbar-row">
         <div className="perimetre-stats-inline">
           <span>{perimetre.projects.length} projet{perimetre.projects.length !== 1 ? 's' : ''}</span>
-          <span>·</span>
+          <span>Â·</span>
           <span style={{ color: perimetre.color }}>{selectedCount}/5 soumis au DG</span>
         </div>
         <div className="mode-toggle">
@@ -1153,14 +1156,14 @@ function PerimetreView({
             className={`mode-btn ${mode === 'edition' ? 'mode-btn--active' : ''}`}
             onClick={() => setMode('edition')}
           >
-            ✏️ Édition
+            âœï¸ Ã‰dition
           </button>
           <button
             type="button"
             className={`mode-btn ${mode === 'synthese' ? 'mode-btn--active' : ''}`}
             onClick={() => setMode('synthese')}
           >
-            📋 Synthèse DG
+            ðŸ“‹ SynthÃ¨se DG
           </button>
         </div>
       </div>
@@ -1168,7 +1171,7 @@ function PerimetreView({
       {mode === 'edition' ? (
         <div className="projects-list">
           <div className="projects-group-header">
-            <span>Projets BUILD — classés par indice de criticité</span>
+            <span>Projets BUILD â€” classÃ©s par indice de criticitÃ©</span>
             <span className="projects-group-count">{selectedCount}/5 retenus</span>
           </div>
           {buildProjects.map((project) => (
@@ -1200,7 +1203,7 @@ function PerimetreView({
           ))}
 
           <div className="projects-group-header projects-group-header--run">
-            <span>Projets RUN — amélioration continue</span>
+            <span>Projets RUN â€” amÃ©lioration continue</span>
           </div>
           {runProjects.map((project) => (
             <ProjectCard
@@ -1225,7 +1228,7 @@ function PerimetreView({
   )
 }
 
-// ─── Panneau Coefficients ──────────────────────────────────────────────────────
+// â”€â”€â”€ Panneau Coefficients â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CoefPanel({
   coefs,
@@ -1241,10 +1244,10 @@ function CoefPanel({
       <div className="coef-panel coef-panel--wide" onClick={(e) => e.stopPropagation()}>
         <div className="coef-panel-header">
           <h3>Coefficients de scoring</h3>
-          <button type="button" className="close-btn" onClick={onClose}>✕</button>
+          <button type="button" className="close-btn" onClick={onClose}>âœ•</button>
         </div>
         <p className="coef-panel-hint">
-          Adaptez les poids selon le contexte client. La dimension « Criticité » est pondérée ×3 par défaut car c&apos;est le critère stratégique central.
+          Adaptez les poids selon le contexte client. La dimension Â« CriticitÃ© Â» est pondÃ©rÃ©e Ã—3 par dÃ©faut car c&apos;est le critÃ¨re stratÃ©gique central.
         </p>
         {(Object.keys(coefs) as Array<keyof Coefficients>).map((k) => (
           <div key={k} className="coef-row">
@@ -1257,7 +1260,7 @@ function CoefPanel({
                   className={`coef-dot ${coefs[k] === v ? 'coef-dot--active' : ''}`}
                   onClick={() => onChange(k, v)}
                 >
-                  ×{v}
+                  Ã—{v}
                 </button>
               ))}
             </div>
@@ -1268,7 +1271,7 @@ function CoefPanel({
   )
 }
 
-// ─── Composant Principal ──────────────────────────────────────────────────────
+// â”€â”€â”€ Composant Principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ProjectSelectorProps {
   memberDirectionName?: string
@@ -1365,7 +1368,7 @@ export default function ProjectSelector({
         const normalized = message.toLowerCase()
         if (normalized.includes('row-level security')) {
           setSyncError(
-            "Vous n'avez pas les droits pour créer automatiquement les directions sur cet espace. Demandez à un consultant/admin de les initialiser.",
+            "Vous n'avez pas les droits pour crÃ©er automatiquement les directions sur cet espace. Demandez Ã  un consultant/admin de les initialiser.",
           )
         } else {
           setSyncError(message || 'Erreur de synchronisation Supabase')
@@ -1397,7 +1400,7 @@ export default function ProjectSelector({
     if (!onOpenRoadmap || !active) return
     const dirId = resolveDirectionIdForWrite(active.id)
     if (!dirId) {
-      setSyncError('Synchronisation des directions en cours. Réessayez dans quelques secondes.')
+      setSyncError('Synchronisation des directions en cours. RÃ©essayez dans quelques secondes.')
       return
     }
     onOpenRoadmap(projetId, dirId)
@@ -1421,7 +1424,7 @@ export default function ProjectSelector({
     if (!workspaceId) return
     const resolvedPerimId = resolveDirectionIdForWrite(perimId)
     if (!resolvedPerimId) {
-      setSyncError('Synchronisation des directions en cours. Réessayez dans quelques secondes.')
+      setSyncError('Synchronisation des directions en cours. RÃ©essayez dans quelques secondes.')
       return
     }
 
@@ -1502,7 +1505,7 @@ export default function ProjectSelector({
   function addProject() {
     if (!active) return
     if (workspaceId && !resolveDirectionIdForWrite(active.id)) {
-      setSyncError('Les directions ne sont pas encore prêtes. Patientez quelques secondes puis réessayez.')
+      setSyncError('Les directions ne sont pas encore prÃªtes. Patientez quelques secondes puis rÃ©essayez.')
       return
     }
     const empty = createEmptyProject()
@@ -1526,11 +1529,11 @@ export default function ProjectSelector({
         <div className="ps-root">
           <main className="ps-main">
             <div className="ps-empty">
-              <div className="ps-empty-icon">◈</div>
-              <h3>Sélectionnez d&apos;abord un espace entreprise</h3>
+              <div className="ps-empty-icon">â—ˆ</div>
+              <h3>SÃ©lectionnez d&apos;abord un espace entreprise</h3>
               <p>
-                Tant qu&apos;aucun workspace n&apos;est actif, les projets ne peuvent pas être enregistrés durablement.
-                Ouvrez <strong>Paramètres</strong>, choisissez une entreprise, puis revenez dans La Fabrique.
+                Tant qu&apos;aucun workspace n&apos;est actif, les projets ne peuvent pas Ãªtre enregistrÃ©s durablement.
+                Ouvrez <strong>ParamÃ¨tres</strong>, choisissez une entreprise, puis revenez dans La Fabrique.
               </p>
             </div>
           </main>
@@ -1546,13 +1549,13 @@ export default function ProjectSelector({
         <main className="ps-main">
           <div className="ps-page-header">
             <div>
-              <h1 className="ps-page-title">Sélection de projets transformants</h1>
-              <p className="ps-page-sub">Les projets BUILD sont classés par indice de criticité — le top 5 est soumis au DG</p>
+              <h1 className="ps-page-title">SÃ©lection de projets transformants</h1>
+              <p className="ps-page-sub">Les projets BUILD sont classÃ©s par indice de criticitÃ© â€” le top 5 est soumis au DG</p>
             </div>
             <div className="ps-legend">
-              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-critical)' }} />≥75</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-caramel-4)' }} />≥50</span>
-              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-caramel-3)' }} />≥25</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-critical)' }} />â‰¥75</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-caramel-4)' }} />â‰¥50</span>
+              <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-caramel-3)' }} />â‰¥25</span>
               <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-caramel-2)' }} />&lt;25</span>
             </div>
           </div>
@@ -1582,10 +1585,10 @@ export default function ProjectSelector({
             </div>
             <div className="ps-toolbar-right">
               <button type="button" className="ps-add-project" onClick={addProject}>
-                + Ajouter un projet →
+                + Ajouter un projet â†’
               </button>
               <button type="button" className="ps-coef-fab" onClick={() => setShowCoefs(true)} title="Coefficients">
-                ⚙
+                âš™
               </button>
             </div>
           </div>
@@ -1619,10 +1622,10 @@ export default function ProjectSelector({
   )
 }
 
-// ─── CSS intégré ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ CSS intÃ©grÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CSS = `
-/* ── Root ── */
+/* â”€â”€ Root â”€â”€ */
 .ps-root {
   min-height: 100svh;
   background: transparent;
@@ -1631,7 +1634,7 @@ const CSS = `
   font-size: var(--fs-base);
 }
 
-/* ── Toolbar onglets ── */
+/* â”€â”€ Toolbar onglets â”€â”€ */
 .ps-toolbar {
   display: flex;
   align-items: center;
@@ -1728,7 +1731,7 @@ const CSS = `
   color: var(--theme-text);
 }
 
-/* ── Main ── */
+/* â”€â”€ Main â”€â”€ */
 .ps-main {
   flex: 1;
   min-width: 0;
@@ -1753,7 +1756,7 @@ const CSS = `
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  /* Couleur : hérite des règles h1 globales (theme-text clair / orecchiette-800 sombre) */
+  /* Couleur : hÃ©rite des rÃ¨gles h1 globales (theme-text clair / orecchiette-800 sombre) */
   margin: 0 0 var(--space-xs);
 }
 
@@ -1843,7 +1846,7 @@ const CSS = `
   border-radius: 50%;
 }
 
-/* ── Périmètre ── */
+/* â”€â”€ PÃ©rimÃ¨tre â”€â”€ */
 .perimetre-view {
   display: flex;
   flex-direction: column;
@@ -1916,7 +1919,7 @@ const CSS = `
   box-shadow: var(--shadow-sm);
 }
 
-/* ── Projet Card ── */
+/* â”€â”€ Projet Card â”€â”€ */
 .projects-list {
   display: flex;
   flex-direction: column;
@@ -2279,7 +2282,7 @@ const CSS = `
   color: var(--theme-text-muted);
 }
 
-/* ── Score Badge ── */
+/* â”€â”€ Score Badge â”€â”€ */
 .score-badge {
   display: flex;
   flex-direction: column;
@@ -2326,18 +2329,20 @@ const CSS = `
   text-align: center;
 }
 
-/* ── Transfo Toggle ── */
+/* â”€â”€ Transfo Toggle â”€â”€ */
 .transfo-toggle {
   appearance: none;
   border: 1px solid var(--theme-border);
   background: transparent;
   padding: 4px 10px;
+  min-width: 94px;
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
   color: var(--theme-text-muted);
   white-space: nowrap;
+  text-align: center;
   font-family: var(--font-body);
   transition: all var(--transition);
 }
@@ -2347,12 +2352,14 @@ const CSS = `
   border: 1px solid color-mix(in srgb, var(--perim-color) 45%, var(--glass-border));
   border-radius: 10px;
   padding: 6px 10px;
+  min-width: 168px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   background: color-mix(in srgb, var(--perim-color) 12%, transparent);
   color: var(--theme-text);
   white-space: nowrap;
+  text-align: center;
 }
 .roadmap-open-btn:hover {
   background: color-mix(in srgb, var(--perim-color) 22%, transparent);
@@ -2362,6 +2369,11 @@ const CSS = `
   opacity: 0.65;
   cursor: not-allowed;
   border-style: dashed;
+}
+
+.roadmap-open-btn--placeholder {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .transfo-toggle--on {
@@ -2375,7 +2387,7 @@ const CSS = `
   pointer-events: none;
 }
 
-/* ── Corpo du projet ── */
+/* â”€â”€ Corpo du projet â”€â”€ */
 .project-card__body {
   padding: var(--space-2xl) var(--space-2xl) var(--space-3xl);
   border-top: 1px solid var(--glass-border);
@@ -2642,7 +2654,7 @@ const CSS = `
   color: var(--theme-text-muted);
 }
 
-/* ── Critère Slider ── */
+/* â”€â”€ CritÃ¨re Slider â”€â”€ */
 .critere-row {
   margin-bottom: var(--space-lg);
 }
@@ -3078,7 +3090,7 @@ const CSS = `
   word-break: break-all;
 }
 
-/* ── Planning / Gantt ── */
+/* â”€â”€ Planning / Gantt â”€â”€ */
 .project-planning {
   display: flex;
   flex-direction: column;
@@ -3169,7 +3181,7 @@ const CSS = `
   color: var(--theme-text);
 }
 
-/* ── Synthèse ── */
+/* â”€â”€ SynthÃ¨se â”€â”€ */
 .synthese-view {
   display: flex;
   flex-direction: column;
@@ -3302,7 +3314,7 @@ const CSS = `
   border-radius: var(--radius-lg);
 }
 
-/* ── Coefficients Panel ── */
+/* â”€â”€ Coefficients Panel â”€â”€ */
 .coef-overlay {
   position: fixed;
   inset: 0;
@@ -3403,7 +3415,7 @@ const CSS = `
   color: #fff;
 }
 
-/* ── Responsive ── */
+/* â”€â”€ Responsive â”€â”€ */
 @media (max-width: 900px) {
   .project-sections {
     grid-template-columns: 1fr;
@@ -3553,3 +3565,4 @@ const CSS = `
   }
 }
 `
+
