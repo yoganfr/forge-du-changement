@@ -164,6 +164,70 @@ function canActOnDecideurValidation(role: AppUserRole, isPlatformSuperadmin: boo
   return canViewDecideurView(role, isPlatformSuperadmin)
 }
 
+type DashboardMainNavProps = {
+  activeNav: string
+  canViewDecideur: boolean
+  onNavigate: (navId: string) => void
+  className: string
+  id?: string
+  onItemPick?: () => void
+}
+
+function DashboardMainNav({
+  activeNav,
+  canViewDecideur,
+  onNavigate,
+  className,
+  id,
+  onItemPick,
+}: DashboardMainNavProps) {
+  function pick(navId: string) {
+    onNavigate(navId)
+    onItemPick?.()
+  }
+
+  return (
+    <nav id={id} className={className} aria-label="Navigation principale">
+      {navItems
+        .filter((item) => item.group === null)
+        .filter((item) => (item.id === 'dg' ? canViewDecideur : true))
+        .map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={[
+              'dashboard__nav-item',
+              activeNav === item.id ? 'dashboard__nav-item--active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => pick(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      <span className="dashboard__nav-divider" aria-hidden="true" />
+      <span className="dashboard__nav-section-label">Espace</span>
+      {navItems.filter((item) => item.group === 'fabrique').map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className={[
+            'dashboard__nav-item',
+            'dashboard__nav-item--sub',
+            activeNav === item.id ? 'dashboard__nav-item--active' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          onClick={() => pick(item.id)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authUser, setAuthUser] = useState<User | null>(null)
@@ -189,6 +253,7 @@ function App() {
   const [workspacesLoading, setWorkspacesLoading] = useState(false)
   const [workspacesError, setWorkspacesError] = useState<string | null>(null)
   const [serverAccess, setServerAccess] = useState<ServerAccess | null>(null)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const currentUserRole: AppUserRole =
     serverAccess?.source === 'superadmin'
@@ -220,6 +285,34 @@ function App() {
     },
     [exitRoadmap],
   )
+
+  const closeMobileNav = useCallback(() => {
+    setMobileNavOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (!mobileNavOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileNavOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [mobileNavOpen])
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(min-width: 769px)')
+    const onChange = () => {
+      if (mq.matches) setMobileNavOpen(false)
+    }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   useLayoutEffect(() => {
     applyThemeToDocument(theme)
@@ -604,48 +697,28 @@ function App() {
             </span>
           </button>
 
-          <nav className="dashboard__nav dashboard__nav--top" aria-label="Navigation principale">
-            {navItems
-              .filter((item) => item.group === null)
-              .filter((item) => (item.id === 'dg' ? canViewDecideur : true))
-              .map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={
-                  [
-                    'dashboard__nav-item',
-                    activeNav === item.id ? 'dashboard__nav-item--active' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')
-                }
-                onClick={() => navigateToMainNav(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-            <span className="dashboard__nav-divider" aria-hidden="true" />
-            <span className="dashboard__nav-section-label">Espace</span>
-            {navItems.filter((item) => item.group === 'fabrique').map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={
-                  [
-                    'dashboard__nav-item',
-                    'dashboard__nav-item--sub',
-                    activeNav === item.id ? 'dashboard__nav-item--active' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')
-                }
-                onClick={() => navigateToMainNav(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
+          <button
+            type="button"
+            className="dashboard__menu-btn"
+            aria-label={mobileNavOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+            aria-expanded={mobileNavOpen}
+            aria-haspopup="dialog"
+            aria-controls={mobileNavOpen ? 'dashboard-mobile-nav' : undefined}
+            onClick={() => setMobileNavOpen((o) => !o)}
+          >
+            <span className="dashboard__menu-bars" aria-hidden>
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
+
+          <DashboardMainNav
+            activeNav={activeNav}
+            canViewDecideur={canViewDecideur}
+            onNavigate={navigateToMainNav}
+            className="dashboard__nav dashboard__nav--top dashboard__nav--desktop"
+          />
 
           <div className="dashboard__topbar-actions">
             <button
@@ -728,6 +801,48 @@ function App() {
           </div>
         </div>
       </header>
+
+      {mobileNavOpen ? (
+        <div className="dashboard__mobile-nav-layer" role="presentation">
+          <button
+            type="button"
+            className="dashboard__mobile-nav-backdrop"
+            aria-label="Fermer le menu"
+            onClick={closeMobileNav}
+          />
+          <div
+            className="dashboard__mobile-nav-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+          >
+            <div className="dashboard__mobile-nav-head">
+              <span className="dashboard__mobile-nav-title">Menu</span>
+              <button type="button" className="dashboard__mobile-nav-close" onClick={closeMobileNav} aria-label="Fermer">
+                ✕
+              </button>
+            </div>
+            <button
+              type="button"
+              className={`dashboard__mobile-nav-home ${activeNav === 'home' ? 'dashboard__mobile-nav-home--active' : ''}`}
+              onClick={() => {
+                navigateToMainNav('home')
+                closeMobileNav()
+              }}
+            >
+              Accueil — choix des modules
+            </button>
+            <DashboardMainNav
+              id="dashboard-mobile-nav"
+              activeNav={activeNav}
+              canViewDecideur={canViewDecideur}
+              onNavigate={navigateToMainNav}
+              className="dashboard__nav dashboard__nav--drawer"
+              onItemPick={closeMobileNav}
+            />
+          </div>
+        </div>
+      ) : null}
 
       <div className="dashboard__main">
         <main className="dashboard__content">
