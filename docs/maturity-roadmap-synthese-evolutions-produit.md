@@ -166,11 +166,14 @@
 ### Phase 1 (fonctionnelle)
 
 - Écran **Maturity Roadmap** (chantiers, jalons 4 axes, RACI, grille timeline) branché sur Supabase.
-- Schéma / évolutions SQL documentées dans `docs/` (ex. `supabase-maturity-roadmap-phase1.sql`, contraintes jalons/axes, validation DG projets, etc.).
+- Schéma / évolutions SQL documentées dans `docs/` (ex. `supabase-maturity-roadmap-phase1.sql`, contraintes jalons/axes, validation décideur projets, etc.).
 
 ### Phase 2 — Solidification (livré)
 
 - **Vagues 1–3 (avril 2026)** : fermeture modales/drawer sans faux positifs (sélection texte), RACI en grilles homogènes, **échéance jalon** alignée sur les colonnes timeline, **dépendance explicite masquée en UI**, **création de direction inline** (anti-doublon), **jalon KPI miroir** synchronisé avec le parent (`kpi_source_jalon_id`).
+- **Vue décideur (MVP gouvernance)** : renommage UX, garde d’accès lecture/action par rôle, validation/retrait avec revue obligatoire, et historique des décisions via `audit_events`.
+- **Sécurité backend** : garde SQL dédiée sur `projets.dg_validated_transfo` (autoriser `consultant/admin/pilote/superadmin`, bloquer `codir/contributeur`).
+- **Mode test léger** : environnement unique maintenu, avec sandbox interne et script `docs/reset-demo.sql` pour remettre à zéro les données de recette manuelle.
 - **API modulaire** : logique découpée en `src/lib/api/*.ts` (roadmap, workspaces, users, projets, directions, invitations, cache, audit, storage) avec **`src/lib/api.ts`** qui réexporte l’ensemble pour ne pas casser les imports existants.
 - **Performances** : `getWorkspaceDirectionsWithProjects` charge les directions puis **tous les projets du workspace en une requête**, puis groupe côté client par `direction_id` (plus de requête projet par direction).
 - **Qualité** : tests **Vitest** ciblés (`npm run test`) sur `normalizeAxeForDb`, tri des jalons par axe/ordre, construction des colonnes timeline et placement jalon / date cible (`src/lib/api/roadmap.test.ts`, `src/lib/roadmapTimelineColumns.test.ts`).

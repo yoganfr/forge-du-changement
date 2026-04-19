@@ -144,4 +144,25 @@ Pour que les règles ci-dessus soient **vraies** dans l’app : table des **ratt
 
 ---
 
+## Vue décideur — lecture / action / historique
+
+- Terminologie UX: **Vue DG** devient **Vue décideur** ; **validation DG** devient **validation décideur**.
+- Lecture Vue décideur: autorisés `consultant`, `admin`, `pilote`, `superadmin`; refusés `codir`, `contributeur`.
+- Actions validation/retrait décideur: mêmes droits que la lecture (rôle transverse `pilote` inclus).
+- Méthode produit: la validation décideur est un **jalon de gouvernance** avec revue obligatoire (date + commentaire), pas un clic instantané.
+- Historique: affichage des décisions depuis `audit_events` (validation/retrait, acteur, commentaire/motif, horodatage).
+
+### Matrice de recette (préremplie)
+
+| Rôle | Voir Vue décideur | Valider décideur | Retirer validation décideur | Voir historique décideur |
+|---|---|---|---|---|
+| superadmin | Oui | Oui | Oui | Oui |
+| consultant | Oui | Oui | Oui | Oui |
+| admin | Oui | Oui | Oui | Oui |
+| pilote | Oui | Oui | Oui | Oui |
+| codir | Non | Non | Non | Non |
+| contributeur | Non | Non | Non | Non |
+
+---
+
 *Document La Forge du Changement — règles de gestion en langage clair.*

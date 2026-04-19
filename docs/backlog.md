@@ -47,13 +47,14 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 ---
 
-## EPIC 2 — Vue DG Consolidée 🟠 PARTIEL (priorité restante : macro transverse)
+## EPIC 2 — Vue décideur consolidée 🟠 PARTIEL (priorité restante : macro transverse)
 
 | # | Titre | Priorité | Statut |
 |---|-------|----------|--------|
 | 1 | Dashboard consolidé toutes directions | 🔴 | ✅ |
 | 2 | Classement inter-directions top 5 BUILD | 🔴 | ✅ |
 | 3 | Gantt macro consolidé (lecture transverse multi-directions) | 🟠 | ⬜ |
+| 41 | Vue décideur + validation avec revue obligatoire + historique | 🔴 | ✅ |
 
 ---
 
@@ -161,7 +162,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 36 | Export PDF — Vue Synthèse Direction | 🟠 | 🚧 |
 | 37 | Export PDF — PAE Manager | 🟡 | ⬜ |
 
-*Note #36* : v1 **impression navigateur** sur la Vue DG (`window.print` + styles `dg-print`). Export PDF dédié (génération fichier, branding contrôlé, hors navigateur) encore à traiter si besoin CODIR.
+*Note #36* : v1 **impression navigateur** sur la Vue décideur (`window.print` + styles `dg-print`). Export PDF dédié (génération fichier, branding contrôlé, hors navigateur) encore à traiter si besoin CODIR.
 
 ---
 
@@ -200,18 +201,18 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 ## Composants principaux
 
-- `App.tsx` — dashboard, navigation, garde d'auth, entrées La Fabrique / Vue DG / roadmap
+- `App.tsx` — dashboard, navigation, garde d'auth, entrées La Fabrique / Vue décideur / roadmap
 - `OnboardingFlow.tsx` — création espace entreprise + invitations
 - `ProjectSelector.tsx` — outil saisie/scoring projets (Supabase)
 - `CompanySheet.tsx` — fiche entreprise + invitations unitaires/CSV
 - `ProfileSheet.tsx` — drawer profil utilisateur
 - `MemberOnboarding.tsx` — espace membre
-- `pages/DashboardDG.tsx` — synthèse DG (KPI, validation BUILD, top 5, impression)
+- `pages/DashboardDG.tsx` — synthèse décideur (KPI, validation BUILD, top 5, impression, historique)
 - `pages/Login.tsx` — écran connexion premium
 - `pages/AuthCallback.tsx` — retour OAuth/Magic Link
 - `MaturityRoadmap.tsx` — roadmap maturité (chantiers, jalons, RACI, dépendances)
 - `RoadmapTimelineGrid.tsx` — grille 4 axes × échéances
-- `DgProjectAccordion.tsx` — détail projet dans la Vue DG
+- `DgProjectAccordion.tsx` — détail projet dans la Vue décideur
 - `ChantierLineModal.tsx` / `JalonQuickAddModal.tsx` — édition chantiers et jalons
 - `src/lib/api.ts` — façade CRUD + réexport roadmap
 - `src/lib/api/roadmap.ts` — chantiers, jalons, RACI jalons
@@ -532,12 +533,14 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - Maturity Roadmap: création de direction inline avec anti-doublon (normalisation + proximité de libellé).
 - KPI roadmap: mise en place du jalon KPI miroir synchronisé (création/mise à jour/suppression), verrouillage nom + échéance côté miroir.
 - Documentation métier/technique mise à jour (règles roadmap, synthèse évolutions, backlog, script SQL `supabase-jalons-kpi-source.sql`).
-- Vue DG / sélection projets: harmonisation itérative des frises et mini-frises (édition + DG), puis composant partagé pour marqueurs début/fin.
+- Vue décideur / sélection projets: harmonisation itérative des frises et mini-frises (édition + décideur), puis composant partagé pour marqueurs début/fin.
+- Vue décideur: renommage UX, garde d'accès rôle (`consultant/admin/pilote/superadmin`), validation/retrait avec revue obligatoire, historique des décisions via `audit_events`.
+- Sécurité backend: script de garde SQL sur `projets.dg_validated_transfo` pour bloquer `codir`/`contributeur`.
 - Cartes RUN: alignement visuel avec BUILD sur l'entête (placement mini-gantt et pastille criticité).
 - Gouvernance Git: règle projet enrichie avec trailer `Made-with: Cursor AI`, convention commit formalisée dans `docs/git-commit-conventions.md`.
 
 #### En cours
-- Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue DG consolidée, Ma Direction, états RUN/BUILD variés).
+- Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue décideur consolidée, Ma Direction, états RUN/BUILD variés).
 
 #### À faire
 - Navigation historique navigateur: brancher la navigation interne sur l'URL/historique (retour arrière cohérent sans sortie du site).

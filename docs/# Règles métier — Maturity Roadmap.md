@@ -138,6 +138,21 @@ Un seul PILOTE par jalon (contrainte unique en base).
 
 ---
 
+## 6 bis. Validation décideur = jalon de gouvernance
+
+- La **validation décideur** ne se résume pas à un simple clic technique: elle matérialise une **revue de gouvernance** (échange avec le N-1, arbitrage explicite, traçabilité).
+- L’action de validation impose une **date de revue** et un **commentaire de décision**.
+- Le retrait de validation impose un **motif de retrait**.
+- L’historique est consultable via `audit_events` (date/heure, action, acteur, commentaire ou motif).
+
+### Distinction métier à conserver
+
+- **Responsable**: porteur opérationnel qui exécute et suit.
+- **Décideur**: valideur formel du jalon de gouvernance.
+- **Pilote (RACI)**: direction organisationnelle transverse responsable de la coordination RACI (ce n’est pas une personne).
+
+---
+
 ## 7. Maille temporelle
 
 **Unité de positionnement** : mois + année
