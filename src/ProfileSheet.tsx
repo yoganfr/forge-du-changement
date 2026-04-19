@@ -10,6 +10,7 @@ import {
 import { supabase } from './lib/supabase'
 import type { User } from './lib/types'
 import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
+import UserAvatarImg from './UserAvatarImg'
 
 export type DirectionType = 'fonctionnel' | 'metier' | 'geographique'
 
@@ -408,9 +409,7 @@ export default function ProfileSheet({
 
         <div className="psd-avatar-block">
           <div className="psd-avatar-lg">
-            {avatarUrl
-              ? <img src={avatarUrl} alt="" className="psd-avatar-img" />
-              : <span>{initials}</span>}
+            <UserAvatarImg src={avatarUrl} initials={initials} className="psd-avatar-img" />
           </div>
           <input ref={fileRef} type="file" accept="image/*" className="psd-file" onChange={(e) => onAvatarFile(e.target.files?.[0] ?? null)} />
           <button type="button" className="psd-change-photo" onClick={() => fileRef.current?.click()}>

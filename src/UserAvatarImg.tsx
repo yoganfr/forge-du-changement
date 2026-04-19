@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 /** Affiche une image si `src` charge ; sinon (404, erreur) retombe sur `initials`. */
 export default function UserAvatarImg({
@@ -11,6 +11,10 @@ export default function UserAvatarImg({
   className?: string
 }) {
   const [broken, setBroken] = useState(false)
+
+  useEffect(() => {
+    setBroken(false)
+  }, [src])
 
   if (!src || broken) {
     return <>{initials}</>
