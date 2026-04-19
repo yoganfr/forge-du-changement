@@ -150,8 +150,8 @@ export default function MaturityRoadmap({
         setJalonsByChantier({})
         setError(
           memberDirId
-            ? 'Aucun projet BUILD validé par le DG pour votre direction. Créez un BUILD dans La Fabrique, retenez-le pour le DG, puis validez-le dans la Vue DG (section « Projets BUILD soumis pour la roadmap »).'
-            : 'Aucun projet BUILD validé par le DG pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le DG, puis validez-le dans la Vue DG (section « Projets BUILD soumis pour la roadmap »).',
+            ? 'Aucun projet BUILD validé par le décideur pour votre direction. Créez un BUILD dans La Fabrique, retenez-le pour le décideur, puis validez-le dans la Vue décideur (section « Projets BUILD soumis pour la roadmap »).'
+            : 'Aucun projet BUILD validé par le décideur pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le décideur, puis validez-le dans la Vue décideur (section « Projets BUILD soumis pour la roadmap »).',
         )
         return
       }
@@ -507,7 +507,7 @@ export default function MaturityRoadmap({
                 if (chantierId === null) {
                   if (roadmapProjects.length === 0) {
                     window.alert(
-                      'Aucun projet BUILD validé par le DG pour cette direction. Validez un projet dans la Vue DG avant d’ajouter des chantiers.',
+                      'Aucun projet BUILD validé par le décideur pour cette direction. Validez un projet dans la Vue décideur avant d’ajouter des chantiers.',
                     )
                     return
                   }

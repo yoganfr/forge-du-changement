@@ -52,7 +52,7 @@ const MaturityRoadmap = lazy(() => import('./MaturityRoadmap'))
 
 const navItems = [
   { id: 'fabrique', label: 'La Fabrique', group: null },
-  { id: 'dg', label: 'Vue DG', group: null },
+  { id: 'dg', label: 'Vue décideur', group: null },
   { id: 'workspace', label: 'Mon Espace', group: 'fabrique' },
 ] as const
 
@@ -80,9 +80,9 @@ const cards = [
   },
   {
     id: 'dg',
-    title: 'Vue DG',
+    title: 'Vue décideur',
     description:
-      'Consolider la lecture inter-directions avec KPI, top BUILD et trajectoire macro pour les arbitrages CODIR.',
+      'Consolider la lecture inter-directions avec KPI, top BUILD et trajectoire macro pour les arbitrages décideur.',
     icon: '◈',
   },
 ] as const
@@ -122,6 +122,15 @@ function normalizeRoleLabel(role: AppUserRole): string {
   if (role === 'pilote') return 'Pilote'
   if (role === 'contributeur') return 'Contributeur'
   return 'Membre CODIR'
+}
+
+function canViewDecideurView(role: AppUserRole, isPlatformSuperadmin: boolean): boolean {
+  if (isPlatformSuperadmin) return true
+  return role === 'consultant' || role === 'admin' || role === 'pilote'
+}
+
+function canActOnDecideurValidation(role: AppUserRole, isPlatformSuperadmin: boolean): boolean {
+  return canViewDecideurView(role, isPlatformSuperadmin)
 }
 
 function App() {
@@ -192,6 +201,12 @@ function App() {
     }
   }, [activeNav, canAccessSettings, navigateToMainNav])
 
+  useEffect(() => {
+    if (activeNav === 'dg' && !canViewDecideurView(currentUserRole, platformSuperadmin)) {
+      navigateToMainNav('home')
+    }
+  }, [activeNav, currentUserRole, platformSuperadmin, navigateToMainNav])
+
   const refreshWorkspacesCatalog = useCallback(async () => {
     if (!canAccessSettings) return
     setWorkspacesLoading(true)
@@ -252,8 +267,8 @@ function App() {
       navigateToMainNav(pendingDg ? 'dg' : 'fabrique')
       window.alert(
         pendingDg
-          ? 'Votre projet BUILD est soumis au DG mais pas encore validé pour la roadmap. Ouvrez la Vue DG et validez le projet (section « Projets BUILD soumis pour la roadmap »).'
-          : 'Aucun projet BUILD validé par le DG pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le DG, puis validez-le dans la Vue DG.',
+          ? 'Votre projet BUILD est soumis au décideur mais pas encore validé pour la roadmap. Ouvrez la Vue décideur et validez le projet (section « Projets BUILD soumis pour la roadmap »).'
+          : 'Aucun projet BUILD validé par le décideur pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le décideur, puis validez-le dans la Vue décideur.',
       )
       return
     }
@@ -474,6 +489,8 @@ function App() {
     || familyName
     || (fullName && fullName.includes(' ') ? fullName.split(' ').slice(1).join(' ') : '')
   const profileRoleLabel = platformSuperadmin ? 'Super admin plateforme' : normalizeRoleLabel(currentUserRole)
+  const canViewDecideur = canViewDecideurView(currentUserRole, platformSuperadmin)
+  const canActDecideur = canActOnDecideurValidation(currentUserRole, platformSuperadmin)
 
   if (showWorkspaceOnboarding) {
     return (
@@ -540,7 +557,10 @@ function App() {
           </button>
 
           <nav className="dashboard__nav dashboard__nav--top" aria-label="Navigation principale">
-            {navItems.filter((item) => item.group === null).map((item) => (
+            {navItems
+              .filter((item) => item.group === null)
+              .filter((item) => (item.id === 'dg' ? canViewDecideur : true))
+              .map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -686,7 +706,9 @@ function App() {
                   Choisissez un module pour poursuivre votre parcours de transformation.
                 </p>
                 <div className="dashboard__cards" role="list">
-                  {cards.map((card) => (
+                  {cards
+                    .filter((card) => (card.id === 'dg' ? canViewDecideur : true))
+                    .map((card) => (
                     <button
                       key={card.id}
                       type="button"
@@ -725,7 +747,9 @@ function App() {
                 }}
               />
             ) : normalizedActiveNav === 'dg' ? (
-              <DashboardDG workspaceId={workspaceId} />
+              canViewDecideur ? (
+                <DashboardDG workspaceId={workspaceId} canActOnDecideurValidation={canActDecideur} />
+              ) : <></>
             ) : normalizedActiveNav === 'company' ? (
               <CompanySheet
                 workspaceId={workspaceId}

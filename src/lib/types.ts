@@ -56,7 +56,7 @@ export type Projet = {
   score_investissement: number
   competences_dispo: boolean
   selected_for_transfo: boolean
-  /** Validé DG pour passage en Maturity Roadmap (chantiers / jalons). */
+  /** Validé décideur pour passage en Maturity Roadmap (chantiers / jalons). */
   dg_validated_transfo: boolean
   pilote: string | null
   gains_quantitatifs: number | null
@@ -95,6 +95,15 @@ export type DashboardDgKpis = {
   activeDirections: number
   avgBuildScore: number
   criticalProjects: number
+}
+
+export type AuditEvent = {
+  id: string
+  workspace_id: string | null
+  actor_user_id: string | null
+  action: string
+  payload: Record<string, unknown> | null
+  created_at: string
 }
 
 export type Axe = 'PROCESSUS' | 'ORGANISATION' | 'OUTILS' | 'KPI'

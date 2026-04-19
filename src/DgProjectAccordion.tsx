@@ -176,7 +176,7 @@ export default function DgProjectAccordion({
                 onValidate()
               }}
             >
-              {saving ? '…' : 'Valider pour la roadmap'}
+              {saving ? '…' : 'Valider décideur'}
             </button>
           ) : (
             <button
@@ -188,7 +188,7 @@ export default function DgProjectAccordion({
                 onRevoke()
               }}
             >
-              Retirer la validation
+              Retirer validation décideur
             </button>
           )}
         </div>

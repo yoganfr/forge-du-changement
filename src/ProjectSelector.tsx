@@ -769,9 +769,9 @@ function ProjectCard({
                   e.stopPropagation()
                   onToggleTransfo()
                 }}
-                title="Retenir pour le DG"
+                title="Retenir pour le décideur"
               >
-                {project.selected_for_transfo ? `★ #${dgRank} DG` : '☆ Retenir'}
+                {project.selected_for_transfo ? `★ #${dgRank} décideur` : '☆ Retenir'}
               </button>
             ) : (
               <span className="transfo-toggle transfo-toggle--placeholder" aria-hidden>
@@ -794,9 +794,9 @@ function ProjectCard({
                 type="button"
                 className="roadmap-open-btn roadmap-open-btn--pending"
                 disabled
-                title="En attente de validation DG (Vue DG → projets soumis pour la roadmap)"
+                title="En attente de validation décideur (Vue décideur → projets soumis pour la roadmap)"
               >
-                Roadmap (attente DG)
+                Roadmap (attente décideur)
               </button>
             ) : (
               <span className="roadmap-open-btn roadmap-open-btn--placeholder" aria-hidden>
@@ -847,14 +847,14 @@ function ProjectCard({
                         BUILD — Projet transformant
                       </button>
                     </div>
-                    {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 DG</div>}
+                    {draft.type === 'BUILD' && <div className="eligible-note">⭐ Éligible top 5 décideur</div>}
                     {draft.type === 'BUILD' && project.selected_for_transfo && !project.dg_validated_transfo && (
                       <div className="dg-pending-hint">
-                        Soumis au DG : la validation se fait dans <strong>Vue DG</strong> avant d&apos;ouvrir la Maturity Roadmap.
+                        Soumis au décideur : la validation se fait dans <strong>Vue décideur</strong> avant d&apos;ouvrir la Maturity Roadmap.
                       </div>
                     )}
                     {draft.type === 'BUILD' && project.dg_validated_transfo && (
-                      <div className="dg-ok-hint">Validé DG — le projet est prêt pour la roadmap (chantiers & jalons).</div>
+                      <div className="dg-ok-hint">Validé décideur — le projet est prêt pour la roadmap (chantiers & jalons).</div>
                     )}
                   </div>
                 </div>
@@ -1072,11 +1072,11 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
       </div>
 
       <div className="section-title" style={{ marginTop: 'var(--space-xl)' }}>
-        Projets soumis au DG ({selected.length}/5)
+        Projets soumis au décideur ({selected.length}/5)
       </div>
 
       {selected.length === 0 && (
-        <div className="empty-state">Aucun projet BUILD retenu pour le DG.</div>
+        <div className="empty-state">Aucun projet BUILD retenu pour le décideur.</div>
       )}
 
       <div className="synthese-projects">
@@ -1091,9 +1091,9 @@ function SyntheseView({ perimetre, coefs }: { perimetre: Perimetre; coefs: Coeff
                   <strong className="synthese-project-name">{project.name}</strong>
                   <span className="synthese-thematique">{project.thematique}</span>
                   {project.dg_validated_transfo ? (
-                    <span className="synthese-dg-ok" title="Validé DG pour la roadmap">Validé DG</span>
+                    <span className="synthese-dg-ok" title="Validé décideur pour la roadmap">Validé décideur</span>
                   ) : (
-                    <span className="synthese-dg-wait" title="En attente validation DG">Attente DG</span>
+                    <span className="synthese-dg-wait" title="En attente validation décideur">Attente décideur</span>
                   )}
                   <span className="synthese-score" style={{ color: getScoreColor(score) }}>{score === 0 ? '—' : score}pts</span>
                 </div>
@@ -1148,7 +1148,7 @@ function PerimetreView({
         <div className="perimetre-stats-inline">
           <span>{perimetre.projects.length} projet{perimetre.projects.length !== 1 ? 's' : ''}</span>
           <span>·</span>
-          <span style={{ color: perimetre.color }}>{selectedCount}/5 soumis au DG</span>
+          <span style={{ color: perimetre.color }}>{selectedCount}/5 soumis au décideur</span>
         </div>
         <div className="mode-toggle">
           <button
@@ -1163,7 +1163,7 @@ function PerimetreView({
             className={`mode-btn ${mode === 'synthese' ? 'mode-btn--active' : ''}`}
             onClick={() => setMode('synthese')}
           >
-            📋 Synthèse DG
+            📋 Synthèse décideur
           </button>
         </div>
       </div>
@@ -1550,7 +1550,7 @@ export default function ProjectSelector({
           <div className="ps-page-header">
             <div>
               <h1 className="ps-page-title">Sélection de projets transformants</h1>
-              <p className="ps-page-sub">Les projets BUILD sont classés par indice de criticité — le top 5 est soumis au DG</p>
+              <p className="ps-page-sub">Les projets BUILD sont classés par indice de criticité — le top 5 est soumis au décideur</p>
             </div>
             <div className="ps-legend">
               <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--score-critical)' }} />≥75</span>

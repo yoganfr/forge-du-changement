@@ -3,7 +3,7 @@
  * (`auth.uid()` / `current_app_user_id()`), pas sur ce fichier.
  * Implémentation découpée dans `./api/*` ; ce fichier réexporte la même surface publique.
  */
-export { insertAuditEvent } from './api/audit'
+export { insertAuditEvent, listWorkspaceAuditEvents } from './api/audit'
 export {
   STORAGE_BUCKET_ASSETS,
   createSignedAssetUrl,

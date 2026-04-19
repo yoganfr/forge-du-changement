@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import DgProjectAccordion from '../DgProjectAccordion'
-import { getWorkspaceDirectionsWithProjects, updateProjet } from '../lib/api'
-import type { DashboardDgDirectionStats, DashboardDgKpis, Projet } from '../lib/types'
+import {
+  getWorkspaceDirectionsWithProjects,
+  getWorkspaceUsers,
+  insertAuditEvent,
+  listWorkspaceAuditEvents,
+  updateProjet,
+} from '../lib/api'
+import type { AuditEvent, DashboardDgDirectionStats, DashboardDgKpis, Projet, User } from '../lib/types'
 
 const SCORE_COEFFICIENTS = {
   criticite: 3,
@@ -40,11 +46,33 @@ type DirectionBundle = {
   projects: Projet[]
 }
 
-export default function DashboardDG({ workspaceId }: { workspaceId: string | null }) {
+type DecideurDecisionMode = 'validate' | 'revoke'
+
+type DecideurDecisionModal = {
+  projetId: string
+  projetNom: string
+  mode: DecideurDecisionMode
+}
+
+const DECIDEUR_AUDIT_ACTIONS = ['decideur_validation_set', 'decideur_validation_revoked'] as const
+
+export default function DashboardDG({
+  workspaceId,
+  canActOnDecideurValidation,
+}: {
+  workspaceId: string | null
+  canActOnDecideurValidation: boolean
+}) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [directions, setDirections] = useState<DirectionBundle[]>([])
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [decisionModal, setDecisionModal] = useState<DecideurDecisionModal | null>(null)
+  const [dateRevue, setDateRevue] = useState('')
+  const [decisionComment, setDecisionComment] = useState('')
+  const [decisionReason, setDecisionReason] = useState('')
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([])
+  const [workspaceUsers, setWorkspaceUsers] = useState<User[]>([])
 
   const load = useCallback(async () => {
     if (!workspaceId) {
@@ -54,7 +82,11 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
     setLoading(true)
     setError(null)
     try {
-      const rows = await getWorkspaceDirectionsWithProjects(workspaceId)
+      const [rows, audits, users] = await Promise.all([
+        getWorkspaceDirectionsWithProjects(workspaceId),
+        listWorkspaceAuditEvents(workspaceId, [...DECIDEUR_AUDIT_ACTIONS], 20),
+        getWorkspaceUsers(workspaceId),
+      ])
       setDirections(
         rows.map((r) => ({
           id: r.direction.id,
@@ -63,12 +95,14 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
           projects: r.projects,
         })),
       )
+      setAuditEvents(audits)
+      setWorkspaceUsers(users)
     } catch (e) {
       const message =
         typeof e === 'object' && e !== null && 'message' in e
           ? String((e as { message?: unknown }).message ?? '').trim()
           : ''
-      setError(message || 'Impossible de charger la vue consolidée.')
+      setError(message || 'Impossible de charger la vue décideur consolidée.')
     } finally {
       setLoading(false)
     }
@@ -120,20 +154,54 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
     return groups.sort((a, b) => a.directionName.localeCompare(b.directionName, 'fr'))
   }, [directions])
 
-  async function handleValidate(projetId: string, validated: boolean) {
+  async function handleValidate(
+    projetId: string,
+    validated: boolean,
+    details: { dateRevue?: string; commentaireDecision?: string; motifRetrait?: string },
+  ) {
     setSavingId(projetId)
     try {
       await updateProjet(projetId, { dg_validated_transfo: validated })
+      if (workspaceId) {
+        await insertAuditEvent({
+          workspace_id: workspaceId,
+          action: validated ? 'decideur_validation_set' : 'decideur_validation_revoked',
+          payload: {
+            projet_id: projetId,
+            ...details,
+          },
+        })
+      }
       await load()
     } catch (e) {
       const message =
         typeof e === 'object' && e !== null && 'message' in e
           ? String((e as { message?: unknown }).message ?? '').trim()
           : ''
-      window.alert(message || 'Impossible de mettre à jour le projet.')
+      window.alert(message || 'Impossible de mettre à jour la décision.')
     } finally {
       setSavingId(null)
     }
+  }
+
+  async function submitDecideurDecision() {
+    if (!decisionModal) return
+    if (decisionModal.mode === 'validate') {
+      if (!dateRevue.trim() || !decisionComment.trim()) return
+      await handleValidate(decisionModal.projetId, true, {
+        dateRevue: dateRevue.trim(),
+        commentaireDecision: decisionComment.trim(),
+      })
+    } else {
+      if (!decisionReason.trim()) return
+      await handleValidate(decisionModal.projetId, false, {
+        motifRetrait: decisionReason.trim(),
+      })
+    }
+    setDecisionModal(null)
+    setDateRevue('')
+    setDecisionComment('')
+    setDecisionReason('')
   }
 
   const model = useMemo(() => {
@@ -177,12 +245,44 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
     return { kpis, top5 }
   }, [directions])
 
+  const userLabelById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const u of workspaceUsers) {
+      const prenom = (u.prenom ?? '').trim()
+      const nom = (u.nom ?? '').trim()
+      const full = `${prenom} ${nom}`.trim()
+      m.set(u.id, full || u.email)
+    }
+    return m
+  }, [workspaceUsers])
+
+  const decideurHistoryRows = useMemo(() => {
+    return auditEvents.map((evt) => {
+      const isValidation = evt.action === 'decideur_validation_set'
+      const payload = evt.payload ?? {}
+      const commentaire = String(payload.commentaireDecision ?? '').trim()
+      const motif = String(payload.motifRetrait ?? '').trim()
+      const dateRevueEvt = String(payload.dateRevue ?? '').trim()
+      const actor =
+        (evt.actor_user_id ? userLabelById.get(evt.actor_user_id) : null) ??
+        'Utilisateur'
+      return {
+        id: evt.id,
+        createdAt: evt.created_at,
+        action: isValidation ? 'Validation décideur' : 'Retrait validation décideur',
+        actor,
+        note: isValidation ? commentaire || '—' : motif || '—',
+        dateRevue: isValidation ? dateRevueEvt || '—' : null,
+      }
+    })
+  }, [auditEvents, userLabelById])
+
   return (
     <section className="dg" id="dg-print-scope">
       <div className="dg__header">
         <div>
-          <h2 className="dg__title">Vue DG consolidée</h2>
-          <p className="dg__subtitle">Synthèse multi-directions, validation des projets BUILD pour la Maturity Roadmap.</p>
+          <h2 className="dg__title">Vue décideur consolidée</h2>
+          <p className="dg__subtitle">Synthèse multi-directions, validation décideur des projets BUILD pour la Maturity Roadmap.</p>
         </div>
         <button
           type="button"
@@ -212,9 +312,29 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
           </div>
 
           <article className="dg__card dg__card--wide">
+            <h3>Historique des décisions décideur</h3>
+            {decideurHistoryRows.length === 0 ? (
+              <p className="dg__empty">Aucune décision enregistrée pour le moment.</p>
+            ) : (
+              <ul className="dg__ranking">
+                {decideurHistoryRows.map((row) => (
+                  <li key={row.id} className="dg__ranking-item">
+                    <span>
+                      {new Date(row.createdAt).toLocaleString('fr-FR')} · {row.action} · {row.actor}
+                    </span>
+                    <span>
+                      {row.dateRevue ? `Revue: ${row.dateRevue} · ` : ''}{row.note}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+
+          <article className="dg__card dg__card--wide">
             <h3>Projets BUILD soumis pour la roadmap</h3>
             <p className="dg__hint">
-              Les directions marquent des projets comme &laquo; retenus pour le DG &raquo; dans La Fabrique. Validez ici ceux qui passent en
+              Les directions marquent des projets comme &laquo; retenus pour le décideur &raquo; dans La Fabrique. Validez ici ceux qui passent en
               Maturity Roadmap (chantiers et jalons sur 4 axes).
             </p>
             {pendingByDirection.length === 0 ? (
@@ -233,7 +353,10 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
                             globalScore={computeProjectScore(projet)}
                             mode="pending"
                             saving={savingId === projet.id}
-                            onValidate={() => void handleValidate(projet.id, true)}
+                            onValidate={() => {
+                              if (!canActOnDecideurValidation) return
+                              setDecisionModal({ projetId: projet.id, projetNom: projet.nom, mode: 'validate' })
+                            }}
                             onRevoke={() => {}}
                           />
                         </li>
@@ -264,13 +387,8 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
                             saving={savingId === projet.id}
                             onValidate={() => {}}
                             onRevoke={() => {
-                              if (
-                                !window.confirm(
-                                  'Retirer la validation DG ? Le projet ne sera plus accessible depuis Ma roadmap tant qu’il n’est pas validé à nouveau.',
-                                )
-                              )
-                                return
-                              void handleValidate(projet.id, false)
+                              if (!canActOnDecideurValidation) return
+                              setDecisionModal({ projetId: projet.id, projetNom: projet.nom, mode: 'revoke' })
                             }}
                           />
                         </li>
@@ -297,6 +415,67 @@ export default function DashboardDG({ workspaceId }: { workspaceId: string | nul
             </ol>
           </article>
         </>
+      )}
+
+      {decisionModal && (
+        <div className="mr-modal-overlay" role="presentation" onClick={() => setDecisionModal(null)}>
+          <div className="mr-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
+            <h3>{decisionModal.mode === 'validate' ? 'Validation décideur' : 'Retrait validation décideur'}</h3>
+            <p className="dg__hint"><strong>Projet:</strong> {decisionModal.projetNom}</p>
+
+            {decisionModal.mode === 'validate' ? (
+              <>
+                <label className="mr-modal__field">
+                  Date de revue (obligatoire)
+                  <input
+                    type="date"
+                    value={dateRevue}
+                    onChange={(e) => setDateRevue(e.target.value)}
+                    required
+                  />
+                </label>
+                <label className="mr-modal__field">
+                  Commentaire de décision (obligatoire)
+                  <textarea
+                    value={decisionComment}
+                    onChange={(e) => setDecisionComment(e.target.value)}
+                    rows={4}
+                    required
+                  />
+                </label>
+              </>
+            ) : (
+              <label className="mr-modal__field">
+                Motif de retrait (obligatoire)
+                <textarea
+                  value={decisionReason}
+                  onChange={(e) => setDecisionReason(e.target.value)}
+                  rows={4}
+                  required
+                />
+              </label>
+            )}
+
+            <div className="mr-modal__actions">
+              <button type="button" className="mr-btn-ghost" onClick={() => setDecisionModal(null)}>
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="mr-btn-primary"
+                onClick={() => void submitDecideurDecision()}
+                disabled={
+                  savingId === decisionModal.projetId
+                  || (decisionModal.mode === 'validate'
+                    ? !dateRevue.trim() || !decisionComment.trim()
+                    : !decisionReason.trim())
+                }
+              >
+                {savingId === decisionModal.projetId ? '…' : 'Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )

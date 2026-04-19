@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import type { AuditEvent } from '../types'
 
 async function resolveAuditActorUserId(): Promise<string | null> {
   const {
@@ -25,4 +26,25 @@ export async function insertAuditEvent(params: {
   if (error && import.meta.env.DEV) {
     console.warn('[audit_events]', params.action, error.message)
   }
+}
+
+export async function listWorkspaceAuditEvents(
+  workspaceId: string,
+  actions?: string[],
+  limit = 30,
+): Promise<AuditEvent[]> {
+  let q = supabase
+    .from('audit_events')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (actions && actions.length > 0) {
+    q = q.in('action', actions)
+  }
+
+  const { data, error } = await q
+  if (error) throw error
+  return (data ?? []) as AuditEvent[]
 }
