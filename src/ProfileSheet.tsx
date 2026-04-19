@@ -237,19 +237,17 @@ export default function ProfileSheet({
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem('lfdc-user-id'))
   useEffect(() => {
     if (!open) return
-    queueMicrotask(() => {
-      const s = loadStored()
-      setFirstName(s.firstName ?? firstNameProp)
-      setLastName(s.lastName ?? lastNameProp)
-      setJobTitle(s.jobTitle ?? jobTitleProp)
-      setDirectionName(s.directionName ?? directionProp)
-      setDirectionType(s.directionType ?? directionTypeProp)
-      setManagedCount(s.managedCount ?? managedCountProp)
-      setTotalEffectif(s.totalEffectif ?? totalEffectifProp)
-      setAvatarUrl(s.avatar ?? avatarUrlProp ?? null)
-      setAvatarFile(null)
-      setDirty(false)
-    })
+    const s = loadStored()
+    setFirstName(s.firstName ?? firstNameProp)
+    setLastName(s.lastName ?? lastNameProp)
+    setJobTitle(s.jobTitle ?? jobTitleProp)
+    setDirectionName(s.directionName ?? directionProp)
+    setDirectionType(s.directionType ?? directionTypeProp)
+    setManagedCount(s.managedCount ?? managedCountProp)
+    setTotalEffectif(s.totalEffectif ?? totalEffectifProp)
+    setAvatarUrl(s.avatar ?? avatarUrlProp ?? null)
+    setAvatarFile(null)
+    setDirty(false)
   }, [open, firstNameProp, lastNameProp, jobTitleProp, directionProp, directionTypeProp, managedCountProp, totalEffectifProp, avatarUrlProp])
 
   useEffect(() => {

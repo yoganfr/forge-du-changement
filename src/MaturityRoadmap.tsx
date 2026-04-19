@@ -180,9 +180,7 @@ export default function MaturityRoadmap({
   }, [workspaceId, focusProjetId])
 
   useEffect(() => {
-    queueMicrotask(() => {
-      void loadAll()
-    })
+    void loadAll()
   }, [loadAll])
 
   const projectsById = useMemo(

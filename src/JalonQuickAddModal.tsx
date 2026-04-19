@@ -45,11 +45,9 @@ export default function JalonQuickAddModal({
 
   useEffect(() => {
     if (!open) return
-    queueMicrotask(() => {
-      setNom('')
-      setAxe(fixedAxe ?? 'PROCESSUS')
-      setEcheanceKey(initialColumnKey)
-    })
+    setNom('')
+    setAxe(fixedAxe ?? 'PROCESSUS')
+    setEcheanceKey(initialColumnKey)
   }, [open, initialColumnKey, fixedAxe])
 
   const echeanceSelectValue = useMemo(() => {

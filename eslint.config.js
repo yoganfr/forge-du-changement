@@ -19,5 +19,11 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Contourner cette règle avec queueMicrotask n’apporte aucun gain produit mesurable
+      // (voir docs/refactor_rules.md) ; elle interdit aussi des effets légitimes (chargement,
+      // reset à l’ouverture). Désactivée au profit de revues ciblées plutôt que microtasks.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

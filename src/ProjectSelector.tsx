@@ -691,12 +691,11 @@ function ProjectCard({
   const hasMountedRef = useRef(false)
 
   useEffect(() => {
-    if (!expanded) return
-    queueMicrotask(() => {
+    if (expanded) {
       setDraft(project)
       setPilotageError(false)
       setConfirmDelete(false)
-    })
+    }
   }, [expanded, project])
 
   useEffect(() => {
@@ -1348,10 +1347,8 @@ export default function ProjectSelector({
   const pendingCreateRef = useRef<Record<string, Promise<string>>>({})
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const name = memberDirectionName.trim() || 'Ma direction'
-      setPerimetres((prev) => prev.map((p) => (p.id === DIR_PERIM_ID ? { ...p, name } : p)))
-    })
+    const name = memberDirectionName.trim() || 'Ma direction'
+    setPerimetres((prev) => prev.map((p) => (p.id === DIR_PERIM_ID ? { ...p, name } : p)))
   }, [memberDirectionName])
 
   useEffect(() => {

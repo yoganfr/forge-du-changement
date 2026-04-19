@@ -297,18 +297,14 @@ export default function CompanySheet({
   const [batchSummary, setBatchSummary] = useState<string | null>(null)
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setLogoUrl(companyLogoProp ?? null)
-      setLogoFile(null)
-    })
+    setLogoUrl(companyLogoProp ?? null)
+    setLogoFile(null)
   }, [companyLogoProp])
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setDraftName(companyName)
-      setDraftSector(sector)
-      setDraftSize(size)
-    })
+    setDraftName(companyName)
+    setDraftSector(sector)
+    setDraftSize(size)
   }, [companyName, sector, size])
 
   const roleLabel = getRoleLabel(currentUserRole)
@@ -340,7 +336,7 @@ export default function CompanySheet({
   }
 
   useEffect(() => {
-    queueMicrotask(() => setMembersUiPage(1))
+    setMembersUiPage(1)
   }, [workspaceId, membersRefreshKey, mergedMembers.length])
 
   useEffect(() => {
