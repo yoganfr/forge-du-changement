@@ -761,7 +761,7 @@ function ProjectCard({
         <div className="project-card__header-right">
           <ScoreRing40 score={displayScoreCollapsed} />
           <div className="project-card__header-actions">
-            {project.type === 'BUILD' && (
+            {project.type === 'BUILD' ? (
               <button
                 type="button"
                 className={`transfo-toggle ${project.selected_for_transfo ? 'transfo-toggle--on' : ''}`}
@@ -773,6 +773,10 @@ function ProjectCard({
               >
                 {project.selected_for_transfo ? `★ #${dgRank} DG` : '☆ Retenir'}
               </button>
+            ) : (
+              <span className="transfo-toggle transfo-toggle--placeholder" aria-hidden>
+                ☆ Retenir
+              </span>
             )}
             {onOpenRoadmap && (
               <button
@@ -2364,6 +2368,11 @@ const CSS = `
   border-color: var(--perim-color);
   color: var(--perim-color);
   background: color-mix(in srgb, var(--perim-color) 10%, transparent);
+}
+
+.transfo-toggle--placeholder {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ── Corpo du projet ── */
