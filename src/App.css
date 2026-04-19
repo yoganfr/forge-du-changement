@@ -467,7 +467,7 @@
 
 .settings-page__btn--primary {
   background: var(--theme-accent, #8e3b46);
-  color: #fff;
+  color: var(--theme-on-accent);
   border-color: color-mix(in srgb, var(--theme-accent, #8e3b46) 88%, #000);
 }
 
@@ -513,7 +513,7 @@
 .settings-page__error {
   margin: 0 0 var(--space-md);
   font-size: var(--text-sm);
-  color: #b91c1c;
+  color: var(--score-critical);
 }
 
 .settings-page__meta {
@@ -1033,7 +1033,7 @@
 }
 
 .dg__state--error {
-  color: #b91c1c;
+  color: var(--score-critical);
 }
 
 .dg__kpis {
@@ -1254,7 +1254,7 @@
   font-size: 0.82rem;
   cursor: pointer;
   background: var(--theme-accent, var(--caramel-candy-600));
-  color: #fff;
+  color: var(--theme-on-accent);
   flex-shrink: 0;
 }
 
@@ -1339,9 +1339,9 @@
 }
 
 .dg .type-badge--build {
-  background: color-mix(in srgb, #8e3b46 15%, transparent);
-  color: #8e3b46;
-  border: 1px solid #8e3b46;
+  background: color-mix(in srgb, var(--brand-bordeaux) 15%, transparent);
+  color: var(--brand-bordeaux);
+  border: 1px solid var(--brand-bordeaux);
 }
 
 .dg .type-badge--run {

@@ -215,7 +215,7 @@
   font-size: var(--text-sm);
   cursor: pointer;
   background: var(--theme-accent, var(--caramel-candy-600));
-  color: #fff;
+  color: var(--theme-on-accent);
   margin-left: auto;
 }
 
@@ -365,13 +365,13 @@
 }
 
 .mr-statut-realise {
-  background: color-mix(in srgb, #2d7a4a 28%, transparent);
-  color: #1a4d2e;
+  background: color-mix(in srgb, var(--muted-yellow-green-600) 28%, transparent);
+  color: color-mix(in srgb, var(--muted-yellow-green-800) 60%, var(--theme-text));
 }
 
 .mr-statut-bloque {
-  background: color-mix(in srgb, #8e3b46 22%, transparent);
-  color: #5f0202;
+  background: color-mix(in srgb, var(--score-critical) 22%, transparent);
+  color: color-mix(in srgb, var(--score-critical) 72%, var(--theme-text));
 }
 
 .mr-add-jalon {
@@ -513,7 +513,7 @@
 
 .mr-error {
   padding: var(--space-md);
-  background: color-mix(in srgb, #c00 12%, transparent);
+  background: color-mix(in srgb, var(--score-critical) 12%, transparent);
   border-radius: 12px;
   font-size: var(--text-sm);
 }

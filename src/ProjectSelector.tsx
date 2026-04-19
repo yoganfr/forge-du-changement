@@ -1677,7 +1677,7 @@ const CSS = `
   background: var(--theme-bg-card);
   border-color: var(--theme-accent);
   color: var(--theme-text);
-  box-shadow: 0 0 0 3px rgba(142, 59, 70, 0.08);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent) 16%, transparent);
 }
 
 .ps-pill-dot {
@@ -1698,7 +1698,7 @@ const CSS = `
   appearance: none;
   border: none;
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
   border-radius: var(--radius-md);
   padding: 10px 20px;
   font-size: 14px;
@@ -1778,7 +1778,7 @@ const CSS = `
 .ps-sync-err {
   margin: 0;
   font-size: 12px;
-  color: #B91C1C;
+  color: var(--score-critical);
 }
 
 .ps-empty {
@@ -1816,9 +1816,9 @@ const CSS = `
 
 .ps-empty-btn {
   margin-top: 4px;
-  border: 1px solid #8E3B46;
-  background: #8E3B46;
-  color: #fff;
+  border: 1px solid var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
   border-radius: 10px;
   padding: 9px 14px;
   font-weight: 700;
@@ -2139,7 +2139,7 @@ const CSS = `
 }
 
 .pilotage-transverse-note {
-  background: rgba(142, 59, 70, 0.06);
+  background: color-mix(in srgb, var(--theme-accent) 8%, transparent);
   border-left: 3px solid var(--theme-accent);
   padding: 12px 16px;
   border-radius: 8px;
@@ -2172,7 +2172,7 @@ const CSS = `
 .contrib-pill--active {
   background: var(--theme-accent);
   border-color: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 
 .pilotage-hint {
@@ -2227,9 +2227,9 @@ const CSS = `
 }
 
 .type-badge--build {
-  background: color-mix(in srgb, #8E3B46 15%, transparent);
-  color: #8E3B46;
-  border: 1px solid #8E3B46;
+  background: color-mix(in srgb, var(--brand-bordeaux) 15%, transparent);
+  color: var(--brand-bordeaux);
+  border: 1px solid var(--brand-bordeaux);
 }
 
 .type-badge--run {
@@ -2606,7 +2606,7 @@ const CSS = `
 .type-pill--active {
   background: color-mix(in srgb, var(--brand-bordeaux) 92%, black 8%);
   border-color: color-mix(in srgb, var(--brand-bordeaux) 70%, var(--glass-border));
-  color: #fff;
+  color: var(--theme-on-accent);
   box-shadow: var(--glass-highlight), 0 4px 20px color-mix(in srgb, var(--brand-bordeaux) 22%, transparent);
 }
 
@@ -2960,9 +2960,9 @@ const CSS = `
 }
 
 .project-btn--primary {
-  background: #8E3B46;
-  border: 1px solid #8E3B46;
-  color: white;
+  background: var(--theme-accent);
+  border: 1px solid var(--theme-accent);
+  color: var(--theme-on-accent);
 }
 
 .project-btn--danger {
@@ -2972,7 +2972,7 @@ const CSS = `
 }
 
 .project-btn--danger:hover {
-  background: rgba(239,68,68,0.18);
+  background: color-mix(in srgb, var(--score-critical) 18%, transparent);
 }
 
 .project-delete-popin-backdrop {
@@ -3412,7 +3412,7 @@ const CSS = `
 .coef-dot--active {
   background: var(--theme-accent);
   border-color: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 
 /* ── Responsive ── */
