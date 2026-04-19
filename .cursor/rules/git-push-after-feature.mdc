@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Livraison GitHub après fonctionnalité
 
+Référence de style commit: `docs/git-commit-conventions.md` (format `type(scope): action`, types/scopes autorisés, trailer Made-with).
+
 À la fin de tout travail sur une **fonctionnalité** (code, docs produit liés, scripts SQL à versionner) :
 
 1. **`git status`** — vérifier les fichiers modifiés ou non suivis.
