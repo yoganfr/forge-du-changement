@@ -425,7 +425,7 @@
 .mr-raci-block-title {
   display: block;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 6px;
   color: var(--theme-text-muted);
 }
@@ -497,6 +497,12 @@
   align-items: center;
   gap: 8px;
   font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.mr-raci-row span {
+  font-weight: 400;
+  color: var(--theme-text);
 }
 
 .mr-raci-row input[type='checkbox'],
