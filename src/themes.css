@@ -10,6 +10,9 @@
   /* Signature marque — constant clair / sombre */
   --brand-bordeaux: #8e3b46;
 
+  /* Couleur d'appoint (secondaire) — valeur par défaut avant application du thème */
+  --theme-support: var(--brand-bordeaux);
+
   /* Palette fondamentale (mode clair) */
   --caramel-candy-50: #ffeeb3;
   --caramel-candy-100: #fdd284;
@@ -146,6 +149,8 @@
   --theme-text-muted: #676964;
   --theme-accent: #276bbb;
   --theme-on-accent: #ffffff;
+  /* Accent secondaire (bordeaux / corail) — décoratif, moins “CTA” que --theme-accent */
+  --theme-support: var(--coral-400);
   --theme-border: #8a8f85;
   --theme-sidebar-text: #f3f6f0;
   --theme-sidebar-text-muted: #b4b9b1;
@@ -258,6 +263,7 @@
   --theme-on-accent: #041a34;
   --theme-neon-orange: #d590a2;
   --theme-neon-green: #1c9781;
+  --theme-support: var(--theme-neon-orange);
   --theme-border: #646862;
   --theme-sidebar-text: #f3f6f0;
   --theme-sidebar-text-muted: #aeb3ac;

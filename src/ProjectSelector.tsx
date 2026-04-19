@@ -2770,8 +2770,8 @@ const CSS = `
   height: 46px;
   display: grid;
   place-items: center;
-  color: color-mix(in srgb, var(--theme-accent) 88%, #ffffff 12%);
-  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--theme-accent) 32%, transparent));
+  color: color-mix(in srgb, var(--theme-support) 88%, #ffffff 12%);
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--theme-support) 32%, transparent));
 }
 
 .critere-middle-pane {
