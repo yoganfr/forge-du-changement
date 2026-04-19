@@ -319,66 +319,64 @@ export default function ProfileSheet({
       avatar: avatarUrlToPersist,
     }
     saveStored(payload)
-    if (workspaceId) {
-      try {
-        const roleDb: User['role'] = role.toLowerCase().includes('consultant')
-          ? 'consultant'
-          : role.toLowerCase().includes('admin')
-            ? 'admin'
-            : role.toLowerCase().includes('pilote')
-              ? 'pilote'
-              : role.toLowerCase().includes('contributeur')
-                ? 'contributeur'
-                : 'codir'
+    try {
+      const roleDb: User['role'] = role.toLowerCase().includes('consultant')
+        ? 'consultant'
+        : role.toLowerCase().includes('admin')
+          ? 'admin'
+          : role.toLowerCase().includes('pilote')
+            ? 'pilote'
+            : role.toLowerCase().includes('contributeur')
+              ? 'contributeur'
+              : 'codir'
 
-        if (currentUserId) {
-          await updateUser(
-            currentUserId,
-            {
-              prenom: firstName || null,
-              nom: lastName || null,
-              job_title: jobTitle || null,
-              avatar_url: avatarUrlToPersist,
-              direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
-              direction_nom: directionName || null,
-              managed_count: managedCount,
-              total_effectif: totalEffectif,
-            },
-            workspaceId ? { workspace_id: workspaceId } : undefined,
-          )
-        } else {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession()
-          const authEmail = session?.user?.email?.trim().toLowerCase()
-          if (!authEmail) {
-            throw new Error('Session sans email')
-          }
-          const created = await createUser({
-            workspace_id: workspaceId,
-            email: authEmail,
+      if (currentUserId) {
+        await updateUser(
+          currentUserId,
+          {
             prenom: firstName || null,
             nom: lastName || null,
             job_title: jobTitle || null,
             avatar_url: avatarUrlToPersist,
-            role: roleDb,
             direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
             direction_nom: directionName || null,
             managed_count: managedCount,
             total_effectif: totalEffectif,
-            status: 'actif',
-          })
-          try {
-            await markInvitationsAcceptedForWorkspaceEmail(workspaceId, authEmail)
-          } catch {
-            /* idempotent si déjà acceptée */
-          }
-          setCurrentUserId(created.id)
-          localStorage.setItem('lfdc-user-id', created.id)
+          },
+          workspaceId ? { workspace_id: workspaceId } : undefined,
+        )
+      } else if (workspaceId) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        const authEmail = session?.user?.email?.trim().toLowerCase()
+        if (!authEmail) {
+          throw new Error('Session sans email')
         }
-      } catch {
-        // Keep UX resilient even if backend update fails
+        const created = await createUser({
+          workspace_id: workspaceId,
+          email: authEmail,
+          prenom: firstName || null,
+          nom: lastName || null,
+          job_title: jobTitle || null,
+          avatar_url: avatarUrlToPersist,
+          role: roleDb,
+          direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
+          direction_nom: directionName || null,
+          managed_count: managedCount,
+          total_effectif: totalEffectif,
+          status: 'actif',
+        })
+        try {
+          await markInvitationsAcceptedForWorkspaceEmail(workspaceId, authEmail)
+        } catch {
+          /* idempotent si déjà acceptée */
+        }
+        setCurrentUserId(created.id)
+        localStorage.setItem('lfdc-user-id', created.id)
       }
+    } catch {
+      // Keep UX resilient even if backend update fails
     }
     onSaved?.(payload)
     setDirty(false)

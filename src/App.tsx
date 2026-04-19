@@ -33,7 +33,8 @@ import type { User as AppDbUser } from './lib/types'
 type ServerAccess =
   | { source: 'users'; dbUser: AppDbUser }
   | { source: 'invitation'; role: AppUserRole; workspaceId: string }
-  | { source: 'superadmin' }
+  /** `dbProfile` : ligne `public.users` pour l’email courant (avatar, noms), même si l’accès métier est « super-admin ». */
+  | { source: 'superadmin'; dbProfile: AppDbUser | null }
 import { getCurrentUser, isPlatformSuperadmin, signOut } from './lib/auth'
 import { supabase } from './lib/supabase'
 import {
@@ -441,8 +442,14 @@ function App() {
 
   /** Mobile / autre appareil : le cache `localStorage` peut être vide alors que le profil existe en base ou chez OAuth. */
   useEffect(() => {
-    if (serverAccess?.source !== 'users') return
-    const patch = profilePatchFromDbUser(serverAccess.dbUser)
+    const dbRow =
+      serverAccess?.source === 'users'
+        ? serverAccess.dbUser
+        : serverAccess?.source === 'superadmin'
+          ? serverAccess.dbProfile
+          : null
+    if (!dbRow) return
+    const patch = profilePatchFromDbUser(dbRow)
     const oauthAvatar = authUser ? resolveAuthUserAvatarUrl(authUser) : null
 
     const prev = readStoredProfile() ?? {}
@@ -533,7 +540,7 @@ function App() {
           }
         }
       } else if (platformSuper) {
-        setServerAccess({ source: 'superadmin' })
+        setServerAccess({ source: 'superadmin', dbProfile: invitedUser ?? null })
       } else {
         setServerAccess(null)
       }
@@ -734,7 +741,11 @@ function App() {
   const canViewDecideur = canViewDecideurView(currentUserRole, platformSuperadmin)
   const canActDecideur = canActOnDecideurValidation(currentUserRole, platformSuperadmin)
   const avatarFromDb =
-    serverAccess?.source === 'users' ? serverAccess.dbUser.avatar_url?.trim() || null : null
+    serverAccess?.source === 'users'
+      ? serverAccess.dbUser.avatar_url?.trim() || null
+      : serverAccess?.source === 'superadmin'
+        ? serverAccess.dbProfile?.avatar_url?.trim() || null
+        : null
   const avatarFromAuth = resolveAuthUserAvatarUrl(authUser)
   const avatarFromGravatar = gravatarAvatarUrl(authUser.email)
   const avatarDisplayUrl =

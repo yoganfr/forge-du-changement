@@ -92,7 +92,9 @@ export async function getCurrentUser() {
     .from('users')
     .select('*')
     .eq('email', email)
-    .single()
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   if (error) return null
   return data
