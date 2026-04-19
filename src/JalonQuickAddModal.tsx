@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Axe } from './lib/types'
 import { buildTimelineColumns, defaultTargetMonthYearForColumn } from './lib/roadmapTimelineColumns'
+import { mrBackdropProps, useBackdropPointerClose } from './lib/useBackdropPointerClose'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
@@ -42,6 +43,7 @@ export default function JalonQuickAddModal({
   const [echeanceKey, setEcheanceKey] = useState(initialColumnKey)
 
   const echeanceOptions = useMemo(() => (open ? buildTimelineColumns() : []), [open])
+  const { onBackdropPointerDown } = useBackdropPointerClose(onClose, open)
 
   useEffect(() => {
     if (!open) return
@@ -83,7 +85,12 @@ export default function JalonQuickAddModal({
   }
 
   return (
-    <div className="mr-modal-overlay" role="presentation" onClick={onClose}>
+    <div
+      className="mr-modal-overlay"
+      role="presentation"
+      {...mrBackdropProps}
+      onPointerDown={onBackdropPointerDown}
+    >
       <div
         className="mr-modal"
         role="dialog"

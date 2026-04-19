@@ -39,6 +39,7 @@ export {
   deleteChantier,
   deleteJalon,
   getChantierJalons,
+  getJalonById,
   getJalonRaci,
   getJalonsByChantierIds,
   getNextJalonNumero,

@@ -4,6 +4,7 @@ import {
   buildTimelineColumns,
   defaultTargetMonthYearForColumn,
   jalonTargetDate,
+  monthYearFromTimelineColumnKey,
 } from './roadmapTimelineColumns'
 import type { Jalon } from './types'
 
@@ -28,6 +29,16 @@ describe('defaultTargetMonthYearForColumn', () => {
     expect(my?.mois).toBeGreaterThanOrEqual(1)
     expect(my?.mois).toBeLessThanOrEqual(12)
     expect(my?.annee).toBeGreaterThanOrEqual(2026)
+  })
+})
+
+describe('monthYearFromTimelineColumnKey', () => {
+  it('retrouve mois/année pour une clé de colonne', () => {
+    const cols = buildTimelineColumns(fixedNow)
+    const key = cols[0]!.key
+    const my = monthYearFromTimelineColumnKey(key, cols)
+    expect(my.mois).toBeGreaterThanOrEqual(1)
+    expect(my.annee).toBeGreaterThanOrEqual(2026)
   })
 })
 

@@ -142,6 +142,8 @@ export type Jalon = {
   kpi_valeur_cible: string | null
   facette: JalonFacette | null
   jalon_dependance_id: string | null
+  /** Si défini, ce jalon est le reflet KPI auto d’un jalon parent (voir `syncKpiMirrorForParentJalon`). */
+  kpi_source_jalon_id?: string | null
   note_contexte: string | null
   created_at: string
   updated_at: string

@@ -183,6 +183,12 @@ export async function getProjetJalons(projet_id: string): Promise<Jalon[]> {
   return sortJalonsByAxeAndOrder((data ?? []) as Jalon[])
 }
 
+export async function getJalonById(id: string): Promise<Jalon | null> {
+  const { data, error } = await supabase.from('jalons').select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  return (data ?? null) as Jalon | null
+}
+
 export async function getChantierJalons(chantier_id: string): Promise<Jalon[]> {
   return dedupedFetch(`roadmap-jalons:${chantier_id}`, async () => {
     const { data, error } = await supabase.from('jalons').select('*').eq('chantier_id', chantier_id)
@@ -256,6 +262,7 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
     kpi_valeur_cible: data.kpi_valeur_cible ?? null,
     facette: data.facette ?? null,
     jalon_dependance_id: data.jalon_dependance_id ?? null,
+    kpi_source_jalon_id: data.kpi_source_jalon_id ?? null,
     note_contexte: data.note_contexte ?? null,
   }
   const { data: row, error } = await supabase.from('jalons').insert(insert).select().single()

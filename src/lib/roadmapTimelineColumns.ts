@@ -119,6 +119,17 @@ function dateInRange(d: Date, start: Date, end: Date): boolean {
   return t >= start.getTime() && t <= end.getTime()
 }
 
+/** Mois / année cibles alignés sur une colonne timeline (même logique que la popin « Nouveau jalon »). */
+export function monthYearFromTimelineColumnKey(
+  key: string,
+  columns: TimelineColumn[],
+): { mois: number | null; annee: number | null } {
+  const col = columns.find((c) => c.key === key)
+  if (!col) return { mois: null, annee: null }
+  const my = defaultTargetMonthYearForColumn(col)
+  return my ? { mois: my.mois, annee: my.annee } : { mois: null, annee: null }
+}
+
 export function assignJalonToColumn(j: Jalon, columns: TimelineColumn[]): string {
   const d = jalonTargetDate(j)
   if (!d) {

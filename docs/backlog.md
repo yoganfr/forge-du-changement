@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : 18 avril 2026
+Dernière mise à jour : 19 avril 2026
 
 ## Légende
 - 🔴 Priorité haute
@@ -47,26 +47,31 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 ---
 
-## EPIC 2 — Vue DG Consolidée 🔴 PRIORITÉ #1
+## EPIC 2 — Vue DG Consolidée 🟠 PARTIEL (priorité restante : macro transverse)
 
 | # | Titre | Priorité | Statut |
 |---|-------|----------|--------|
-| 1 | Dashboard consolidé toutes directions | 🔴 | ⬜ |
-| 2 | Classement inter-directions top 5 BUILD | 🔴 | ⬜ |
-| 3 | Gantt macro consolidé | 🟠 | ⬜ |
+| 1 | Dashboard consolidé toutes directions | 🔴 | ✅ |
+| 2 | Classement inter-directions top 5 BUILD | 🔴 | ✅ |
+| 3 | Gantt macro consolidé (lecture transverse multi-directions) | 🟠 | ⬜ |
 
 ---
 
-## EPIC 3 — Maturity Roadmap (Rôles & Rythmes) 🔴 PRIORITÉ #2
+## EPIC 3 — Maturity Roadmap (Rôles & Rythmes) 🚧 EN COURS
 
 | # | Titre | Priorité | Statut |
 |---|-------|----------|--------|
-| 4 | Structure 4 axes par projet BUILD (Processus/Orga/Outils/KPI) | 🔴 | ⬜ |
-| 5 | Création et gestion des jalons | 🔴 | ⬜ |
-| 6 | Macro RACI par jalon | 🔴 | ⬜ |
+| 4 | Structure 4 axes par projet BUILD (Processus/Orga/Outils/KPI) | 🔴 | ✅ |
+| 5 | Création et gestion des jalons | 🔴 | ✅ |
+| 6 | Macro RACI par jalon | 🔴 | ✅ |
 | 7 | Système Réactions/Réponses sur jalons | 🟠 | ⬜ |
-| 8 | Vue matrice complète | 🟠 | ⬜ |
-| 9 | Dépendances inter-jalons | 🟡 | ⬜ |
+| 8 | Vue matrice complète (grille temps × 4 axes, chantiers typés par axe) | 🟠 | ✅ |
+| 9 | Dépendances inter-jalons (séquence ligne + `jalon_dependance_id` conservée, **UI masquée**) | 🟡 | ✅ |
+
+**Livraison par vagues (détail jalon / roadmap, avril 2026)**  
+- **V1** : backdrop drawer/modales (mousedown+mouseup), RACI typographie + grilles 2 col (pilote radio, autres cases), échéance = maille timeline.  
+- **V2** : pas de saisie dépendance en UI ; création **Direction** inline (modal chantier + drawer RACI) avec détection de doublon.  
+- **V3** : jalon KPI **miroir** sync indicateur/cible/échéance parent, verrou nom+date sur miroir, suppression miroir → vide KPI parent. Script : `docs/supabase-jalons-kpi-source.sql`.
 
 ---
 
@@ -153,8 +158,10 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 | # | Titre | Priorité | Statut |
 |---|-------|----------|--------|
-| 36 | Export PDF — Vue Synthèse Direction | 🟠 | ⬜ |
+| 36 | Export PDF — Vue Synthèse Direction | 🟠 | 🚧 |
 | 37 | Export PDF — PAE Manager | 🟡 | ⬜ |
+
+*Note #36* : v1 **impression navigateur** sur la Vue DG (`window.print` + styles `dg-print`). Export PDF dédié (génération fichier, branding contrôlé, hors navigateur) encore à traiter si besoin CODIR.
 
 ---
 
@@ -174,10 +181,12 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - `workspace_consultants` — rattachement consultant ↔ workspace (owner/collaborator)
 - `audit_events` — traçabilité actions sensibles
 - `directions` — directions/périmètres
-- `projets` — projets RUN/BUILD avec scoring
-- `raci_projets` — relations RACI
+- `projets` — projets RUN/BUILD avec scoring (`dg_validated_transfo`, etc.)
+- `chantiers` — lignes thématiques sous projet BUILD ; colonne `axe` (voir `docs/supabase-chantiers-axe.sql`)
+- `jalons` — jalons roadmap (dates cible, statut, facette, `jalon_dependance_id`, `kpi_source_jalon_id` — voir `docs/supabase-jalons-kpi-source.sql`)
+- `raci_jalons` — macro RACI par jalon (pilote / impliqué / informé par direction)
+- `raci_projets` — relations RACI projet (héritage / autres usages)
 - `plan_de_charge` — charges mensuelles
-- `jalons` — jalons de roadmap
 
 ## Fonctions SQL helper
 
@@ -191,21 +200,30 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 ## Composants principaux
 
-- `App.tsx` — dashboard, navigation, garde d'auth
+- `App.tsx` — dashboard, navigation, garde d'auth, entrées La Fabrique / Vue DG / roadmap
 - `OnboardingFlow.tsx` — création espace entreprise + invitations
 - `ProjectSelector.tsx` — outil saisie/scoring projets (Supabase)
 - `CompanySheet.tsx` — fiche entreprise + invitations unitaires/CSV
 - `ProfileSheet.tsx` — drawer profil utilisateur
 - `MemberOnboarding.tsx` — espace membre
+- `pages/DashboardDG.tsx` — synthèse DG (KPI, validation BUILD, top 5, impression)
 - `pages/Login.tsx` — écran connexion premium
 - `pages/AuthCallback.tsx` — retour OAuth/Magic Link
-- `src/lib/api.ts` — CRUD Supabase + cache/dedup + audit
+- `MaturityRoadmap.tsx` — roadmap maturité (chantiers, jalons, RACI, dépendances)
+- `RoadmapTimelineGrid.tsx` — grille 4 axes × échéances
+- `DgProjectAccordion.tsx` — détail projet dans la Vue DG
+- `ChantierLineModal.tsx` / `JalonQuickAddModal.tsx` — édition chantiers et jalons
+- `src/lib/api.ts` — façade CRUD + réexport roadmap
+- `src/lib/api/roadmap.ts` — chantiers, jalons, RACI jalons
 - `src/lib/auth.ts` — Auth helpers + rate limit client
 - `src/lib/supabase.ts` — client Supabase (vars d'env)
 - `src/lib/types.ts` — types TypeScript
 
 ## Documentation projet
 
+- `docs/# Règles métier — Maturity Roadmap.md` — référence métier module roadmap
+- `docs/maturity-roadmap-synthese-evolutions-produit.md` — pistes versionnement, param workspace, etc.
+- `docs/supabase-chantiers-axe.sql` — migration `chantiers.axe` (typage par axe de création)
 - `docs/proposition-regles-matrice-permissions.md` — règles en langage métier
 - `docs/security-quick-wins.md` — MFA, rate limits, RLS, audit
 - `docs/supabase-evolution-permissions-alignement.sql` — script SQL principal
@@ -228,13 +246,14 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 ## Trajectoire suggérée
 
 **Sprint prochain (CODIR-ready)** :
-1. EPIC 2 — Vue DG Consolidée (issues #1, #2, #3)
-2. EPIC 12 — Top 3 polish design (issues #52, #53, #58)
-3. EPIC 13 — Export PDF Vue Synthèse (issue #36)
+1. EPIC 2 — **#3** Gantt macro consolidé multi-directions (reste le gap principal de l’EPIC)
+2. EPIC 3 — **#7** Réactions / réponses sur jalons (valeur « dialogue structuré » des règles métier)
+3. EPIC 12 — Top 3 polish design (issues #52, #53, #58)
+4. EPIC 13 — Finaliser **#36** si besoin livrable PDF autonome (au-delà de l’impression navigateur)
 
-**Sprint d'après (cœur métier)** :
-4. EPIC 3 — Maturity Roadmap complète (issues #4 à #9)
-5. EPIC 4 — PAE (issues #10 à #13)
+**Sprint d’après** :
+5. EPIC 3 — versionnement roadmap, param maille temporelle workspace (voir synthèse évolutions)
+6. EPIC 4 — PAE (issues #10 à #13)
 
 **Plus tard** :
 6. EPIC 5 — Plan de charge
@@ -245,6 +264,8 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 ## Plan d'implémentation détaillé (tâches prêtes dev)
 
 ### Sprint 1 — CODIR-ready (2 semaines)
+
+*État code (19/04/2026)* : **T1–T3 et T4** sont largement couverts par `DashboardDG` + agrégations locales (KPI, tableaux validation BUILD, top 5). **T5** (Gantt macro consolidé) et **T7** (PDF autonome) restent les gros morceaux ouverts ; **T6** (design) inchangé.
 
 #### T1 — Cadrage KPI DG consolidé (issue #1)
 - **Objectif** : figer les indicateurs de la Vue DG pour éviter les allers-retours de définition en cours de dev.
@@ -323,11 +344,12 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 #### T7 — Export PDF Vue Synthèse Direction (issue #36)
 - **Objectif** : générer un livrable partageable pour CODIR/clients.
 - **Scope** :
-  - export PDF d'une vue synthèse (KPI + tableau + date + workspace).
+  - aujourd’hui : **impression navigateur** sur la Vue DG (bouton + styles dédiés) — acceptable en v0.
+  - cible : export PDF d'une vue synthèse (KPI + tableau + date + workspace), génération fichier si besoin.
   - gestion des cas sans données.
   - cohérence branding.
 - **Critères d'acceptation** :
-  - PDF généré en < 5 secondes.
+  - PDF ou PDF équivalent imprimable en temps raisonnable (< 5 s côté utilisateur pour une génération dédiée si implémentée).
   - rendu lisible A4 (portrait ou paysage défini).
   - contenu fidèle à la vue écran.
 - **Dépendances** : T3, T4, T6.
@@ -347,6 +369,8 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - **Estimation** : 1 jour.
 
 ### Sprint 2 — Cœur métier roadmap (EPIC 3)
+
+*État 19/04/2026* : **T9 à T11, T13 et T14** sont couverts par l’app (axes, CRUD jalons, RACI, grille, dépendance). **T12** (réactions / réponses) et **T15** (recette ciblée + perf) restent pertinents ; ajouter au besoin versionnement / param workspace depuis `docs/maturity-roadmap-synthese-evolutions-produit.md`.
 
 #### T9 — Structure 4 axes BUILD (issue #4)
 - **Estimation** : 1 jour.

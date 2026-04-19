@@ -414,6 +414,29 @@
   margin: 0 0 var(--space-md);
 }
 
+.mr-drawer-section-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: var(--space-lg) 0 var(--space-sm);
+  color: var(--theme-text);
+}
+
+.mr-raci-block-title {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--theme-text-muted);
+}
+
+.mr-raci-cell-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+
 .mr-field {
   margin-bottom: var(--space-md);
 }
@@ -476,8 +499,10 @@
   font-size: var(--text-sm);
 }
 
-.mr-raci-row input[type='checkbox'] {
+.mr-raci-row input[type='checkbox'],
+.mr-raci-row input[type='radio'] {
   width: auto;
+  flex-shrink: 0;
 }
 
 .mr-error {
@@ -1026,6 +1051,10 @@
 }
 
 /* Popin création rapide */
+.mr-modal-overlay--stack {
+  z-index: 340;
+}
+
 .mr-modal-overlay {
   position: fixed;
   inset: 0;

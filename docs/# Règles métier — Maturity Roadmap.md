@@ -113,12 +113,12 @@ Cette liste sert de checklist mentale pour vérifier qu'aucune dimension n'est o
 | **Description** | Texte libre, contexte et enjeux |
 | **Date cible** | Mois + année (trimestre calculé automatiquement) |
 | **Statut** | À venir / En cours / Réalisé / Bloqué |
-| **Responsable** | Nom libre de la personne en charge |
-| **Décideur** | Nom libre de la personne qui valide le jalon |
-| **KPI** | Indicateur de suivi + valeur cible |
+| **Responsable** | Porteur opérationnel du jalon (souvent un **manager** ou chef de projet) — exécution et suivi terrain. Champ texte libre. |
+| **Décideur** | Valideur **formel** du jalon (souvent un **membre CODIR** ou sponsor « owner ») — arbitrage et validation. Champ texte libre, distinct du responsable. |
+| **KPI** | Indicateur de suivi + valeur cible sur le jalon « parent » ; un **jalon miroir** sur l’axe KPI peut être synchronisé automatiquement (même chantier, même échéance, intitulé piloté depuis le parent). |
 | **Facette** | Conceptualisation, Formation, Acquisition, Production, Communication, Autre |
-| **RACI** | Pilote / Impliqué / Informé au niveau direction |
-| **Dépendance** | Vers un autre jalon (optionnel) |
+| **RACI** | **Pilote** = **une direction** organisationnelle (périmètre RACI), pas une personne — distinct du « Responsable » et du « Décideur ». Impliqué / Informé : autres directions. |
+| **Dépendance** | Lien technique optionnel vers un autre jalon (`jalon_dependance_id` en base). **L’UI de saisie a été retirée** : la séquence sur la ligne de chantier porte la dépendance narrative ; la colonne reste pour réversibilité / usages futurs. |
 | **Note de contexte** | Texte libre pour les points spécifiques |
 
 ---
@@ -127,7 +127,7 @@ Cette liste sert de checklist mentale pour vérifier qu'aucune dimension n'est o
 
 Le RACI classique (4 rôles) est trop lourd pour un pilotage de transformation. On utilise un RACI simplifié à 3 niveaux :
 
-- **◉ PILOTE** → Responsable de la ligne. **Une seule direction par jalon.**
+- **◉ PILOTE** → **Direction** organisationnelle porteuse de la ligne (périmètre RACI). **Une seule direction par jalon.** À ne pas confondre avec le champ libre **Responsable** (personne) ni **Décideur** (validateur).
 - **◎ IMPLIQUÉ** → Contribue activement. 1 à N directions.
 - **○ INFORMÉ** → Tenu au courant. 0 à N directions.
 
@@ -161,7 +161,7 @@ Les jalons d'un même axe dans un chantier doivent se succéder dans un enchaîn
 Le responsable déclare lui-même le passage d'un statut à l'autre. Pas de déclenchement automatique.
 
 ### Dépendances inter-jalons
-Un jalon peut dépendre d'un autre jalon (d'un autre axe ou d'un autre chantier). Permet de visualiser le chemin critique.
+La **séquence de jalons** sur une ligne de chantier exprime déjà l’enchaînement logique. Une **dépendance explicite** entre jalons peut rester stockée en base (`jalon_dependance_id`) pour réversibilité ou usages avancés, mais **n’est plus proposée dans l’interface** de détail jalon (simplification UX, décision produit 2026).
 
 ### Alerte surcharge (règle future)
 Si une direction est RACI Pilote ou Impliquée sur trop de jalons simultanés sur un même trimestre, une alerte est déclenchée.

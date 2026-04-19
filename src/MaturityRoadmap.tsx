@@ -6,10 +6,10 @@ import {
   deleteChantier,
   deleteJalon,
   getChantierJalons,
+  getJalonById,
   getJalonsByChantierIds,
   getJalonRaci,
   getProjetChantiers,
-  getProjetJalons,
   getRoadmapEligibleProjects,
   getRoadmapEligibleProjectsForDirection,
   getWorkspaceDirections,
@@ -20,11 +20,19 @@ import {
   updateJalon,
 } from './lib/api'
 import { getCurrentUser } from './lib/auth'
+import CreateDirectionDialog from './CreateDirectionDialog'
 import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
 import type { TimelineColumn } from './lib/roadmapTimelineColumns'
+import {
+  assignJalonToColumn,
+  buildTimelineColumns,
+  monthYearFromTimelineColumnKey,
+} from './lib/roadmapTimelineColumns'
 import { assignRoadmapProjectColors } from './lib/projectRoadmapColor'
+import { mrBackdropProps, useBackdropPointerClose } from './lib/useBackdropPointerClose'
+import { buildKpiMirrorNom, syncKpiMirrorForParentJalon } from './lib/kpiMirrorSync'
 import './MaturityRoadmap.css'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
@@ -510,6 +518,11 @@ export default function MaturityRoadmap({
       <ChantierLineModal
         open={chantierModal !== null}
         onClose={() => setChantierModal(null)}
+        workspaceId={workspaceId}
+        workspaceDirections={directions}
+        onDirectionCreated={async () => {
+          await loadAll()
+        }}
         mode={chantierModal?.mode ?? 'create'}
         projects={roadmapProjects.map((p) => ({
           id: p.id,
@@ -566,6 +579,7 @@ export default function MaturityRoadmap({
 
       {drawerJalonId && drawerChantierId && drawerProjetId && (
         <JalonDrawer
+          workspaceId={workspaceId}
           projetId={drawerProjetId}
           chantierId={drawerChantierId}
           jalonId={drawerJalonId}
@@ -574,6 +588,10 @@ export default function MaturityRoadmap({
           chantierNom={chantiers.find((c) => c.id === drawerChantierId)?.nom ?? ''}
           directions={directions}
           readOnly={readOnly}
+          onDirectionsUpdated={async () => {
+            const dirs = await getWorkspaceDirections(workspaceId)
+            setDirections(dirs)
+          }}
           onClose={() => {
             setDrawerJalonId(null)
             setDrawerChantierId(null)
@@ -590,6 +608,7 @@ export default function MaturityRoadmap({
 }
 
 function JalonDrawer({
+  workspaceId,
   projetId,
   chantierId,
   jalonId,
@@ -600,7 +619,9 @@ function JalonDrawer({
   readOnly,
   onClose,
   onSaved,
+  onDirectionsUpdated,
 }: {
+  workspaceId: string
   projetId: string
   chantierId: string
   jalonId: string
@@ -612,29 +633,28 @@ function JalonDrawer({
   readOnly: boolean
   onClose: () => void
   onSaved: () => Promise<void>
+  onDirectionsUpdated: () => Promise<void>
 }) {
   const [jalon, setJalon] = useState<Jalon | null>(null)
-  const [projetJalons, setProjetJalons] = useState<Jalon[]>([])
+  const [dirCreateOpen, setDirCreateOpen] = useState(false)
   const [piloteId, setPiloteId] = useState<string>('')
   const [implIds, setImplIds] = useState<Set<string>>(new Set())
   const [infIds, setInfIds] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
+  const timelineCols = useMemo(() => buildTimelineColumns(), [])
+  const [echeanceColKey, setEcheanceColKey] = useState('')
+  const { onBackdropPointerDown } = useBackdropPointerClose(onClose, true)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const [jList, raci, allJ] = await Promise.all([
-        getChantierJalons(chantierId),
-        getJalonRaci(jalonId),
-        getProjetJalons(projetId),
-      ])
+      const [jList, raci] = await Promise.all([getChantierJalons(chantierId), getJalonRaci(jalonId)])
       if (cancelled) return
       const j =
         jList.find((x) => x.id === jalonId) ??
         (seedJalon?.id === jalonId ? seedJalon : null) ??
         null
       setJalon(j)
-      setProjetJalons(allJ)
       const pilote = raci.find((r) => r.role === 'PILOTE')
       setPiloteId(pilote?.direction_id ?? '')
       setImplIds(new Set(raci.filter((r) => r.role === 'IMPLIQUE').map((r) => r.direction_id)))
@@ -644,6 +664,20 @@ function JalonDrawer({
       cancelled = true
     }
   }, [chantierId, jalonId, projetId, seedJalon])
+
+  useEffect(() => {
+    if (!jalon) {
+      setEcheanceColKey('')
+      return
+    }
+    setEcheanceColKey(assignJalonToColumn(jalon, timelineCols))
+  }, [jalon, timelineCols])
+
+  const echeanceSelectValue = useMemo(() => {
+    const keys = new Set(timelineCols.map((c) => c.key))
+    if (keys.has(echeanceColKey)) return echeanceColKey
+    return timelineCols[0]?.key ?? ''
+  }, [timelineCols, echeanceColKey])
 
   const axeLabel = jalon ? AXE_META[jalon.axe].title : ''
 
@@ -671,21 +705,50 @@ function JalonDrawer({
     if (!jalon || readOnly) return
     setSaving(true)
     try {
-      await updateJalon(jalonId, {
-        nom: jalon.nom,
-        description: jalon.description,
-        mois_cible: jalon.mois_cible,
-        annee_cible: jalon.annee_cible,
-        statut: jalon.statut,
-        facette: jalon.facette,
-        responsable: jalon.responsable,
-        decideur: jalon.decideur,
-        kpi_description: jalon.kpi_description,
-        kpi_valeur_cible: jalon.kpi_valeur_cible,
-        note_contexte: jalon.note_contexte,
-        jalon_dependance_id: jalon.jalon_dependance_id,
-        direction_id: jalon.direction_id,
-      })
+      const isMirror = Boolean(jalon.kpi_source_jalon_id)
+      if (isMirror) {
+        const parent = await getJalonById(jalon.kpi_source_jalon_id!)
+        if (!parent) {
+          window.alert('Jalon parent introuvable.')
+          return
+        }
+        const d = (parent.kpi_description ?? '').trim()
+        const v = (parent.kpi_valeur_cible ?? '').trim()
+        const nomLocked = d && v ? buildKpiMirrorNom(d, v) : jalon.nom
+        await updateJalon(jalonId, {
+          chantier_id: jalon.chantier_id,
+          nom: nomLocked,
+          description: jalon.description,
+          mois_cible: parent.mois_cible,
+          annee_cible: parent.annee_cible,
+          statut: jalon.statut,
+          facette: jalon.facette,
+          responsable: jalon.responsable,
+          decideur: jalon.decideur,
+          kpi_description: d || null,
+          kpi_valeur_cible: v || null,
+          note_contexte: jalon.note_contexte,
+          jalon_dependance_id: jalon.jalon_dependance_id,
+          direction_id: jalon.direction_id,
+        })
+      } else {
+        const saved = await updateJalon(jalonId, {
+          nom: jalon.nom,
+          description: jalon.description,
+          mois_cible: jalon.mois_cible,
+          annee_cible: jalon.annee_cible,
+          statut: jalon.statut,
+          facette: jalon.facette,
+          responsable: jalon.responsable,
+          decideur: jalon.decideur,
+          kpi_description: jalon.kpi_description,
+          kpi_valeur_cible: jalon.kpi_valeur_cible,
+          note_contexte: jalon.note_contexte,
+          jalon_dependance_id: jalon.jalon_dependance_id,
+          direction_id: jalon.direction_id,
+        })
+        await syncKpiMirrorForParentJalon({ parent: saved, parentChantierNom: chantierNom })
+      }
       await syncRaci()
       await onSaved()
       onClose()
@@ -697,6 +760,10 @@ function JalonDrawer({
   async function handleDelete() {
     if (readOnly) return
     if (!window.confirm('Supprimer ce jalon ?')) return
+    const j = jalon
+    if (j?.kpi_source_jalon_id) {
+      await updateJalon(j.kpi_source_jalon_id, { kpi_description: null, kpi_valeur_cible: null })
+    }
     await deleteJalon(jalonId)
     await onSaved()
     onClose()
@@ -704,8 +771,13 @@ function JalonDrawer({
 
   if (!jalon) {
     return (
-      <div className="mr-drawer-overlay" onClick={onClose} role="presentation">
-        <div className="mr-drawer" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="mr-drawer-overlay"
+        role="presentation"
+        {...mrBackdropProps}
+        onPointerDown={onBackdropPointerDown}
+      >
+        <div className="mr-drawer" onPointerDown={(e) => e.stopPropagation()}>
           <p>Chargement…</p>
         </div>
       </div>
@@ -717,11 +789,14 @@ function JalonDrawer({
       ? `${monthToQuarter(jalon.mois_cible)} ${jalon.annee_cible}`
       : '—'
 
-  const depOptions = projetJalons.filter((j) => j.id !== jalonId)
-
   return (
-    <div className="mr-drawer-overlay" onClick={onClose} role="presentation">
-      <div className="mr-drawer" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="mr-drawer-overlay"
+      role="presentation"
+      {...mrBackdropProps}
+      onPointerDown={onBackdropPointerDown}
+    >
+      <div className="mr-drawer" onPointerDown={(e) => e.stopPropagation()}>
         <button type="button" className="mr-back" onClick={onClose}>
           ✕ Fermer
         </button>
@@ -739,7 +814,7 @@ function JalonDrawer({
           <input
             id="jalon-nom"
             value={jalon.nom}
-            disabled={readOnly}
+            disabled={readOnly || Boolean(jalon.kpi_source_jalon_id)}
             onChange={(e) => setJalon((prev) => (prev ? { ...prev, nom: e.target.value } : null))}
             placeholder="L'équipe a été formée"
           />
@@ -759,46 +834,27 @@ function JalonDrawer({
         </div>
 
         <div className="mr-field">
-          <span>Date cible</span>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-            <label>
-              Mois
-              <select
-                value={jalon.mois_cible ?? ''}
-                disabled={readOnly}
-                onChange={(e) => {
-                  const v = e.target.value ? Number(e.target.value) : null
-                  setJalon((prev) => (prev ? { ...prev, mois_cible: v } : null))
-                }}
-              >
-                <option value="">—</option>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    {new Date(2000, m - 1).toLocaleString('fr-FR', { month: 'long' })}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Année
-              <select
-                value={jalon.annee_cible ?? ''}
-                disabled={readOnly}
-                onChange={(e) => {
-                  const v = e.target.value ? Number(e.target.value) : null
-                  setJalon((prev) => (prev ? { ...prev, annee_cible: v } : null))
-                }}
-              >
-                <option value="">—</option>
-                {yearOptionsDrawer().map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <p className="mr-hint">Trimestre : {trimLabel}</p>
+          <label htmlFor="jalon-echeance-timeline">Échéance (alignée timeline)</label>
+          <select
+            id="jalon-echeance-timeline"
+            value={echeanceSelectValue}
+            disabled={readOnly || Boolean(jalon.kpi_source_jalon_id)}
+            onChange={(e) => {
+              const key = e.target.value
+              setEcheanceColKey(key)
+              const { mois, annee } = monthYearFromTimelineColumnKey(key, timelineCols)
+              setJalon((prev) => (prev ? { ...prev, mois_cible: mois, annee_cible: annee } : null))
+            }}
+          >
+            {timelineCols.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          <p className="mr-hint">
+            Même maille que la grille (trimestres / années / « Plus tard »). Trimestre calculé : {trimLabel}
+          </p>
         </div>
 
         <div className="mr-field">
@@ -863,62 +919,84 @@ function JalonDrawer({
           />
         </div>
 
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem' }}>KPI de suivi</h3>
-        <div className="mr-field">
-          <label htmlFor="kpi-desc">Indicateur</label>
-          <input
-            id="kpi-desc"
-            value={jalon.kpi_description ?? ''}
-            disabled={readOnly}
-            placeholder="% de décrochés sous 3 sonneries"
-            onChange={(e) => setJalon((prev) => (prev ? { ...prev, kpi_description: e.target.value || null } : null))}
-          />
-        </div>
-        <div className="mr-field">
-          <label htmlFor="kpi-val">Valeur cible</label>
-          <input
-            id="kpi-val"
-            value={jalon.kpi_valeur_cible ?? ''}
-            disabled={readOnly}
-            placeholder="90%"
-            onChange={(e) => setJalon((prev) => (prev ? { ...prev, kpi_valeur_cible: e.target.value || null } : null))}
-          />
-        </div>
+        {!jalon.kpi_source_jalon_id ? (
+          <>
+            <h3 className="mr-drawer-section-title">KPI de suivi</h3>
+            <div className="mr-field">
+              <label htmlFor="kpi-desc">Indicateur</label>
+              <input
+                id="kpi-desc"
+                value={jalon.kpi_description ?? ''}
+                disabled={readOnly}
+                placeholder="% de décrochés sous 3 sonneries"
+                onChange={(e) =>
+                  setJalon((prev) => (prev ? { ...prev, kpi_description: e.target.value || null } : null))
+                }
+              />
+            </div>
+            <div className="mr-field">
+              <label htmlFor="kpi-val">Valeur cible</label>
+              <input
+                id="kpi-val"
+                value={jalon.kpi_valeur_cible ?? ''}
+                disabled={readOnly}
+                placeholder="90%"
+                onChange={(e) =>
+                  setJalon((prev) => (prev ? { ...prev, kpi_valeur_cible: e.target.value || null } : null))
+                }
+              />
+            </div>
+          </>
+        ) : (
+          <p className="mr-hint">
+            Ce jalon KPI est lié au suivi du jalon parent : modifiez l’indicateur et la cible sur le jalon d’origine
+            (autre axe).
+          </p>
+        )}
 
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem' }}>Macro RACI</h3>
+        <h3 className="mr-drawer-section-title">Macro RACI</h3>
         <div className="mr-field">
-          <label>◉ Pilote (une direction)</label>
-          <select
-            value={piloteId}
-            disabled={readOnly}
-            onChange={(e) => {
-              const v = e.target.value
-              setPiloteId(v)
-              if (v) {
-                setImplIds((prev) => {
-                  const n = new Set(prev)
-                  n.delete(v)
-                  return n
-                })
-                setInfIds((prev) => {
-                  const n = new Set(prev)
-                  n.delete(v)
-                  return n
-                })
-              }
-            }}
-          >
-            <option value="">—</option>
+          <span className="mr-raci-block-title">Pilote (une direction)</span>
+          <div className="mr-raci-cell-grid">
+            <label className="mr-raci-row">
+              <input
+                type="radio"
+                name={`mr-pilote-${jalonId}`}
+                checked={piloteId === ''}
+                disabled={readOnly}
+                onChange={() => setPiloteId('')}
+              />
+              <span>—</span>
+            </label>
             {directions.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.nom}
-              </option>
+              <label key={d.id} className="mr-raci-row">
+                <input
+                  type="radio"
+                  name={`mr-pilote-${jalonId}`}
+                  checked={piloteId === d.id}
+                  disabled={readOnly}
+                  onChange={() => {
+                    setPiloteId(d.id)
+                    setImplIds((prev) => {
+                      const n = new Set(prev)
+                      n.delete(d.id)
+                      return n
+                    })
+                    setInfIds((prev) => {
+                      const n = new Set(prev)
+                      n.delete(d.id)
+                      return n
+                    })
+                  }}
+                />
+                <span>{d.nom}</span>
+              </label>
             ))}
-          </select>
+          </div>
         </div>
         <div className="mr-field">
-          <span>◎ Impliqué</span>
-          <div className="mr-raci-grid" style={{ marginTop: 6 }}>
+          <span className="mr-raci-block-title">Impliqué</span>
+          <div className="mr-raci-cell-grid">
             {directions
               .filter((d) => d.id !== piloteId)
               .map((d) => (
@@ -943,14 +1021,14 @@ function JalonDrawer({
                       })
                     }}
                   />
-                  {d.nom}
+                  <span>{d.nom}</span>
                 </label>
               ))}
           </div>
         </div>
         <div className="mr-field">
-          <span>○ Informé</span>
-          <div className="mr-raci-grid" style={{ marginTop: 6 }}>
+          <span className="mr-raci-block-title">Informé</span>
+          <div className="mr-raci-cell-grid">
             {directions
               .filter((d) => d.id !== piloteId && !implIds.has(d.id))
               .map((d) => (
@@ -968,31 +1046,29 @@ function JalonDrawer({
                       })
                     }}
                   />
-                  {d.nom}
+                  <span>{d.nom}</span>
                 </label>
               ))}
           </div>
         </div>
 
-        <div className="mr-field">
-          <label htmlFor="jalon-dep">Dépendance (optionnel)</label>
-          <select
-            id="jalon-dep"
-            value={jalon.jalon_dependance_id ?? ''}
-            disabled={readOnly}
-            onChange={(e) => {
-              const v = e.target.value || null
-              setJalon((prev) => (prev ? { ...prev, jalon_dependance_id: v } : null))
-            }}
-          >
-            <option value="">—</option>
-            {depOptions.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.nom || 'Sans titre'}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!readOnly && (
+          <p className="mr-hint" style={{ marginTop: 12 }}>
+            <button type="button" className="mr-tgrid-legend__link" onClick={() => setDirCreateOpen(true)}>
+              Nouvelle direction…
+            </button>
+          </p>
+        )}
+        <CreateDirectionDialog
+          open={dirCreateOpen}
+          workspaceId={workspaceId}
+          existingDirections={directions}
+          onClose={() => setDirCreateOpen(false)}
+          onResolved={async (direction: Direction) => {
+            void direction
+            await onDirectionsUpdated()
+          }}
+        />
 
         <div className="mr-field">
           <label htmlFor="jalon-note">Note de contexte</label>
@@ -1022,7 +1098,3 @@ function JalonDrawer({
   )
 }
 
-function yearOptionsDrawer(): number[] {
-  const y = new Date().getFullYear()
-  return [y - 1, y, y + 1, y + 2, y + 3]
-}

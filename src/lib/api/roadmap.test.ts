@@ -20,6 +20,7 @@ function jalon(partial: Partial<Jalon> & Pick<Jalon, 'id' | 'axe' | 'ordre_seque
     kpi_valeur_cible: null,
     facette: null,
     jalon_dependance_id: null,
+    kpi_source_jalon_id: null,
     note_contexte: null,
     created_at: '',
     updated_at: '',
