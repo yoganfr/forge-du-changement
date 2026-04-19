@@ -1432,10 +1432,11 @@
   white-space: pre-wrap;
 }
 
+/* Vue DG : 3 critères sur la 1re ligne, 3 sur la 2e (notation 6 axes). */
 .dg-proj__axes {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .dg-proj__axe-head {
