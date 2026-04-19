@@ -129,21 +129,57 @@ function avatarUrlFromMetadataRecord(rec: Record<string, unknown> | undefined | 
     asTrimmedString(rec.avatar_url)
     ?? asTrimmedString(rec.picture)
     ?? asTrimmedString((rec as { image_url?: unknown }).image_url)
+    ?? asTrimmedString((rec as { photo_url?: unknown }).photo_url)
+    ?? asTrimmedString((rec as { profile_image_url?: unknown }).profile_image_url)
     ?? null
   )
 }
 
+const GOOGLE_AVATAR_HOST_RE = /\.(googleusercontent\.com|ggpht\.com)\b/i
+const IMAGE_PATH_RE = /\.(jpe?g|png|gif|webp|avif)(\?|#|$)/i
+
+/** Parcourt un JSON de métadonnées (claims Google parfois imbriqués) pour trouver une URL de portrait. */
+function scrapeAvatarUrlFromUnknown(obj: unknown, depth = 0): string | null {
+  if (depth > 10 || obj == null) return null
+  if (typeof obj === 'string') {
+    const t = obj.trim()
+    if (t.length < 12 || t.length > 4096) return null
+    if (!/^https?:\/\//i.test(t)) return null
+    if (GOOGLE_AVATAR_HOST_RE.test(t) || IMAGE_PATH_RE.test(t)) return t
+    return null
+  }
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const hit = scrapeAvatarUrlFromUnknown(item, depth + 1)
+      if (hit) return hit
+    }
+    return null
+  }
+  if (typeof obj === 'object') {
+    for (const v of Object.values(obj as Record<string, unknown>)) {
+      const hit = scrapeAvatarUrlFromUnknown(v, depth + 1)
+      if (hit) return hit
+    }
+  }
+  return null
+}
+
 /**
  * Photo fournie par le fournisseur OAuth (Google, etc.).
- * Souvent visible sur le bureau via la session Auth, mais absente de `public.users` et du cache `localStorage` sur mobile.
+ * Préférer `getUser()` côté session : `getSession().user` (JWT) peut omettre `picture` / identities sur certains clients.
  */
 function resolveAuthUserAvatarUrl(user: User): string | null {
-  const fromUserMeta = avatarUrlFromMetadataRecord(user.user_metadata as Record<string, unknown>)
-  if (fromUserMeta) return fromUserMeta
+  const meta = user.user_metadata as Record<string, unknown> | undefined
+  const fromExplicit = avatarUrlFromMetadataRecord(meta)
+  if (fromExplicit) return fromExplicit
+  const fromMetaDeep = scrapeAvatarUrlFromUnknown(meta)
+  if (fromMetaDeep) return fromMetaDeep
   for (const identity of user.identities ?? []) {
     const data = identity.identity_data as Record<string, unknown> | undefined
     const fromIdentity = avatarUrlFromMetadataRecord(data)
     if (fromIdentity) return fromIdentity
+    const fromIdDeep = scrapeAvatarUrlFromUnknown(data)
+    if (fromIdDeep) return fromIdDeep
   }
   return null
 }
@@ -532,8 +568,8 @@ function App() {
 
     void supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!alive) return
-      const user = session?.user ?? null
-      if (!user) {
+      const sessionUser = session?.user ?? null
+      if (!sessionUser) {
         setAuthUser(null)
         setPlatformSuperadmin(false)
         setServerAccess(null)
@@ -541,7 +577,12 @@ function App() {
         return
       }
 
-      await reconcileAuthSession(user)
+      const { data: freshData, error: freshErr } = await supabase.auth.getUser()
+      if (!alive) return
+      const freshUser = !freshErr && freshData?.user ? freshData.user : null
+      const resolvedUser = freshUser ?? sessionUser
+
+      await reconcileAuthSession(resolvedUser)
       if (!alive) return
       setAuthLoading(false)
     })
@@ -550,8 +591,8 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       void (async () => {
-        const user = session?.user ?? null
-        if (!user) {
+        const sessionUser = session?.user ?? null
+        if (!sessionUser) {
           setAuthUser(null)
           setPlatformSuperadmin(false)
           setServerAccess(null)
@@ -559,7 +600,11 @@ function App() {
           return
         }
 
-        await reconcileAuthSession(user)
+        const { data: freshData, error: freshErr } = await supabase.auth.getUser()
+        const freshUser = !freshErr && freshData?.user ? freshData.user : null
+        const resolvedUser = freshUser ?? sessionUser
+
+        await reconcileAuthSession(resolvedUser)
         setAuthLoading(false)
       })()
     })
