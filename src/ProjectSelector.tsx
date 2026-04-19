@@ -521,8 +521,7 @@ function CritereSlider({
 }) {
   const meta = CRITERIA_META[criteriaKey]
   const selectedDescription = CRITERIA_DESCRIPTIONS[criteriaKey][value]
-  const scoreBand =
-    value >= 5 ? 'critical' : value >= 4 ? 'high' : value >= 3 ? 'medium' : value >= 1 ? 'low' : 'none'
+  const scorePillClass = value >= 1 && value <= 5 ? `critere-score-pill--${value}` : 'critere-score-pill--0'
 
   function renderIcon() {
     const commonFill = { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'currentColor' }
@@ -571,20 +570,22 @@ function CritereSlider({
   }
 
   return (
-    <div className={`critere-row critere-row--enhanced critere-row--bar critere-row--${criteriaKey}`} title={`Coefficient: ×${coef}`}>
-      <div className="critere-title-above">{meta.label}</div>
+    <div className={`critere-row critere-row--enhanced critere-row--bar critere-row--${criteriaKey}`} title={`Coefficient: x${coef}`}>
+      <div className="critere-title-row">
+        <div className="critere-title-above">{meta.label}</div>
+        <span className={`critere-score-pill ${scorePillClass}`}>{value}/5</span>
+      </div>
       <div className="critere-bar">
         <div className="critere-icon-pane" aria-hidden>
           <span className="critere-icon">{renderIcon()}</span>
         </div>
         <div className="critere-middle-pane">
-          <div className="critere-title-row" />
           <div className="critere-grid critere-grid--six">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
                 type="button"
-                className={`critere-square ${n === value ? `critere-square--active critere-square--level-${n}` : ''}`}
+                className={`critere-square ${n === value ? 'critere-square--active' : ''}`}
                 onClick={() => onChange(n)}
                 aria-label={`${meta.label} : ${n}`}
               >
@@ -592,9 +593,6 @@ function CritereSlider({
               </button>
             ))}
           </div>
-        </div>
-        <div className={`critere-value-pane critere-value-pane--${scoreBand}`}>
-          <span className="critere-val">{value}/5</span>
         </div>
       </div>
       <div className="critere-level-desc">{selectedDescription || meta.desc}</div>
@@ -907,35 +905,36 @@ function ProjectCard({
                   <ScoreBadge score={score} />
                 </div>
               </div>
-              {(Object.keys(CRITERIA_META) as Array<keyof Scores>).map((k) => (
-                <div key={`eval-row-${k}`} className="project-eval-row">
-                  <div className="eval-legend-card">
-                    <div className="eval-legend-title">{CRITERIA_META[k].label}</div>
-                    <table className="eval-legend-table">
-                      <tbody>
-                        {evalLevels.map((lvl) => (
-                          <tr
-                            key={`${k}-${lvl}`}
-                            className={`eval-legend-row ${lvl === draft.scores[k] ? 'eval-legend-row--active' : ''}`}
-                          >
-                            <td className={`eval-legend-level ${lvl === draft.scores[k] ? 'eval-legend-level--active' : ''}`}>{lvl}</td>
-                            <td className={`eval-legend-text ${lvl === draft.scores[k] ? 'eval-legend-text--active' : ''}`}>
-                              {CRITERIA_DESCRIPTIONS[k][lvl]}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <div className="project-eval-grid">
+                {(Object.keys(CRITERIA_META) as Array<keyof Scores>).map((k) => (
+                  <div key={`eval-row-${k}`} className="project-eval-card">
+                    <CritereSlider
+                      key={k}
+                      criteriaKey={k}
+                      value={draft.scores[k]}
+                      coef={coefs[k]}
+                      onChange={(v) => updateDraftScore(k, v)}
+                    />
+                    <div className="eval-legend-card">
+                      <table className="eval-legend-table">
+                        <tbody>
+                          {evalLevels.map((lvl) => (
+                            <tr
+                              key={`${k}-${lvl}`}
+                              className={`eval-legend-row ${lvl === draft.scores[k] ? 'eval-legend-row--active' : ''}`}
+                            >
+                              <td className={`eval-legend-level ${lvl === draft.scores[k] ? 'eval-legend-level--active' : ''}`}>{lvl}</td>
+                              <td className={`eval-legend-text ${lvl === draft.scores[k] ? 'eval-legend-text--active' : ''}`}>
+                                {CRITERIA_DESCRIPTIONS[k][lvl]}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <CritereSlider
-                    key={k}
-                    criteriaKey={k}
-                    value={draft.scores[k]}
-                    coef={coefs[k]}
-                    onChange={(v) => updateDraftScore(k, v)}
-                  />
-                </div>
-              ))}
+                ))}
+              </div>
 
               <div className="project-eval-extras">
                 <div className="competence-toggle">
@@ -2470,8 +2469,8 @@ const CSS = `
 
 .project-eval-header {
   display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
-  gap: var(--space-2xl);
+  grid-template-columns: 1fr auto;
+  gap: var(--space-lg);
   align-items: center;
 }
 
@@ -2479,16 +2478,29 @@ const CSS = `
   margin-bottom: 0;
 }
 
-.project-eval-row {
+.project-eval-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
-  gap: var(--space-2xl);
-  align-items: center;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-xl);
+}
+
+.project-eval-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--ui-radius-panel);
+  border: 1px solid color-mix(in srgb, var(--theme-border) 36%, transparent);
+  background: color-mix(in srgb, var(--glass-bg-chip) 68%, transparent);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
 }
 
 .project-eval-extras {
   display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2xl);
   align-items: start;
 }
@@ -2500,10 +2512,10 @@ const CSS = `
 }
 
 .eval-legend-card {
-  border: none;
+  border: 1px solid color-mix(in srgb, var(--theme-border) 30%, transparent);
   border-radius: var(--ui-radius-panel);
-  background: transparent;
-  box-shadow: none;
+  background: color-mix(in srgb, var(--theme-bg-card) 84%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 26%, transparent);
   overflow: hidden;
 }
 
@@ -2712,195 +2724,164 @@ const CSS = `
 
 .critere-bar {
   display: grid;
-  grid-template-columns: 94px 1fr 102px;
-  min-height: 88px;
+  grid-template-columns: 86px 1fr;
+  min-height: 84px;
   border-radius: var(--ui-radius-panel);
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--glass-border) 65%, rgba(0,0,0,0.15));
-  box-shadow: var(--shadow-md);
+  border: 1px solid color-mix(in srgb, #0c1418 72%, var(--theme-border));
+  box-shadow: 0 8px 20px color-mix(in srgb, #061017 22%, transparent);
 }
 
 .critere-icon-pane {
-  background: var(--critere-pane-icon);
+  background:
+    linear-gradient(155deg,
+      color-mix(in srgb, #0a1311 92%, var(--theme-bg-card)) 0%,
+      color-mix(in srgb, #15231f 86%, var(--theme-bg-card)) 100%);
   display: grid;
   place-items: center;
-  color: #f4f0ec;
+  color: color-mix(in srgb, #f8fbff 94%, transparent);
 }
 
 .critere-icon {
-  width: 68px;
-  height: 68px;
+  width: 60px;
+  height: 60px;
   display: grid;
   place-items: center;
 }
 
 .critere-middle-pane {
-  background: var(--critere-pane-mid);
-  padding: 12px 14px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, #233238 86%, var(--theme-bg-card)) 0%,
+      color-mix(in srgb, #1a282d 90%, var(--theme-bg-card)) 100%);
+  padding: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
   justify-content: center;
 }
 
 .critere-title-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin: 0 2px 8px;
 }
 
 .critere-title-above {
   font-size: var(--fs-small);
   font-weight: 800;
   color: var(--theme-text);
-  text-align: center;
-  margin: 0 0 8px;
+  text-align: left;
+  margin: 0;
 }
 
-.critere-value-pane {
-  background: color-mix(in srgb, var(--theme-border) 76%, var(--theme-bg-card));
-  display: grid;
-  place-items: center;
-}
-
-.critere-value-pane--none {
-  background: color-mix(in srgb, var(--theme-border) 76%, var(--theme-bg-card));
-}
-
-.critere-value-pane--low {
-  background: var(--score-caramel-1);
-}
-
-.critere-value-pane--medium {
-  background: var(--score-caramel-2);
-}
-
-.critere-value-pane--high {
-  background: var(--score-caramel-3);
-}
-
-.critere-value-pane--critical {
-  background: var(--score-critical);
-}
-
-.critere-name {
-  font-size: 0.98rem;
+.critere-score-pill {
+  min-width: 54px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
   font-weight: 800;
-  color: var(--theme-on-accent);
-  text-align: center;
+  letter-spacing: 0.01em;
+  border: 1px solid color-mix(in srgb, #ffffff 14%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 25%, transparent);
 }
 
-.critere-coef-inline {
-  font-size: 0.78rem;
-  color: color-mix(in srgb, var(--theme-on-accent) 90%, transparent);
-  font-weight: 700;
-  text-align: center;
-}
-
-.critere-desc {
-  font-size: 0.72rem;
+.critere-score-pill--0 {
+  background: color-mix(in srgb, var(--theme-border) 88%, transparent);
   color: var(--theme-text-muted);
 }
 
-.critere-val {
-  font-size: 1.9rem;
-  font-family: var(--font-display);
-  font-weight: 900;
-  color: var(--critere-val-ink);
-  line-height: 1;
-  letter-spacing: 0.01em;
+.critere-score-pill--1 {
+  background: #8fc8a1;
+  color: #102118;
+}
+
+.critere-score-pill--2 {
+  background: #4ca86c;
+  color: #f5fff8;
+}
+
+.critere-score-pill--3 {
+  background: #d7a64d;
+  color: #2b1a04;
+}
+
+.critere-score-pill--4 {
+  background: #d98355;
+  color: #2a1205;
+}
+
+.critere-score-pill--5 {
+  background: #d64a45;
+  color: #fff4f4;
 }
 
 .critere-grid {
   display: grid;
-  grid-template-columns: repeat(5, 34px);
-  gap: 6px;
+  grid-template-columns: repeat(5, minmax(36px, 1fr));
+  gap: 8px;
   justify-content: center;
 }
 
 .critere-grid--six {
-  grid-template-columns: repeat(5, minmax(34px, 1fr));
+  grid-template-columns: repeat(5, minmax(36px, 1fr));
   max-width: 100%;
 }
 
 .critere-square {
-  width: 34px;
-  height: 34px;
+  width: 100%;
+  height: 36px;
   max-width: 100%;
   border-radius: var(--ui-radius-control);
-  border: 1px solid color-mix(in srgb, rgba(255,255,255,0.22), var(--theme-border) 35%);
-  background: var(--critere-square-bg);
+  border: 1px solid color-mix(in srgb, #d8e2ea 20%, #121b20);
+  background: color-mix(in srgb, #0f171c 88%, var(--theme-bg-card));
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
-  color: rgba(255, 250, 246, 0.92);
+  color: color-mix(in srgb, #eef5fb 90%, transparent);
   font-weight: 800;
   font-size: 0.95rem;
 }
 
 .critere-square:hover {
-  background: var(--critere-square-bg-hover);
-  border-color: color-mix(in srgb, rgba(255,255,255,0.35), var(--theme-border) 25%);
+  background: color-mix(in srgb, #162129 90%, var(--theme-accent));
+  border-color: color-mix(in srgb, var(--theme-accent) 48%, #6f7f8f);
 }
 
 .critere-square--active {
   color: var(--theme-on-accent);
-  border-color: color-mix(in srgb, var(--theme-accent) 55%, rgba(255, 255, 255, 0.22));
-  box-shadow: var(--glass-highlight), 0 4px 12px color-mix(in srgb, var(--theme-accent) 26%, transparent);
+  background: color-mix(in srgb, var(--theme-accent) 78%, #0f151a);
+  border-color: color-mix(in srgb, var(--theme-accent) 84%, #c3d9ec);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #ffffff 34%, transparent),
+    0 4px 12px color-mix(in srgb, var(--theme-accent) 26%, transparent);
   transform: translateY(-1px);
-}
-
-.critere-square--level-1 {
-  background: color-mix(in srgb, var(--score-caramel-1) 42%, var(--critere-square-bg));
-}
-
-.critere-square--level-2 {
-  background: color-mix(in srgb, var(--score-caramel-2) 48%, var(--critere-square-bg));
-}
-
-.critere-square--level-3 {
-  background: color-mix(in srgb, var(--score-caramel-3) 52%, var(--critere-square-bg));
-}
-
-.critere-square--level-4 {
-  background: color-mix(in srgb, var(--score-caramel-4) 54%, var(--critere-square-bg));
-}
-
-.critere-square--level-5 {
-  background: color-mix(in srgb, var(--score-critical) 80%, var(--critere-square-bg));
-}
-
-.critere-value-pane--low .critere-val,
-.critere-value-pane--medium .critere-val,
-.critere-value-pane--high .critere-val {
-  color: var(--critere-val-ink);
-}
-
-.critere-value-pane--critical .critere-val {
-  color: #fff;
 }
 
 .critere-row--urgence .critere-icon,
 .critere-row--etp .critere-icon,
 .critere-row--investissement .critere-icon {
-  color: #f3dde0;
+  color: color-mix(in srgb, #f6ebf4 92%, transparent);
 }
 
 .critere-row--criticite .critere-icon,
 .critere-row--recurrence .critere-icon,
 .critere-row--temps .critere-icon {
-  color: #f8f8f8;
+  color: color-mix(in srgb, #f8fbff 94%, transparent);
 }
 
 .critere-level-desc {
-  font-size: var(--text-sm);
+  font-size: 0.92rem;
   font-family: var(--font-body);
   font-weight: 700;
-  color: color-mix(in srgb, var(--theme-text) 92%, var(--theme-accent) 8%);
+  color: color-mix(in srgb, var(--theme-text) 96%, var(--theme-accent) 4%);
   font-style: normal;
   text-align: center;
   line-height: 1.4;
-  margin: 10px 10px 8px;
+  margin: 10px 6px 2px;
 }
 
 .project-scoring-head {
@@ -3482,8 +3463,10 @@ const CSS = `
     grid-column: auto;
   }
   .project-eval-header,
-  .project-eval-row,
   .project-eval-extras {
+    grid-template-columns: 1fr;
+  }
+  .project-eval-grid {
     grid-template-columns: 1fr;
   }
   .project-field input,
@@ -3516,14 +3499,11 @@ const CSS = `
     font-size: 0.9rem;
   }
   .critere-bar {
-    grid-template-columns: 84px 1fr 88px;
+    grid-template-columns: 80px 1fr;
   }
   .critere-icon {
-    width: 58px;
-    height: 58px;
-  }
-  .critere-val {
-    font-size: 1.6rem;
+    width: 54px;
+    height: 54px;
   }
   .score-summary-value {
     font-size: 24px;
@@ -3546,19 +3526,8 @@ const CSS = `
 }
 
 @media (max-width: 1200px) and (min-width: 901px) {
-  .project-eval-layout {
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 8px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-  }
-
-  .project-eval-header,
-  .project-eval-row,
-  .project-eval-extras {
-    min-width: 980px;
-    scroll-snap-align: start;
+  .project-eval-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -3574,24 +3543,20 @@ const CSS = `
     width: 100%;
   }
   .critere-bar {
-    grid-template-columns: 66px 1fr 72px;
-    min-height: 74px;
+    grid-template-columns: 64px 1fr;
+    min-height: 72px;
   }
   .critere-middle-pane {
     padding: 8px;
   }
-  .critere-name {
-    font-size: 0.8rem;
-  }
-  .critere-coef-inline {
-    font-size: 0.68rem;
-  }
-  .critere-val {
-    font-size: 1.35rem;
-  }
   .critere-icon {
-    width: 46px;
-    height: 46px;
+    width: 42px;
+    height: 42px;
+  }
+  .critere-score-pill {
+    min-width: 50px;
+    height: 26px;
+    font-size: 0.84rem;
   }
   .mini-gantt-24-wrap {
     order: 3;
