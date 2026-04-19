@@ -1,19 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { Projet } from './lib/types'
-import { generateGanttMonths } from './lib/ganttMonths'
+import { buildGanttYearSpans, ganttYearTimelineMarkers, generateGanttMonths } from './lib/ganttMonths'
 import './dgGantt.css'
 
 const GANTT_MONTHS = generateGanttMonths()
-
-function buildYearSpans(months: typeof GANTT_MONTHS) {
-  const spans: { year: number; count: number }[] = []
-  for (const m of months) {
-    const last = spans[spans.length - 1]
-    if (last && last.year === m.year) last.count++
-    else spans.push({ year: m.year, count: 1 })
-  }
-  return spans
-}
 
 const CRITERIA: Array<{
   label: string
@@ -29,26 +19,20 @@ const CRITERIA: Array<{
 ]
 
 function DgMiniGantt({ planning, color }: { planning: Record<string, boolean>; color: string }) {
-  const markers = [{ idx: 0 }, { idx: 5 }, { idx: 11 }, { idx: 17 }, { idx: 23 }]
+  const yearMarkers = ganttYearTimelineMarkers(GANTT_MONTHS)
   return (
     <div className="dg-mini-gantt-wrap" aria-hidden>
       <div className="dg-mini-gantt__markers">
-        {markers.map((marker) => {
-          const refMonth = GANTT_MONTHS[marker.idx]
-          const markerLabel = `${refMonth.label} ${String(refMonth.year).slice(-2)}`
-          const left = `${(marker.idx / 23) * 100}%`
-          const isLast = marker.idx === 23
-          return (
-            <span
-              key={`m-${refMonth.key}`}
-              className={`dg-mini-gantt__marker ${isLast ? 'dg-mini-gantt__marker--end' : ''}`}
-              style={{ left }}
-              title={`${refMonth.label} ${refMonth.year}`}
-            >
-              {markerLabel}
-            </span>
-          )
-        })}
+        {yearMarkers.map((mk) => (
+          <span
+            key={mk.key}
+            className={`dg-mini-gantt__marker ${mk.alignEnd ? 'dg-mini-gantt__marker--end' : ''}`}
+            style={{ left: `${mk.leftPct}%` }}
+            title={mk.title}
+          >
+            {mk.label}
+          </span>
+        ))}
       </div>
       <div className="dg-mini-gantt">
         {GANTT_MONTHS.map((m) => {
@@ -68,7 +52,7 @@ function DgMiniGantt({ planning, color }: { planning: Record<string, boolean>; c
 }
 
 function DgGanttFullReadOnly({ planning, color }: { planning: Record<string, boolean>; color: string }) {
-  const yearSpans = useMemo(() => buildYearSpans(GANTT_MONTHS), [])
+  const yearSpans = useMemo(() => buildGanttYearSpans(GANTT_MONTHS), [])
   const keys = GANTT_MONTHS.map((x) => x.key)
   return (
     <div className="dg-gantt-full">
@@ -79,15 +63,8 @@ function DgGanttFullReadOnly({ planning, color }: { planning: Record<string, boo
             className="dg-gantt-full__year-cell"
             style={{ gridColumn: `span ${s.count}` }}
           >
-            {s.year}
+            {s.year} ({s.count} mois)
           </div>
-        ))}
-      </div>
-      <div className="dg-gantt-full__months">
-        {GANTT_MONTHS.map((m) => (
-          <span key={m.key} className="dg-gantt-full__month">
-            {m.label}
-          </span>
         ))}
       </div>
       <div className="dg-gantt-full__grid">

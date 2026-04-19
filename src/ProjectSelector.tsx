@@ -8,7 +8,7 @@ import {
   updateProjet,
 } from './lib/api'
 import { getCurrentUser } from './lib/auth'
-import { generateGanttMonths } from './lib/ganttMonths'
+import { buildGanttYearSpans, ganttYearTimelineMarkers, generateGanttMonths } from './lib/ganttMonths'
 import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -63,16 +63,6 @@ type Perimetre = {
 // ─── Constantes ─────────────────────────────────────────────────────────────
 
 const GANTT_MONTHS = generateGanttMonths()
-
-function buildYearSpans(months: typeof GANTT_MONTHS) {
-  const spans: { year: number; count: number }[] = []
-  for (const m of months) {
-    const last = spans[spans.length - 1]
-    if (last && last.year === m.year) last.count++
-    else spans.push({ year: m.year, count: 1 })
-  }
-  return spans
-}
 
 const DEFAULT_COEFFICIENTS: Coefficients = {
   criticite: 3,
@@ -377,35 +367,10 @@ function GanttPilules({
   editable?: boolean
   onChange?: (key: string) => void
 }) {
-  const yearSpans = buildYearSpans(GANTT_MONTHS)
-  const timeMarkers = [
-    { index: 0, prefix: 'M0' },
-    { index: 5, prefix: 'M6' },
-    { index: 11, prefix: 'M12' },
-    { index: 17, prefix: 'M18' },
-    { index: 23, prefix: 'M24' },
-  ].map((m) => {
-    const ref = GANTT_MONTHS[m.index]
-    return {
-      key: `${m.prefix}-${ref.key}`,
-      label: `${m.prefix} · ${ref.label} ${String(ref.year).slice(-2)}`,
-      colStart: m.index + 1,
-    }
-  })
+  const yearSpans = buildGanttYearSpans(GANTT_MONTHS)
 
   return (
     <div className="gantt-chart-wrap">
-      <div className="gantt-time-markers">
-        {timeMarkers.map((m) => (
-          <span
-            key={m.key}
-            className="gantt-time-marker"
-            style={{ gridColumnStart: m.colStart }}
-          >
-            {m.label}
-          </span>
-        ))}
-      </div>
       <div className="gantt-head-years">
         {yearSpans.map((s) => (
           <div
@@ -461,33 +426,20 @@ function MiniGantt24({
   planning: Record<string, boolean>
   color: string
 }) {
-  const markers = [
-    { idx: 0 },
-    { idx: 5 },
-    { idx: 11 },
-    { idx: 17 },
-    { idx: 23 },
-  ]
+  const yearMarkers = ganttYearTimelineMarkers(GANTT_MONTHS)
   return (
     <div className="mini-gantt-24-wrap" aria-hidden>
       <div className="mini-gantt-24__markers">
-        {markers.map((marker) => {
-          const refMonth = GANTT_MONTHS[marker.idx]
-          const markerLabel = `${refMonth.label} ${String(refMonth.year).slice(-2)}`
-          const markerTitle = `${refMonth.label} ${refMonth.year}`
-          const left = `${(marker.idx / 23) * 100}%`
-          const isLast = marker.idx === 23
-          return (
-            <span
-              key={`marker-${refMonth.key}`}
-              className={`mini-gantt-24__marker ${isLast ? 'mini-gantt-24__marker--end' : ''}`}
-              style={{ left }}
-              title={markerTitle}
-            >
-              {markerLabel}
-            </span>
-          )
-        })}
+        {yearMarkers.map((mk) => (
+          <span
+            key={mk.key}
+            className={`mini-gantt-24__marker ${mk.alignEnd ? 'mini-gantt-24__marker--end' : ''}`}
+            style={{ left: `${mk.leftPct}%` }}
+            title={mk.title}
+          >
+            {mk.label}
+          </span>
+        ))}
       </div>
       <div className="mini-gantt-24">
         {GANTT_MONTHS.map((m) => {
@@ -2085,7 +2037,7 @@ const CSS = `
 
 .mini-gantt-24__markers {
   position: relative;
-  height: 12px;
+  height: 14px;
   min-width: 180px;
 }
 
@@ -2093,12 +2045,15 @@ const CSS = `
   position: absolute;
   top: 0;
   transform: translateX(-50%);
-  font-size: 8px;
-  line-height: 1;
+  font-size: 7px;
+  line-height: 1.1;
   font-weight: 700;
   color: var(--theme-text-muted);
   text-align: center;
   white-space: nowrap;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mini-gantt-24__marker--end {
@@ -3127,22 +3082,6 @@ const CSS = `
   width: 100%;
   overflow-x: auto;
   padding-bottom: 4px;
-}
-
-.gantt-time-markers {
-  display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  gap: 2px;
-  margin-bottom: 4px;
-}
-
-.gantt-time-marker {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--theme-text-muted);
-  text-align: center;
-  white-space: nowrap;
-  transform: translateX(-50%);
 }
 
 .gantt-head-years {

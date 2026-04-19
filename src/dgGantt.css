@@ -14,7 +14,7 @@
 
 .dg-mini-gantt__markers {
   position: relative;
-  height: 11px;
+  height: 14px;
   min-width: 160px;
 }
 
@@ -22,12 +22,15 @@
   position: absolute;
   top: 0;
   transform: translateX(-50%);
-  font-size: 8px;
-  line-height: 1;
+  font-size: 7px;
+  line-height: 1.1;
   font-weight: 700;
   color: var(--theme-text-muted);
   text-align: center;
   white-space: nowrap;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dg-mini-gantt__marker--end {
@@ -66,35 +69,19 @@
   display: grid;
   grid-template-columns: repeat(24, minmax(0, 1fr));
   gap: 2px;
-  margin-bottom: 2px;
+  margin-bottom: 6px;
 }
 
 .dg-gantt-full__year-cell {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--theme-text-muted);
   text-align: center;
   border-bottom: 1px solid var(--glass-border);
-  padding-bottom: 2px;
+  padding-bottom: 4px;
   min-width: 0;
-}
-
-.dg-gantt-full__months {
-  display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  gap: 2px;
-  margin-bottom: 4px;
-}
-
-.dg-gantt-full__month {
-  font-size: 9px;
-  color: var(--theme-text-muted);
-  text-align: center;
-  padding: 2px 0 4px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .dg-gantt-full__grid {
