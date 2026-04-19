@@ -30,6 +30,10 @@
   white-space: nowrap;
 }
 
+.dg-mini-gantt__marker--start {
+  transform: translateX(0);
+}
+
 .dg-mini-gantt__marker--end {
   transform: translateX(-100%);
 }

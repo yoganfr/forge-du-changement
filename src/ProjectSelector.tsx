@@ -9,6 +9,7 @@ import {
 } from './lib/api'
 import { getCurrentUser } from './lib/auth'
 import { buildGanttYearSpans, generateGanttMonths } from './lib/ganttMonths'
+import GanttRangeMarkers from './GanttRangeMarkers'
 import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -426,27 +427,16 @@ function MiniGantt24({
   planning: Record<string, boolean>
   color: string
 }) {
-  const markers = [{ idx: 0 }, { idx: 5 }, { idx: 11 }, { idx: 17 }, { idx: 23 }]
   return (
     <div className="mini-gantt-24-wrap" aria-hidden>
       <div className="mini-gantt-24__markers">
-        {markers.map((marker) => {
-          const refMonth = GANTT_MONTHS[marker.idx]
-          const markerLabel = `${refMonth.label} ${String(refMonth.year).slice(-2)}`
-          const markerTitle = `${refMonth.label} ${refMonth.year}`
-          const left = `${(marker.idx / 23) * 100}%`
-          const isLast = marker.idx === 23
-          return (
-            <span
-              key={`marker-${refMonth.key}`}
-              className={`mini-gantt-24__marker ${isLast ? 'mini-gantt-24__marker--end' : ''}`}
-              style={{ left }}
-              title={markerTitle}
-            >
-              {markerLabel}
-            </span>
-          )
-        })}
+        <GanttRangeMarkers
+          months={GANTT_MONTHS}
+          planning={planning}
+          markerClassName="mini-gantt-24__marker"
+          markerStartClassName="mini-gantt-24__marker--start"
+          markerEndClassName="mini-gantt-24__marker--end"
+        />
       </div>
       <div className="mini-gantt-24">
         {GANTT_MONTHS.map((m) => {
@@ -2058,6 +2048,10 @@ const CSS = `
   color: var(--theme-text-muted);
   text-align: center;
   white-space: nowrap;
+}
+
+.mini-gantt-24__marker--start {
+  transform: translateX(0);
 }
 
 .mini-gantt-24__marker--end {

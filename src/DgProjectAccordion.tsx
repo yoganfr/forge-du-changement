@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Projet } from './lib/types'
 import { buildGanttYearSpans, generateGanttMonths } from './lib/ganttMonths'
+import GanttRangeMarkers from './GanttRangeMarkers'
 import './dgGantt.css'
 
 const GANTT_MONTHS = generateGanttMonths()
@@ -19,27 +20,16 @@ const CRITERIA: Array<{
 ]
 
 function DgMiniGantt({ planning, color }: { planning: Record<string, boolean>; color: string }) {
-  const markers = [{ idx: 0 }, { idx: 5 }, { idx: 11 }, { idx: 17 }, { idx: 23 }]
   return (
     <div className="dg-mini-gantt-wrap" aria-hidden>
       <div className="dg-mini-gantt__markers">
-        {markers.map((marker) => {
-          const refMonth = GANTT_MONTHS[marker.idx]
-          const markerLabel = `${refMonth.label} ${String(refMonth.year).slice(-2)}`
-          const markerTitle = `${refMonth.label} ${refMonth.year}`
-          const left = `${(marker.idx / 23) * 100}%`
-          const isLast = marker.idx === 23
-          return (
-            <span
-              key={`m-${refMonth.key}`}
-              className={`dg-mini-gantt__marker ${isLast ? 'dg-mini-gantt__marker--end' : ''}`}
-              style={{ left }}
-              title={markerTitle}
-            >
-              {markerLabel}
-            </span>
-          )
-        })}
+        <GanttRangeMarkers
+          months={GANTT_MONTHS}
+          planning={planning}
+          markerClassName="dg-mini-gantt__marker"
+          markerStartClassName="dg-mini-gantt__marker--start"
+          markerEndClassName="dg-mini-gantt__marker--end"
+        />
       </div>
       <div className="dg-mini-gantt">
         {GANTT_MONTHS.map((m) => {
