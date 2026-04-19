@@ -519,3 +519,27 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - logs Vercel sans erreur bloquante
 - scénario métier clé testé (consultant/admin/codir)
 - documentation backlog mise à jour
+
+---
+
+## Journal d'avancement (historique opérationnel)
+
+### Session avril 2026 — synthèse des travaux réalisés
+
+#### Fait
+- Maturity Roadmap: amélioration UX drawer/popins (fermeture backdrop robuste), uniformisation RACI (grilles 2 colonnes, pilote unique), échéance alignée sur la timeline.
+- Maturity Roadmap: simplification dépendances (masquées en UI, `jalon_dependance_id` conservée en base).
+- Maturity Roadmap: création de direction inline avec anti-doublon (normalisation + proximité de libellé).
+- KPI roadmap: mise en place du jalon KPI miroir synchronisé (création/mise à jour/suppression), verrouillage nom + échéance côté miroir.
+- Documentation métier/technique mise à jour (règles roadmap, synthèse évolutions, backlog, script SQL `supabase-jalons-kpi-source.sql`).
+- Vue DG / sélection projets: harmonisation itérative des frises et mini-frises (édition + DG), puis composant partagé pour marqueurs début/fin.
+- Cartes RUN: alignement visuel avec BUILD sur l'entête (placement mini-gantt et pastille criticité).
+- Gouvernance Git: règle projet enrichie avec trailer `Made-with: Cursor AI`, convention commit formalisée dans `docs/git-commit-conventions.md`.
+
+#### En cours
+- Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue DG consolidée, Ma Direction, états RUN/BUILD variés).
+
+#### À faire
+- Navigation historique navigateur: brancher la navigation interne sur l'URL/historique (retour arrière cohérent sans sortie du site).
+- Export PDF DG final (si attendu hors impression navigateur).
+- Phase G roadmap (future): intégration managers contributeurs dans le champ Responsable (actuellement texte libre).
