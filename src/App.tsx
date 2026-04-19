@@ -15,7 +15,10 @@ import {
 } from './lib/api'
 import { invalidateCache } from './lib/api/cache'
 import type { Workspace } from './lib/types'
-import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
+import {
+  memberProfileStorageKey,
+  migrateLegacyMemberProfileIfNeeded,
+} from './lib/memberProfileStorage'
 import { gravatarAvatarUrl } from './lib/gravatarUrl'
 import UserAvatarImg from './UserAvatarImg'
 import {
@@ -108,9 +111,10 @@ const APP_SHELL_FALLBACK = (
   </div>
 )
 
-function readStoredProfile(): StoredMemberProfile | null {
+function readStoredProfile(email?: string | null): StoredMemberProfile | null {
   try {
-    const raw = localStorage.getItem(MEMBER_PROFILE_STORAGE_KEY)
+    migrateLegacyMemberProfileIfNeeded(email)
+    const raw = localStorage.getItem(memberProfileStorageKey(email))
     return raw ? (JSON.parse(raw) as StoredMemberProfile) : null
   } catch {
     return null
@@ -307,8 +311,8 @@ function App() {
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
   const [workspaceName, setWorkspaceName] = useState('La Forge')
   const [companyLogo, setCompanyLogo] = useState<string | null>(readInitialCompanyLogo)
-  const [storedProfile, setStoredProfile] = useState<StoredMemberProfile | null>(() => readStoredProfile())
-  const [userInitials, setUserInitials] = useState(() => profileInitials(readStoredProfile()))
+  const [storedProfile, setStoredProfile] = useState<StoredMemberProfile | null>(null)
+  const [userInitials, setUserInitials] = useState('?')
   const [activeNav, setActiveNav] = useState<string>('home')
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
   const [platformSuperadmin, setPlatformSuperadmin] = useState(false)
@@ -366,7 +370,7 @@ function App() {
     void signOut()
     localStorage.removeItem('workspaceId')
     clearWorkspaceSnapshot()
-    localStorage.removeItem(MEMBER_PROFILE_STORAGE_KEY)
+    // Ne pas supprimer le cache « Mon profil » : il est indexé par email et doit survivre déco/reco.
     setWorkspaceId(null)
     setWorkspaceData(null)
     setCompanyLogo(null)
@@ -448,8 +452,25 @@ function App() {
     return `${authUser.id}|${resolveAuthUserAvatarUrl(authUser) ?? ''}`
   }, [authUser])
 
+  /** Recharge le cache profil pour l’email connecté (clé par email, migration legacy). */
+  useEffect(() => {
+    const email = authUser?.email?.trim().toLowerCase()
+    if (!email) {
+      setStoredProfile(null)
+      setUserInitials('?')
+      return
+    }
+    migrateLegacyMemberProfileIfNeeded(email)
+    const p = readStoredProfile(email)
+    setStoredProfile(p)
+    setUserInitials(profileInitials(p))
+  }, [authUser?.email])
+
   /** Mobile / autre appareil : le cache `localStorage` peut être vide alors que le profil existe en base ou chez OAuth. */
   useEffect(() => {
+    const email = authUser?.email?.trim().toLowerCase()
+    if (!email) return
+
     const dbRow =
       serverAccess?.source === 'users'
         ? serverAccess.dbUser
@@ -460,7 +481,7 @@ function App() {
     const patch = profilePatchFromDbUser(dbRow)
     const oauthAvatar = authUser ? resolveAuthUserAvatarUrl(authUser) : null
 
-    const prev = readStoredProfile() ?? {}
+    const prev = readStoredProfile(email) ?? {}
     // Le cache local (`prev`) gagne sur le patch base : évite qu’une ligne « vide » ou un cache API obsolète écrase prénom / photo à chaque reco Google.
     let next: StoredMemberProfile = { ...patch, ...prev }
     if (!next.avatar?.trim() && oauthAvatar) {
@@ -477,13 +498,13 @@ function App() {
     }
 
     try {
-      localStorage.setItem(MEMBER_PROFILE_STORAGE_KEY, JSON.stringify(next))
+      localStorage.setItem(memberProfileStorageKey(email), JSON.stringify(next))
     } catch {
       /* quota ou mode privé : l’état React reste utile pour la session courante */
     }
     setStoredProfile(next)
     setUserInitials(profileInitials(next))
-  }, [serverAccess, oauthAvatarHydrationKey])
+  }, [serverAccess, oauthAvatarHydrationKey, authUser?.email])
 
   const handleSelectWorkspaceFromSettings = useCallback((id: string) => {
     localStorage.setItem('workspaceId', id)
@@ -794,7 +815,7 @@ function App() {
               size: data.workspace.size,
               logo_url: logo,
             })
-            const nextProfile = readStoredProfile()
+            const nextProfile = readStoredProfile(authUser?.email)
             setStoredProfile(nextProfile)
             setUserInitials(profileInitials(nextProfile))
             setWorkspaceData(data)
@@ -1073,6 +1094,7 @@ function App() {
             ) : normalizedActiveNav === 'fabrique' ? (
               <ProjectSelector
                 memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
+                memberProfileEmail={authUser?.email ?? null}
                 workspaceId={workspaceId}
                 onOpenRoadmap={(projetId) => {
                   setRoadmapFocusProjetId(projetId)
@@ -1150,6 +1172,7 @@ function App() {
           open={showProfile}
           onClose={() => setShowProfile(false)}
           workspaceId={workspaceId}
+          storageEmail={authUser?.email ?? null}
           firstName={fallbackFirstName}
           lastName={fallbackLastName}
           jobTitle={storedProfile?.jobTitle ?? ''}
@@ -1162,7 +1185,7 @@ function App() {
           totalEffectif={storedProfile?.totalEffectif}
           avatarUrl={avatarDisplayUrl}
           onSaved={async () => {
-            const nextProfile = readStoredProfile()
+            const nextProfile = readStoredProfile(authUser?.email)
             setStoredProfile(nextProfile)
             setUserInitials(profileInitials(nextProfile))
             const row = await getCurrentUser()

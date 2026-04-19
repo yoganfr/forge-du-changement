@@ -9,7 +9,10 @@ import {
 } from './lib/api'
 import { supabase } from './lib/supabase'
 import type { User } from './lib/types'
-import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
+import {
+  memberProfileStorageKey,
+  migrateLegacyMemberProfileIfNeeded,
+} from './lib/memberProfileStorage'
 import UserAvatarImg from './UserAvatarImg'
 
 export type DirectionType = 'fonctionnel' | 'metier' | 'geographique'
@@ -42,12 +45,15 @@ export interface ProfileSheetProps {
   managedCount?: number
   totalEffectif?: number
   avatarUrl?: string | null
+  /** Email session Auth : clé `localStorage` du cache profil (survit à la déconnexion). */
+  storageEmail?: string | null
   onSaved?: (data: StoredMemberProfile) => void
 }
 
-function loadStored(): StoredMemberProfile {
+function loadStored(storageEmail?: string | null): StoredMemberProfile {
   try {
-    const raw = localStorage.getItem(MEMBER_PROFILE_STORAGE_KEY)
+    migrateLegacyMemberProfileIfNeeded(storageEmail)
+    const raw = localStorage.getItem(memberProfileStorageKey(storageEmail))
     if (!raw) return {}
     return JSON.parse(raw) as StoredMemberProfile
   } catch {
@@ -55,9 +61,16 @@ function loadStored(): StoredMemberProfile {
   }
 }
 
-function saveStored(data: StoredMemberProfile) {
-  const prev = loadStored()
-  localStorage.setItem(MEMBER_PROFILE_STORAGE_KEY, JSON.stringify({ ...prev, ...data }))
+function saveStored(data: StoredMemberProfile, storageEmail?: string | null) {
+  const prev = loadStored(storageEmail)
+  try {
+    localStorage.setItem(
+      memberProfileStorageKey(storageEmail),
+      JSON.stringify({ ...prev, ...data }),
+    )
+  } catch {
+    /* quota */
+  }
 }
 
 function roleBadgeClass(role: string) {
@@ -219,6 +232,7 @@ export default function ProfileSheet({
   managedCount: managedCountProp = 0,
   totalEffectif: totalEffectifProp = 0,
   avatarUrl: avatarUrlProp = null,
+  storageEmail = null,
   onSaved,
 }: ProfileSheetProps) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -237,7 +251,7 @@ export default function ProfileSheet({
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem('lfdc-user-id'))
   useEffect(() => {
     if (!open) return
-    const s = loadStored()
+    const s = loadStored(storageEmail)
     setFirstName(s.firstName ?? firstNameProp)
     setLastName(s.lastName ?? lastNameProp)
     setJobTitle(s.jobTitle ?? jobTitleProp)
@@ -248,7 +262,18 @@ export default function ProfileSheet({
     setAvatarUrl(s.avatar ?? avatarUrlProp ?? null)
     setAvatarFile(null)
     setDirty(false)
-  }, [open, firstNameProp, lastNameProp, jobTitleProp, directionProp, directionTypeProp, managedCountProp, totalEffectifProp, avatarUrlProp])
+  }, [
+    open,
+    firstNameProp,
+    lastNameProp,
+    jobTitleProp,
+    directionProp,
+    directionTypeProp,
+    managedCountProp,
+    totalEffectifProp,
+    avatarUrlProp,
+    storageEmail,
+  ])
 
   useEffect(() => {
     if (!open || !workspaceId) return
@@ -313,7 +338,7 @@ export default function ProfileSheet({
       }
     }
 
-    const prev = loadStored()
+    const prev = loadStored(storageEmail)
     const payload: StoredMemberProfile = {
       ...prev,
       firstName,
@@ -327,7 +352,7 @@ export default function ProfileSheet({
       totalEffectif,
       avatar: avatarUrlToPersist,
     }
-    saveStored(payload)
+    saveStored(payload, storageEmail)
     try {
       const roleDb: User['role'] = role.toLowerCase().includes('consultant')
         ? 'consultant'

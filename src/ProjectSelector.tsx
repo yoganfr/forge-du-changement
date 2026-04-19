@@ -8,7 +8,10 @@ import {
   updateProjet,
 } from './lib/api'
 import { getCurrentUser } from './lib/auth'
-import { MEMBER_PROFILE_STORAGE_KEY } from './lib/memberProfileStorage'
+import {
+  memberProfileStorageKey,
+  migrateLegacyMemberProfileIfNeeded,
+} from './lib/memberProfileStorage'
 import { buildGanttYearSpans, generateGanttMonths } from './lib/ganttMonths'
 import GanttRangeMarkers from './GanttRangeMarkers'
 import type { Direction as DbDirection, Projet as DbProjet } from './lib/types'
@@ -326,9 +329,10 @@ function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Per
   })
 }
 
-function applyMemberDirectionPrefill(data: Perimetre[]): Perimetre[] {
+function applyMemberDirectionPrefill(data: Perimetre[], memberProfileEmail?: string | null): Perimetre[] {
   if (typeof window === 'undefined') return data
-  const raw = window.localStorage.getItem(MEMBER_PROFILE_STORAGE_KEY)
+  migrateLegacyMemberProfileIfNeeded(memberProfileEmail)
+  const raw = window.localStorage.getItem(memberProfileStorageKey(memberProfileEmail))
   if (!raw) return data
 
   try {
@@ -1283,6 +1287,8 @@ function CoefPanel({
 export interface ProjectSelectorProps {
   memberDirectionName?: string
   workspaceId?: string | null
+  /** Email Auth : lecture du cache profil pour préremplir direction / mission / vision. */
+  memberProfileEmail?: string | null
   /** Ouvre la Maturity Roadmap (projet BUILD retenu). */
   onOpenRoadmap?: (projetId: string, directionId: string) => void
 }
@@ -1290,11 +1296,13 @@ export interface ProjectSelectorProps {
 export default function ProjectSelector({
   memberDirectionName = 'Ma direction',
   workspaceId = null,
+  memberProfileEmail = null,
   onOpenRoadmap,
 }: ProjectSelectorProps) {
   const [perimetres, setPerimetres] = useState<Perimetre[]>(() =>
     applyMemberDirectionPrefill(
       autoSelectTopBuildProjects(buildInitialPerimetres(memberDirectionName), DEFAULT_COEFFICIENTS),
+      memberProfileEmail,
     ),
   )
   const [activeId, setActiveId] = useState<string>(DIR_PERIM_ID)
@@ -1313,6 +1321,10 @@ export default function ProjectSelector({
     const name = memberDirectionName.trim() || 'Ma direction'
     setPerimetres((prev) => prev.map((p) => (p.id === DIR_PERIM_ID ? { ...p, name } : p)))
   }, [memberDirectionName])
+
+  useEffect(() => {
+    setPerimetres((prev) => applyMemberDirectionPrefill(prev, memberProfileEmail))
+  }, [memberProfileEmail])
 
   useEffect(() => {
     if (!workspaceId) return
