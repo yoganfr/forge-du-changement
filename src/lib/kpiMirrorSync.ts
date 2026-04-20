@@ -80,6 +80,5 @@ export async function syncKpiMirrorForParentJalon(params: {
     kpi_description: desc,
     kpi_valeur_cible: val,
     kpi_source_jalon_id: parent.id,
-    statut: 'a_venir',
   })
 }

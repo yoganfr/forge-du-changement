@@ -255,7 +255,6 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
     mois_cible: data.mois_cible ?? null,
     annee_cible: data.annee_cible ?? null,
     ordre_sequentiel: data.ordre_sequentiel ?? seq,
-    statut: data.statut ?? 'a_venir',
     responsable: data.responsable ?? null,
     decideur: data.decideur ?? null,
     kpi_description: data.kpi_description ?? null,
@@ -264,6 +263,9 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
     jalon_dependance_id: data.jalon_dependance_id ?? null,
     kpi_source_jalon_id: data.kpi_source_jalon_id ?? null,
     note_contexte: data.note_contexte ?? null,
+  } as Record<string, unknown>
+  if (data.statut !== undefined && data.statut !== null && String(data.statut).trim() !== '') {
+    insert.statut = data.statut
   }
   const { data: row, error } = await supabase.from('jalons').insert(insert).select().single()
   if (error) throw error
