@@ -452,20 +452,6 @@ export default function MaturityRoadmap({
     }
   }
 
-  async function handleToggleJalonRealise(jalon: Jalon, chantierId: string, realised: boolean) {
-    if (readOnly) return
-    try {
-      await updateJalon(jalon.id, { statut: realised ? 'realise' : 'en_cours' })
-      await refreshChantierJalons(chantierId)
-    } catch (e) {
-      const msg =
-        typeof e === 'object' && e !== null && 'message' in e
-          ? String((e as { message?: unknown }).message ?? '').trim()
-          : ''
-      window.alert(msg || 'Impossible de mettre à jour le statut.')
-    }
-  }
-
   async function openDrawer(jalon: Jalon, chantierId: string) {
     setDrawerSeedJalon(null)
     setDrawerChantierId(chantierId)
@@ -599,9 +585,6 @@ export default function MaturityRoadmap({
         projetNomById={projetNomById}
         onOpenJalon={(j, chId) => void openDrawer(j, chId)}
         onQuickAddInCell={(chId, col, axe) => setQuickAdd({ chantierId: chId, column: col, axe })}
-        onToggleJalonRealise={
-          readOnly ? undefined : (j, chId, realised) => void handleToggleJalonRealise(j, chId, realised)
-        }
         onChantierCellClick={
           readOnly
             ? undefined

@@ -60,8 +60,6 @@ type Props = {
   projetNomById: Record<string, string>
   onOpenJalon: (jalon: Jalon, chantierId: string) => void
   onQuickAddInCell: (chantierId: string, column: TimelineColumn, axe: Axe) => void
-  /** Case « réalisé » sur la pilule (hors lecture seule). */
-  onToggleJalonRealise?: (jalon: Jalon, chantierId: string, realised: boolean) => void
   /**
    * Clic sur la cellule « Chantier » : nom + rattachement projet.
    * `chantierId === null` = créer une ligne dans le bloc `axeForCreate` (type Processus / … / KPI).
@@ -85,7 +83,6 @@ export default function RoadmapTimelineGrid({
   projetNomById,
   onOpenJalon,
   onQuickAddInCell,
-  onToggleJalonRealise,
   onChantierCellClick,
   onChantierDrop,
   onRoadmapToast,
@@ -618,7 +615,6 @@ export default function RoadmapTimelineGrid({
                           <div className="mr-tgrid__cell-inner">
                             <div className="mr-tgrid__pills">
                               {cellJalons.map((j) => {
-                                const realised = j.statut === 'realise'
                                 return (
                                   <div
                                     key={j.id}
@@ -631,21 +627,6 @@ export default function RoadmapTimelineGrid({
                                       background: `color-mix(in srgb, ${projectColor} 22%, var(--theme-bg-card))`,
                                     }}
                                   >
-                                    {!readOnly && onToggleJalonRealise ? (
-                                      <label className="mr-tgrid__pill-check">
-                                        <input
-                                          type="checkbox"
-                                          checked={realised}
-                                          draggable={false}
-                                          aria-label={`Réalisé — ${j.nom || 'Jalon'}`}
-                                          onChange={(e) => {
-                                            e.stopPropagation()
-                                            onToggleJalonRealise(j, ch.id, e.target.checked)
-                                          }}
-                                          onClick={(e) => e.stopPropagation()}
-                                        />
-                                      </label>
-                                    ) : null}
                                     <button
                                       type="button"
                                       className="mr-tgrid__pill-main"
