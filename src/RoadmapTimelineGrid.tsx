@@ -615,6 +615,12 @@ export default function RoadmapTimelineGrid({
                           <div className="mr-tgrid__cell-inner">
                             <div className="mr-tgrid__pills">
                               {cellJalons.map((j) => (
+                                (() => {
+                                  const rawNumero = typeof j.numero === 'string' ? j.numero.trim() : ''
+                                  const hasDigit = /\d/.test(rawNumero)
+                                  const hasCheckboxGlyph = /[☐☑✅✓]/.test(rawNumero)
+                                  const displayNumero = hasDigit && !hasCheckboxGlyph ? rawNumero : null
+                                  return (
                                 <div
                                   key={j.id}
                                   className="mr-tgrid__pill mr-tgrid__pill--matrix"
@@ -633,15 +639,17 @@ export default function RoadmapTimelineGrid({
                                     draggable={false}
                                     onClick={() => onOpenJalon(j, ch.id)}
                                     title={
-                                      j.numero
-                                        ? `${j.nom || 'Jalon'} (${j.numero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                      displayNumero
+                                        ? `${j.nom || 'Jalon'} (${displayNumero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
                                         : `${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`
                                     }
                                   >
-                                    {j.numero ? <span className="mr-tgrid__pill-num">{j.numero}</span> : null}
+                                    {displayNumero ? <span className="mr-tgrid__pill-num">{displayNumero}</span> : null}
                                     <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
                                   </button>
                                 </div>
+                                  )
+                                })()
                               ))}
                             </div>
                             {!readOnly && cellEmpty && (
