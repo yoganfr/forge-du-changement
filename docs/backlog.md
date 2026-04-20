@@ -1,9 +1,13 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : 20 avril 2026
+Dernière mise à jour : 21 avril 2026
 
 ## Traçabilité GitHub ([yoganfr/forge-du-changement](https://github.com/yoganfr/forge-du-changement))
 
-Comparaison effectuée le **20 avril 2026** entre les issues historiques (#1–#15) et les statuts de ce document. Les issues dont le périmètre est ✅ dans le backlog ont été **fermées** sur GitHub avec un commentaire de référence à ce fichier.
+Les **numéros d’issues GitHub** et les **numéros # du tableau backlog** (colonnes des epics) sont indépendants : la colonne *Alignement* indique la correspondance.
+
+### Jeu historique (#1–#15)
+
+Comparaison du **20 avril 2026** : les issues dont le périmètre est ✅ dans le backlog ont été **fermées** sur GitHub avec un commentaire de référence à ce fichier.
 
 | Issue | État (après sync) | Alignement backlog |
 |------:|-------------------|-------------------|
@@ -23,7 +27,24 @@ Comparaison effectuée le **20 avril 2026** entre les issues historiques (#1–#
 | [#14](https://github.com/yoganfr/forge-du-changement/issues/14) | Ouverte | EPIC 13 #36 — export PDF / impression navigateur 🚧 |
 | [#15](https://github.com/yoganfr/forge-du-changement/issues/15) | Ouverte | EPIC 6 #17 — module SENS (diagnostic) ⬜ |
 
-Les numéros d’issue GitHub ne couvrent pas les entrées #38+ du backlog (permissions, invitations, design premium, etc.) : elles restent suivies **dans ce document** jusqu’à création d’issues dédiées si besoin.
+### Extensions (#16+ — avril 2026)
+
+Issues créées pour ancrer les lots **hors jeu #1–#15** (permissions, invitations restantes, design, epics futurs). Les issues **#16** et **#17** sont des *jalons de livraison* refermées tout de suite ; le reste est **ouvert** tant que le backlog indique ⬜ ou 🚧.
+
+| Issue | État | Alignement backlog |
+|------:|------|-------------------|
+| [#16](https://github.com/yoganfr/forge-du-changement/issues/16) | Fermée | EPIC 10 — lot permissions / audit / scaling **#38–#46** ✅ (jalon GitHub) |
+| [#17](https://github.com/yoganfr/forge-du-changement/issues/17) | Fermée | EPIC 11 — invitations **#47–#49** ✅ (jalon GitHub) |
+| [#18](https://github.com/yoganfr/forge-du-changement/issues/18) | Ouverte | EPIC 11 **#50** — MFA super-admin ⬜ |
+| [#19](https://github.com/yoganfr/forge-du-changement/issues/19) | Ouverte | EPIC 11 **#51** — journal import lot CSV en UI ⬜ |
+| [#20](https://github.com/yoganfr/forge-du-changement/issues/20) | Ouverte | EPIC 12 — design premium **#52–#58** ⬜ |
+| [#21](https://github.com/yoganfr/forge-du-changement/issues/21) | Ouverte | EPIC 4 — PAE, lots backlog **#11–#13** (complète l’issue GitHub [#10](https://github.com/yoganfr/forge-du-changement/issues/10) — structure) ⬜ |
+| [#22](https://github.com/yoganfr/forge-du-changement/issues/22) | Ouverte | EPIC 5 — lots backlog **#15–#16** (complète l’issue GitHub [#11](https://github.com/yoganfr/forge-du-changement/issues/11), grille backlog #14) ⬜ |
+| [#23](https://github.com/yoganfr/forge-du-changement/issues/23) | Ouverte | EPIC 6 — lots backlog **#18–#21** (suite de l’issue GitHub [#15](https://github.com/yoganfr/forge-du-changement/issues/15), backlog #17) ⬜ |
+| [#24](https://github.com/yoganfr/forge-du-changement/issues/24) | Ouverte | EPIC 7 — **#22–#23** ⬜ |
+| [#25](https://github.com/yoganfr/forge-du-changement/issues/25) | Ouverte | EPIC 8 — **#24–#29** ⬜ |
+| [#26](https://github.com/yoganfr/forge-du-changement/issues/26) | Ouverte | EPIC 9 — **#30–#32** ⬜ |
+| [#27](https://github.com/yoganfr/forge-du-changement/issues/27) | Ouverte | EPIC 13 **#37** — export PDF PAE Manager ⬜ |
 
 ## Légende
 - 🔴 Priorité haute
@@ -552,6 +573,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 ### Session avril 2026 — synthèse des travaux réalisés
 
 #### Fait
+- Création des issues GitHub **#16–#27** (jalons livrés + lots ouverts par epic) et tableau d’extension en tête de `docs/backlog.md`.
 - Synchronisation issues GitHub #1–#15 avec ce backlog (fermeture des issues livrées, tableau de traçabilité en tête de document).
 - Maturity Roadmap: amélioration UX drawer/popins (fermeture backdrop robuste), uniformisation RACI (grilles 2 colonnes, pilote unique), échéance alignée sur la timeline.
 - Maturity Roadmap: simplification dépendances (masquées en UI, `jalon_dependance_id` conservée en base).
