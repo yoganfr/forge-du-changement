@@ -620,6 +620,11 @@ export default function RoadmapTimelineGrid({
                                   const hasDigit = /\d/.test(rawNumero)
                                   const hasCheckboxGlyph = /[☐☑✅✓]/.test(rawNumero)
                                   const displayNumero = hasDigit && !hasCheckboxGlyph ? rawNumero : null
+                                  const rawName = (j.nom || 'Sans titre').trim()
+                                  const displayName = rawName
+                                    .replace(/^[\s\-–—]*[☐☑✅✓]\s*/u, '')
+                                    .replace(/^[\s\-–—]*\[[ xX]\]\s*/u, '')
+                                    .trim() || 'Sans titre'
                                   return (
                                 <div
                                   key={j.id}
@@ -640,12 +645,12 @@ export default function RoadmapTimelineGrid({
                                     onClick={() => onOpenJalon(j, ch.id)}
                                     title={
                                       displayNumero
-                                        ? `${j.nom || 'Jalon'} (${displayNumero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
-                                        : `${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                        ? `${displayName} (${displayNumero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                        : `${displayName} — ${STATUT_LABEL[j.statut] ?? j.statut}`
                                     }
                                   >
                                     {displayNumero ? <span className="mr-tgrid__pill-num">{displayNumero}</span> : null}
-                                    <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
+                                    <span className="mr-tgrid__pill-name">{displayName}</span>
                                   </button>
                                 </div>
                                   )
