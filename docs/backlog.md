@@ -1,5 +1,7 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : 22 avril 2026
+Dernière mise à jour : **20 avril 2026**, 02 h 39 (Europe/Paris)
+
+Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
 ## Convention de notation
 

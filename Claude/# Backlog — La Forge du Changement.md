@@ -1,6 +1,6 @@
 # Backlog — La Forge du Changement
 
-> **21 avril 2026** — La version à jour (epics 11–13, permissions, traçabilité GitHub, convention **REF-** / **GH-**) est dans [`docs/backlog.md`](../docs/backlog.md). Ce fichier est conservé comme archive de la vision initiale.
+> **20 avril 2026** — La version à jour (epics 11–13, permissions, traçabilité GitHub, convention **REF-** / **GH-**) est dans [`docs/backlog.md`](../docs/backlog.md). Ce fichier est conservé comme archive de la vision initiale.
 
 Dernière mise à jour : 17 avril 2026
 
