@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **20 avril 2026**, 03 h 41 (Europe/Paris)
+Dernière mise à jour : **20 avril 2026**, 04 h 25 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -596,6 +596,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - Maturity Roadmap: création de direction inline avec anti-doublon (normalisation + proximité de libellé).
 - KPI roadmap: mise en place du jalon KPI miroir synchronisé (création/mise à jour/suppression), verrouillage nom + échéance côté miroir.
 - Maturity Roadmap — **grille matrice** : drag & drop **chantier** entre axes (Vague 1), puis drag & drop **jalon** sur la même ligne pour l’échéance (Vague 2) — collision par cellule, renumérotation `ordre_sequentiel`, pas de reload page.
+- Maturity Roadmap — **polish design grille** : alignement tokens thème (couleurs axes), harmonisation typographique en-têtes/axes, centrages verticaux/horizontaux (`Axe`, `Chantiers`, labels d’axes) et séparateurs visuels adoucis.
 - Documentation métier/technique mise à jour (règles roadmap, synthèse évolutions, backlog, script SQL `supabase-jalons-kpi-source.sql`).
 - Vue décideur / sélection projets: harmonisation itérative des frises et mini-frises (édition + décideur), puis composant partagé pour marqueurs début/fin.
 - Vue décideur: renommage UX, garde d'accès rôle (`consultant/admin/pilote/superadmin`), validation/retrait avec revue obligatoire, historique des décisions via `audit_events`.
