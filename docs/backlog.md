@@ -1,5 +1,29 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : 19 avril 2026
+Dernière mise à jour : 20 avril 2026
+
+## Traçabilité GitHub ([yoganfr/forge-du-changement](https://github.com/yoganfr/forge-du-changement))
+
+Comparaison effectuée le **20 avril 2026** entre les issues historiques (#1–#15) et les statuts de ce document. Les issues dont le périmètre est ✅ dans le backlog ont été **fermées** sur GitHub avec un commentaire de référence à ce fichier.
+
+| Issue | État (après sync) | Alignement backlog |
+|------:|-------------------|-------------------|
+| [#1](https://github.com/yoganfr/forge-du-changement/issues/1) | Fermée | EPIC 2 — dashboard consolidé ✅ |
+| [#2](https://github.com/yoganfr/forge-du-changement/issues/2) | Fermée | EPIC 2 — top 5 BUILD ✅ |
+| [#3](https://github.com/yoganfr/forge-du-changement/issues/3) | Ouverte | EPIC 2 #3 — Gantt macro consolidé ⬜ |
+| [#4](https://github.com/yoganfr/forge-du-changement/issues/4) | Fermée | EPIC 3 #4 — 4 axes ✅ |
+| [#5](https://github.com/yoganfr/forge-du-changement/issues/5) | Fermée | EPIC 3 #5 — jalons ✅ |
+| [#6](https://github.com/yoganfr/forge-du-changement/issues/6) | Fermée | EPIC 3 #6 — macro RACI ✅ |
+| [#7](https://github.com/yoganfr/forge-du-changement/issues/7) | Ouverte | EPIC 3 #7 — réactions / réponses ⬜ |
+| [#8](https://github.com/yoganfr/forge-du-changement/issues/8) | Fermée | EPIC 3 #8 — vue matrice ✅ |
+| [#9](https://github.com/yoganfr/forge-du-changement/issues/9) | Fermée | EPIC 3 #9 — dépendances (données conservées, UI masquée) ✅ |
+| [#10](https://github.com/yoganfr/forge-du-changement/issues/10) | Ouverte | EPIC 4 — PAE structure ⬜ |
+| [#11](https://github.com/yoganfr/forge-du-changement/issues/11) | Ouverte | EPIC 5 #14 — plan de charge ⬜ |
+| [#12](https://github.com/yoganfr/forge-du-changement/issues/12) | Fermée | EPIC 10 — auth réelle ✅ |
+| [#13](https://github.com/yoganfr/forge-du-changement/issues/13) | Fermée | EPIC 10 — Vercel ✅ |
+| [#14](https://github.com/yoganfr/forge-du-changement/issues/14) | Ouverte | EPIC 13 #36 — export PDF / impression navigateur 🚧 |
+| [#15](https://github.com/yoganfr/forge-du-changement/issues/15) | Ouverte | EPIC 6 #17 — module SENS (diagnostic) ⬜ |
+
+Les numéros d’issue GitHub ne couvrent pas les entrées #38+ du backlog (permissions, invitations, design premium, etc.) : elles restent suivies **dans ce document** jusqu’à création d’issues dédiées si besoin.
 
 ## Légende
 - 🔴 Priorité haute
@@ -528,6 +552,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 ### Session avril 2026 — synthèse des travaux réalisés
 
 #### Fait
+- Synchronisation issues GitHub #1–#15 avec ce backlog (fermeture des issues livrées, tableau de traçabilité en tête de document).
 - Maturity Roadmap: amélioration UX drawer/popins (fermeture backdrop robuste), uniformisation RACI (grilles 2 colonnes, pilote unique), échéance alignée sur la timeline.
 - Maturity Roadmap: simplification dépendances (masquées en UI, `jalon_dependance_id` conservée en base).
 - Maturity Roadmap: création de direction inline avec anti-doublon (normalisation + proximité de libellé).
