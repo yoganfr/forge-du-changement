@@ -34,6 +34,13 @@ const STATUT_LABEL: Record<string, string> = {
 }
 
 /**
+ * Variantes courantes de glyphes "checkbox" vues dans des imports/collages.
+ * On les retire de l'affichage des pilules timeline.
+ */
+const CHECKBOX_GLYPH_RE = /[☐☑☒✅✓✔✗✘□▢▣▪▫◻◼◽◾]/u
+const CHECKBOX_PREFIX_RE = /^[\s\-–—]*[☐☑☒✅✓✔✗✘□▢▣▪▫◻◼◽◾]\s*/u
+
+/**
  * Un chantier avec `axe` renseigné n’apparaît que dans ce bloc (pas de copie sur les 4 axes).
  * Chantiers sans axe (données antérieures) : visibles uniquement dans les blocs où ils ont au moins un jalon ;
  * s’ils n’en ont aucun, une seule ligne sur Processus pour éviter les doublons vides.
@@ -618,11 +625,11 @@ export default function RoadmapTimelineGrid({
                                 (() => {
                                   const rawNumero = typeof j.numero === 'string' ? j.numero.trim() : ''
                                   const hasDigit = /\d/.test(rawNumero)
-                                  const hasCheckboxGlyph = /[☐☑✅✓]/.test(rawNumero)
+                                  const hasCheckboxGlyph = CHECKBOX_GLYPH_RE.test(rawNumero)
                                   const displayNumero = hasDigit && !hasCheckboxGlyph ? rawNumero : null
                                   const rawName = (j.nom || 'Sans titre').trim()
                                   const displayName = rawName
-                                    .replace(/^[\s\-–—]*[☐☑✅✓]\s*/u, '')
+                                    .replace(CHECKBOX_PREFIX_RE, '')
                                     .replace(/^[\s\-–—]*\[[ xX]\]\s*/u, '')
                                     .trim() || 'Sans titre'
                                   return (
