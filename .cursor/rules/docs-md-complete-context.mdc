@@ -42,3 +42,8 @@ Toujours lire:
 2. Respecter les conventions de commit pour toute proposition de message ou workflow git.
 3. En cas de conflit documentaire, signaler l'ambiguite, proposer une resolution, puis demander confirmation utilisateur.
 4. Si un document parait obsolete ou contradictoire, le signaler explicitement avant implementation.
+
+## Regle git obligatoire
+
+- Apres chaque commit realise par l'agent, effectuer immediatement `git push` vers la branche courante.
+- Exception: ne pas pousser uniquement si l'utilisateur demande explicitement de ne pas push.
