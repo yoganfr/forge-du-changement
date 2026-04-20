@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **20 avril 2026**, 02 h 39 (Europe/Paris)
+Dernière mise à jour : **20 avril 2026**, 18 h 30 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -128,6 +128,10 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - **V1** : backdrop drawer/modales (mousedown+mouseup), RACI typographie + grilles 2 col (pilote radio, autres cases), échéance = maille timeline.  
 - **V2** : pas de saisie dépendance en UI ; création **Direction** inline (modal chantier + drawer RACI) avec détection de doublon.  
 - **V3** : jalon KPI **miroir** sync indicateur/cible/échéance parent, verrou nom+date sur miroir, suppression miroir → vide KPI parent. Script : `docs/supabase-jalons-kpi-source.sql`.
+
+**Drag & drop — grille matrice (compléments avril 2026)**  
+- **Vague 1** : déplacement d’une **ligne chantier** entre axes (Processus / Organisation / Outils ; pas KPI), refetch ciblé — **sans rechargement complet de page**.  
+- **Vague 2** : déplacement des **pilules jalons** sur la **même ligne** (même `chantier_id` + même `axe`) pour ajuster l’échéance (`mois_cible` / `annee_cible`) ; **une pilule par cellule** temps (sinon toast + drop refusé) ; **renumérotation automatique** des `ordre_sequentiel` sur l’axe si l’ordre chronologique change ; mode **lecture seule** sans drag. API : `recalculateOrdreSequentielForChantierAxe` dans `src/lib/api/roadmap.ts`.
 
 ---
 
@@ -266,7 +270,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - `pages/Login.tsx` — écran connexion premium
 - `pages/AuthCallback.tsx` — retour OAuth/Magic Link
 - `MaturityRoadmap.tsx` — roadmap maturité (chantiers, jalons, RACI, dépendances)
-- `RoadmapTimelineGrid.tsx` — grille 4 axes × échéances
+- `RoadmapTimelineGrid.tsx` — grille 4 axes × échéances (drag chantier entre axes, drag jalon sur la ligne pour ajuster l’échéance)
 - `DgProjectAccordion.tsx` — détail projet dans la Vue décideur
 - `ChantierLineModal.tsx` / `JalonQuickAddModal.tsx` — édition chantiers et jalons
 - `src/lib/api.ts` — façade CRUD + réexport roadmap
@@ -426,7 +430,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 ### Sprint 2 — Cœur métier roadmap (EPIC 3)
 
-*État 19/04/2026* : **T9 à T11, T13 et T14** sont couverts par l’app (axes, CRUD jalons, RACI, grille, dépendance). **T12** (réactions / réponses) et **T15** (recette ciblée + perf) restent pertinents ; ajouter au besoin versionnement / param workspace depuis `docs/maturity-roadmap-synthese-evolutions-produit.md`.
+*État 20/04/2026* : **T9 à T11, T13 et T14** sont couverts par l’app (axes, CRUD jalons, RACI, grille, dépendance). Complément **grille matrice** : drag chantier entre axes + drag jalon sur la ligne (échéance), sans reload page. **T12** (réactions / réponses) et **T15** (recette ciblée + perf) restent pertinents ; ajouter au besoin versionnement / param workspace depuis `docs/maturity-roadmap-synthese-evolutions-produit.md`.
 
 #### T9 — Structure 4 axes BUILD (GH-4 · EPIC 3 · REF-4)
 - **Estimation** : 1 jour.
@@ -591,6 +595,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - Maturity Roadmap: simplification dépendances (masquées en UI, `jalon_dependance_id` conservée en base).
 - Maturity Roadmap: création de direction inline avec anti-doublon (normalisation + proximité de libellé).
 - KPI roadmap: mise en place du jalon KPI miroir synchronisé (création/mise à jour/suppression), verrouillage nom + échéance côté miroir.
+- Maturity Roadmap — **grille matrice** : drag & drop **chantier** entre axes (Vague 1), puis drag & drop **jalon** sur la même ligne pour l’échéance (Vague 2) — collision par cellule, renumérotation `ordre_sequentiel`, pas de reload page.
 - Documentation métier/technique mise à jour (règles roadmap, synthèse évolutions, backlog, script SQL `supabase-jalons-kpi-source.sql`).
 - Vue décideur / sélection projets: harmonisation itérative des frises et mini-frises (édition + décideur), puis composant partagé pour marqueurs début/fin.
 - Vue décideur: renommage UX, garde d'accès rôle (`consultant/admin/pilote/superadmin`), validation/retrait avec revue obligatoire, historique des décisions via `audit_events`.
