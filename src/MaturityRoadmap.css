@@ -793,8 +793,8 @@
 }
 
 .mr-tgrid__head-label--chantier {
-  justify-content: flex-start;
-  text-align: left;
+  justify-content: center;
+  text-align: center;
 }
 
 .mr-tgrid__axis-cell {
