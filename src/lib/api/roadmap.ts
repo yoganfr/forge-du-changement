@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import type { Axe, Chantier, Jalon, RaciJalon, RaciRole } from '../types'
+import type { Axe, Chantier, Jalon, JalonStatut, RaciJalon, RaciRole } from '../types'
 import { dedupedFetch, invalidateCache } from './cache'
 
 const AXE_ORDER: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
@@ -41,6 +41,46 @@ const AXE_SYNONYMS: Record<string, Axe> = {
   '2': 'ORGANISATION',
   '3': 'OUTILS',
   '4': 'KPI',
+}
+
+const ALLOWED_STATUTS: readonly JalonStatut[] = ['a_venir', 'en_cours', 'realise', 'bloque']
+const STATUT_SYNONYMS: Record<string, JalonStatut> = {
+  A_VENIR: 'a_venir',
+  A_VENIR_: 'a_venir',
+  AVENIR: 'a_venir',
+  EN_COURS: 'en_cours',
+  ENCOURS: 'en_cours',
+  REALISE: 'realise',
+  BLOQUE: 'bloque',
+  TODO: 'a_venir',
+  IN_PROGRESS: 'en_cours',
+  DONE: 'realise',
+  BLOCKED: 'bloque',
+}
+
+function normalizeStatutForDb(input: unknown): JalonStatut | null {
+  const raw = String(input ?? '').trim()
+  if (!raw) return null
+  const direct = raw as JalonStatut
+  if (ALLOWED_STATUTS.includes(direct)) return direct
+  const upper = raw.toUpperCase().replace(/[\u200B-\u200D\uFEFF]/g, '')
+  if (STATUT_SYNONYMS[upper]) return STATUT_SYNONYMS[upper]
+  const deaccent = upper
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[\s-]+/g, '_')
+  if (STATUT_SYNONYMS[deaccent]) return STATUT_SYNONYMS[deaccent]
+  if (ALLOWED_STATUTS.includes(deaccent as JalonStatut)) return deaccent as JalonStatut
+  return null
+}
+
+function sanitizeJalonNomForDb(input: unknown): string {
+  const raw = String(input ?? '')
+  const cleaned = raw
+    .normalize('NFKC')
+    .replace(/^[\p{C}\p{Z}\p{P}\p{S}]+/u, '')
+    .trim()
+  return cleaned || 'Nouveau jalon'
 }
 
 export function normalizeAxeForDb(input: unknown): Axe {
@@ -250,7 +290,7 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
     direction_id: data.direction_id ?? null,
     axe,
     numero,
-    nom: data.nom?.trim() ? data.nom : 'Nouveau jalon',
+    nom: sanitizeJalonNomForDb(data.nom),
     description: data.description ?? null,
     mois_cible: data.mois_cible ?? null,
     annee_cible: data.annee_cible ?? null,
@@ -265,7 +305,8 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
     note_contexte: data.note_contexte ?? null,
   } as Record<string, unknown>
   if (data.statut !== undefined && data.statut !== null && String(data.statut).trim() !== '') {
-    insert.statut = data.statut
+    const normalizedStatut = normalizeStatutForDb(data.statut)
+    if (normalizedStatut) insert.statut = normalizedStatut
   }
   const { data: row, error } = await supabase.from('jalons').insert(insert).select().single()
   if (error) throw error
@@ -278,9 +319,17 @@ export async function createJalon(data: Partial<Jalon>): Promise<Jalon> {
 }
 
 export async function updateJalon(id: string, data: Partial<Jalon>): Promise<Jalon> {
-  const payload = { ...data, updated_at: new Date().toISOString() }
+  const payload = { ...data, updated_at: new Date().toISOString() } as Record<string, unknown>
   if (data.axe !== undefined && data.axe !== null) {
-    ;(payload as Partial<Jalon>).axe = normalizeAxeForDb(data.axe)
+    payload.axe = normalizeAxeForDb(data.axe)
+  }
+  if (data.nom !== undefined) {
+    payload.nom = sanitizeJalonNomForDb(data.nom)
+  }
+  if (data.statut !== undefined) {
+    const normalizedStatut = normalizeStatutForDb(data.statut)
+    if (normalizedStatut) payload.statut = normalizedStatut
+    else delete payload.statut
   }
   const { data: row, error } = await supabase
     .from('jalons')

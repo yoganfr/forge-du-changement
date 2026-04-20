@@ -40,6 +40,18 @@ const STATUT_LABEL: Record<string, string> = {
 const CHECKBOX_GLYPH_RE = /[☐☑☒✅✓✔✗✘□▢▣▪▫◻◼◽◾]/u
 const CHECKBOX_PREFIX_RE = /^[\s\-–—]*[☐☑☒✅✓✔✗✘□▢▣▪▫◻◼◽◾]\s*/u
 
+function sanitizeTimelinePillLabel(input: string): string {
+  const raw = input.trim()
+  const removedExplicitMarkers = raw
+    .replace(CHECKBOX_PREFIX_RE, '')
+    .replace(/^[\s\-–—]*\[[ xX]\]\s*/u, '')
+  const removedGenericLeadingSymbols = removedExplicitMarkers
+    .normalize('NFKC')
+    .replace(/^[\p{C}\p{Z}\p{P}\p{S}]+/u, '')
+    .trim()
+  return removedGenericLeadingSymbols || 'Sans titre'
+}
+
 /**
  * Un chantier avec `axe` renseigné n’apparaît que dans ce bloc (pas de copie sur les 4 axes).
  * Chantiers sans axe (données antérieures) : visibles uniquement dans les blocs où ils ont au moins un jalon ;
@@ -627,11 +639,8 @@ export default function RoadmapTimelineGrid({
                                   const hasDigit = /\d/.test(rawNumero)
                                   const hasCheckboxGlyph = CHECKBOX_GLYPH_RE.test(rawNumero)
                                   const displayNumero = hasDigit && !hasCheckboxGlyph ? rawNumero : null
-                                  const rawName = (j.nom || 'Sans titre').trim()
-                                  const displayName = rawName
-                                    .replace(CHECKBOX_PREFIX_RE, '')
-                                    .replace(/^[\s\-–—]*\[[ xX]\]\s*/u, '')
-                                    .trim() || 'Sans titre'
+                                  const rawName = j.nom || 'Sans titre'
+                                  const displayName = sanitizeTimelinePillLabel(rawName)
                                   return (
                                 <div
                                   key={j.id}
