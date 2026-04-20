@@ -614,36 +614,35 @@ export default function RoadmapTimelineGrid({
                         >
                           <div className="mr-tgrid__cell-inner">
                             <div className="mr-tgrid__pills">
-                              {cellJalons.map((j) => {
-                                return (
-                                  <div
-                                    key={j.id}
-                                    className="mr-tgrid__pill mr-tgrid__pill--matrix"
-                                    draggable={!readOnly && !!onJalonDrop}
-                                    onDragStart={(e) => handleJalonPillDragStart(e, j, ch, axe, h.key)}
-                                    onDragEnd={handleJalonPillDragEnd}
-                                    style={{
-                                      borderLeft: `4px solid ${projectColor}`,
-                                      background: `color-mix(in srgb, ${projectColor} 22%, var(--theme-bg-card))`,
-                                    }}
+                              {cellJalons.map((j) => (
+                                <div
+                                  key={j.id}
+                                  className="mr-tgrid__pill mr-tgrid__pill--matrix"
+                                  draggable={!readOnly && !!onJalonDrop}
+                                  onDragStart={(e) => handleJalonPillDragStart(e, j, ch, axe, h.key)}
+                                  onDragEnd={handleJalonPillDragEnd}
+                                  style={{
+                                    borderLeft: `4px solid ${projectColor}`,
+                                    background: `color-mix(in srgb, ${projectColor} 22%, var(--theme-bg-card))`,
+                                  }}
+                                >
+                                  {/* Timeline grid pills intentionally render text only (no checkbox). */}
+                                  <button
+                                    type="button"
+                                    className="mr-tgrid__pill-main"
+                                    draggable={false}
+                                    onClick={() => onOpenJalon(j, ch.id)}
+                                    title={
+                                      j.numero
+                                        ? `${j.nom || 'Jalon'} (${j.numero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                        : `${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                    }
                                   >
-                                    <button
-                                      type="button"
-                                      className="mr-tgrid__pill-main"
-                                      draggable={false}
-                                      onClick={() => onOpenJalon(j, ch.id)}
-                                      title={
-                                        j.numero
-                                          ? `${j.nom || 'Jalon'} (${j.numero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
-                                          : `${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`
-                                      }
-                                    >
-                                      {j.numero ? <span className="mr-tgrid__pill-num">{j.numero}</span> : null}
-                                      <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
-                                    </button>
-                                  </div>
-                                )
-                              })}
+                                    {j.numero ? <span className="mr-tgrid__pill-num">{j.numero}</span> : null}
+                                    <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                             {!readOnly && cellEmpty && (
                               <button
