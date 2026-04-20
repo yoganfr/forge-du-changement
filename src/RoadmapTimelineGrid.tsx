@@ -638,6 +638,7 @@ export default function RoadmapTimelineGrid({
                                           : `${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`
                                       }
                                     >
+                                      {j.numero ? <span className="mr-tgrid__pill-num">{j.numero}</span> : null}
                                       <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
                                     </button>
                                   </div>
