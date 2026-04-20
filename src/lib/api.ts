@@ -47,6 +47,7 @@ export {
   getProjetJalons,
   monthToQuarter,
   normalizeAxeForDb,
+  recalculateOrdreSequentielForChantierAxe,
   removeRaci,
   setRaci,
   sortJalonsByAxeAndOrder,

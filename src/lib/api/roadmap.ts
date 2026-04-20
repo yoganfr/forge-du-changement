@@ -296,6 +296,31 @@ export async function updateJalon(id: string, data: Partial<Jalon>): Promise<Jal
   return j
 }
 
+/**
+ * Réattribue `ordre_sequentiel` sur l’axe d’un chantier selon l’ordre chronologique des dates cibles.
+ * À appeler après un changement de `mois_cible` / `annee_cible` qui peut inverser la séquence.
+ */
+export async function recalculateOrdreSequentielForChantierAxe(chantierId: string, axe: Axe): Promise<void> {
+  const jalons = await getChantierJalons(chantierId)
+  const jalonsAxe = jalons.filter((j) => j.axe === axe)
+  const sorted = [...jalonsAxe].sort((a, b) => {
+    const yA = a.annee_cible ?? 0
+    const mA = a.mois_cible ?? 1
+    const yB = b.annee_cible ?? 0
+    const mB = b.mois_cible ?? 1
+    const ta = new Date(yA, mA - 1).getTime()
+    const tb = new Date(yB, mB - 1).getTime()
+    if (ta !== tb) return ta - tb
+    return (a.ordre_sequentiel ?? 0) - (b.ordre_sequentiel ?? 0)
+  })
+  for (let i = 0; i < sorted.length; i++) {
+    const newOrdre = i + 1
+    if (sorted[i].ordre_sequentiel !== newOrdre) {
+      await updateJalon(sorted[i].id, { ordre_sequentiel: newOrdre })
+    }
+  }
+}
+
 export async function deleteJalon(id: string): Promise<void> {
   const { data: before } = await supabase
     .from('jalons')

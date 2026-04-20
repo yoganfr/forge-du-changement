@@ -911,6 +911,16 @@
   background: color-mix(in srgb, var(--theme-text) 2%, transparent);
 }
 
+.mr-tgrid__cell--drop-valid {
+  border: 2px dashed var(--muted-yellow-green-600);
+  background: color-mix(in srgb, var(--muted-yellow-green-600) 10%, transparent);
+}
+
+.mr-tgrid__cell--drop-invalid {
+  border: 2px dashed var(--dark-red-500);
+  background: color-mix(in srgb, var(--dark-red-500) 10%, transparent);
+}
+
 .mr-tgrid__cell-inner {
   display: flex;
   flex-direction: column;
@@ -985,6 +995,18 @@
 
 .mr-tgrid__pill--matrix:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.mr-tgrid__pill[draggable='true'] {
+  cursor: grab;
+}
+
+.mr-tgrid__pill[draggable='true']:active {
+  cursor: grabbing;
+}
+
+.mr-tgrid__pill.mr-dragging {
+  opacity: 0.5;
 }
 
 .mr-tgrid__pill-check {
@@ -1306,5 +1328,11 @@
 .mr-toast--info {
   background: color-mix(in srgb, #4ade80 10%, var(--theme-bg-card));
   border: 1px solid color-mix(in srgb, #4ade80 45%, transparent);
+  color: var(--theme-text);
+}
+
+.mr-toast--warning {
+  background: color-mix(in srgb, var(--muted-yellow-green-600) 14%, var(--theme-bg-card));
+  border: 1px solid color-mix(in srgb, var(--muted-yellow-green-600) 42%, transparent);
   color: var(--theme-text);
 }

@@ -14,6 +14,7 @@ import {
   getRoadmapEligibleProjectsForDirection,
   getWorkspaceDirections,
   monthToQuarter,
+  recalculateOrdreSequentielForChantierAxe,
   removeRaci,
   setRaci,
   updateChantier,
@@ -124,7 +125,10 @@ export default function MaturityRoadmap({
     axe: Axe
   } | null>(null)
   const [quickAddSaving, setQuickAddSaving] = useState(false)
-  const [roadmapToast, setRoadmapToast] = useState<{ message: string; variant: 'error' | 'info' } | null>(null)
+  const [roadmapToast, setRoadmapToast] = useState<{
+    message: string
+    variant: 'error' | 'info' | 'warning'
+  } | null>(null)
 
   useEffect(() => {
     if (!roadmapToast) return
@@ -230,6 +234,9 @@ export default function MaturityRoadmap({
     return m
   }, [roadmapProjects])
 
+  /** Aligné sur `RoadmapTimelineGrid` (colonnes temps stables pour la session). */
+  const roadmapTimeColumns = useMemo(() => buildTimelineColumns(new Date()), [])
+
   function toggleLegendProject(id: string) {
     setSelectedProjectIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -244,12 +251,12 @@ export default function MaturityRoadmap({
     setSelectedProjectIds([])
   }
 
-  async function refreshChantierJalons(chantierId: string) {
+  const refreshChantierJalons = useCallback(async (chantierId: string) => {
     const list = await getChantierJalons(chantierId)
     setJalonsByChantier((prev) => ({ ...prev, [chantierId]: list }))
-  }
+  }, [])
 
-  const pushRoadmapToast = useCallback((message: string, variant: 'error' | 'info') => {
+  const pushRoadmapToast = useCallback((message: string, variant: 'error' | 'info' | 'warning') => {
     setRoadmapToast({ message, variant })
   }, [])
 
@@ -281,7 +288,56 @@ export default function MaturityRoadmap({
         pushRoadmapToast(msg || 'Erreur lors du déplacement du chantier.', 'error')
       }
     },
-    [readOnly, chantiers, pushRoadmapToast],
+    [readOnly, chantiers, pushRoadmapToast, refreshChantierJalons],
+  )
+
+  const handleJalonDateChange = useCallback(
+    async (jalonId: string, targetColumnKey: string) => {
+      if (readOnly) return
+      let jalon: Jalon | null = null
+      let chantierId: string | null = null
+      for (const [chId, list] of Object.entries(jalonsByChantier)) {
+        const j = list.find((x) => x.id === jalonId)
+        if (j) {
+          jalon = j
+          chantierId = chId
+          break
+        }
+      }
+      if (!jalon || !chantierId) {
+        pushRoadmapToast('Jalon introuvable.', 'error')
+        return
+      }
+      const { mois, annee } = monthYearFromTimelineColumnKey(targetColumnKey, roadmapTimeColumns)
+      if (mois == null || annee == null) {
+        pushRoadmapToast('Période cible invalide.', 'error')
+        return
+      }
+      const sameAxe = (jalonsByChantier[chantierId] ?? []).filter((x) => x.axe === jalon.axe)
+      for (const other of sameAxe) {
+        if (other.id === jalonId) continue
+        const k = assignJalonToColumn(other, roadmapTimeColumns)
+        if (k === targetColumnKey) {
+          pushRoadmapToast(
+            'Cette période contient déjà un jalon. Libérez la cellule ou choisissez une autre période.',
+            'warning',
+          )
+          return
+        }
+      }
+      try {
+        await updateJalon(jalonId, { mois_cible: mois, annee_cible: annee })
+        await recalculateOrdreSequentielForChantierAxe(chantierId, jalon.axe)
+        await refreshChantierJalons(chantierId)
+      } catch (e) {
+        const msg =
+          typeof e === 'object' && e !== null && 'message' in e
+            ? String((e as { message?: unknown }).message ?? '').trim()
+            : ''
+        pushRoadmapToast(msg || 'Erreur lors du déplacement du jalon.', 'error')
+      }
+    },
+    [readOnly, jalonsByChantier, roadmapTimeColumns, pushRoadmapToast, refreshChantierJalons],
   )
 
   async function handleChantierModalSubmit(projetId: string, nom: string) {
@@ -536,6 +592,7 @@ export default function MaturityRoadmap({
       <RoadmapTimelineGrid
         chantiers={visibleChantiers}
         jalonsByChantier={jalonsByChantier}
+        timelineColumns={roadmapTimeColumns}
         axeFilter={axeFilter}
         readOnly={readOnly}
         projectColorById={projectColorById}
@@ -568,6 +625,7 @@ export default function MaturityRoadmap({
         }
         onChantierDrop={readOnly ? undefined : handleChantierAxisChange}
         onRoadmapToast={readOnly ? undefined : pushRoadmapToast}
+        onJalonDrop={readOnly ? undefined : handleJalonDateChange}
       />
 
       <ChantierLineModal

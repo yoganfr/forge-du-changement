@@ -1,4 +1,4 @@
-import { useCallback, useState, type DragEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
 import type { Axe, Chantier, Jalon } from './lib/types'
 import {
   assignJalonToColumn,
@@ -18,6 +18,8 @@ const AXE_META: Record<Axe, { short: string; color: string; title: string }> = {
 
 /** Payload drag & drop chantier (HTML5 `dataTransfer`). */
 const CHANTIER_DRAG_MIME = 'application/x-forge-chantier-v1'
+/** Payload drag & drop jalon (même ligne / ajustement échéance). */
+const JALON_DRAG_MIME = 'application/x-forge-jalon-v1'
 
 const STATUT_LABEL: Record<string, string> = {
   a_venir: 'À venir',
@@ -45,6 +47,8 @@ function chantierVisibleInAxisBlock(c: Chantier, blockAxe: Axe, jalons: Jalon[])
 type Props = {
   chantiers: Chantier[]
   jalonsByChantier: Record<string, Jalon[]>
+  /** Colonnes temps (même référence que `monthYearFromTimelineColumnKey` côté parent si drag jalon). */
+  timelineColumns?: TimelineColumn[]
   axeFilter: 'all' | Axe
   readOnly: boolean
   projectColorById: Record<string, string>
@@ -61,12 +65,15 @@ type Props = {
   /** Déplacement de chantier entre axes Processus / Organisation / Outils (jamais vers KPI). */
   onChantierDrop?: (chantierId: string, newAxe: Axe) => Promise<void>
   /** Toast minimal (ex. blocage KPI, erreur API) — géré par le parent. */
-  onRoadmapToast?: (message: string, variant: 'error' | 'info') => void
+  onRoadmapToast?: (message: string, variant: 'error' | 'info' | 'warning') => void
+  /** Déplacement d’un jalon sur la même ligne (nouvelle colonne temps). */
+  onJalonDrop?: (jalonId: string, targetColumnKey: string) => Promise<void>
 }
 
 export default function RoadmapTimelineGrid({
   chantiers,
   jalonsByChantier,
+  timelineColumns: timelineColumnsProp,
   axeFilter,
   readOnly,
   projectColorById,
@@ -77,13 +84,27 @@ export default function RoadmapTimelineGrid({
   onChantierCellClick,
   onChantierDrop,
   onRoadmapToast,
+  onJalonDrop,
 }: Props) {
   const [chantierDropHoverKey, setChantierDropHoverKey] = useState<string | null>(null)
   const [chantierDropHoverInvalid, setChantierDropHoverInvalid] = useState(false)
+  const [jalonDropHoverKey, setJalonDropHoverKey] = useState<string | null>(null)
+  const [jalonDropHoverInvalid, setJalonDropHoverInvalid] = useState(false)
+  const jalonDragSourceRef = useRef<{
+    jalonId: string
+    chantierId: string
+    axe: Axe
+    columnKey: string
+  } | null>(null)
 
   const clearChantierDropHover = useCallback(() => {
     setChantierDropHoverKey(null)
     setChantierDropHoverInvalid(false)
+  }, [])
+
+  const clearJalonDropHover = useCallback(() => {
+    setJalonDropHoverKey(null)
+    setJalonDropHoverInvalid(false)
   }, [])
 
   const handleChantierNameDragStart = useCallback(
@@ -110,6 +131,12 @@ export default function RoadmapTimelineGrid({
   const handleChantierCellDragEnter = useCallback(
     (e: DragEvent, blockAxe: Axe, cellKey: string) => {
       if (readOnly || !onChantierDrop) return
+      if (Array.from(e.dataTransfer.types).includes(JALON_DRAG_MIME)) {
+        e.preventDefault()
+        e.stopPropagation()
+        clearJalonDropHover()
+        return
+      }
       if (!Array.from(e.dataTransfer.types).includes(CHANTIER_DRAG_MIME)) return
       e.preventDefault()
       e.stopPropagation()
@@ -123,12 +150,18 @@ export default function RoadmapTimelineGrid({
       setChantierDropHoverKey(cellKey)
       setChantierDropHoverInvalid(false)
     },
-    [readOnly, onChantierDrop],
+    [readOnly, onChantierDrop, clearJalonDropHover],
   )
 
   const handleChantierCellDragOver = useCallback(
     (e: DragEvent, blockAxe: Axe, cellKey: string, _chantierId: string | 'add') => {
       if (readOnly || !onChantierDrop) return
+      if (Array.from(e.dataTransfer.types).includes(JALON_DRAG_MIME)) {
+        e.preventDefault()
+        e.stopPropagation()
+        clearJalonDropHover()
+        return
+      }
       if (!Array.from(e.dataTransfer.types).includes(CHANTIER_DRAG_MIME)) return
       e.preventDefault()
       e.stopPropagation()
@@ -142,7 +175,7 @@ export default function RoadmapTimelineGrid({
       setChantierDropHoverKey(cellKey)
       setChantierDropHoverInvalid(false)
     },
-    [readOnly, onChantierDrop],
+    [readOnly, onChantierDrop, clearJalonDropHover],
   )
 
   const handleChantierCellDragLeave = useCallback(
@@ -187,7 +220,125 @@ export default function RoadmapTimelineGrid({
     [readOnly, onChantierDrop, onRoadmapToast, clearChantierDropHover],
   )
 
-  const timeColumns = buildTimelineColumns(new Date())
+  const handleJalonPillDragStart = useCallback(
+    (e: DragEvent, j: Jalon, ch: Chantier, blockAxe: Axe, columnKey: string) => {
+      if (readOnly || !onJalonDrop) return
+      e.stopPropagation()
+      jalonDragSourceRef.current = {
+        jalonId: j.id,
+        chantierId: ch.id,
+        axe: blockAxe,
+        columnKey,
+      }
+      e.dataTransfer.setData(
+        JALON_DRAG_MIME,
+        JSON.stringify({ jalonId: j.id, chantierId: ch.id, axe: blockAxe, columnKey }),
+      )
+      e.dataTransfer.effectAllowed = 'move'
+      ;(e.currentTarget as HTMLElement).classList.add('mr-dragging')
+    },
+    [readOnly, onJalonDrop],
+  )
+
+  const handleJalonPillDragEnd = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      jalonDragSourceRef.current = null
+      ;(e.currentTarget as HTMLElement).classList.remove('mr-dragging')
+      clearJalonDropHover()
+    },
+    [clearJalonDropHover],
+  )
+
+  const handleTimeCellDragOver = useCallback(
+    (
+      e: DragEvent,
+      ch: Chantier,
+      blockAxe: Axe,
+      columnKey: string,
+      buckets: Map<string, Jalon[]>,
+    ) => {
+      if (readOnly || !onJalonDrop) return
+      if (!Array.from(e.dataTransfer.types).includes(JALON_DRAG_MIME)) return
+      e.preventDefault()
+      e.stopPropagation()
+      const src = jalonDragSourceRef.current
+      if (!src) return
+      const ck = `jalon-${blockAxe}-${ch.id}-${columnKey}`
+      if (src.chantierId !== ch.id || src.axe !== blockAxe) {
+        e.dataTransfer.dropEffect = 'none'
+        clearJalonDropHover()
+        return
+      }
+      const cellJalons = buckets.get(columnKey) ?? []
+      const others = cellJalons.filter((x) => x.id !== src.jalonId)
+      if (others.length > 0) {
+        e.dataTransfer.dropEffect = 'none'
+        setJalonDropHoverKey(ck)
+        setJalonDropHoverInvalid(true)
+        return
+      }
+      e.dataTransfer.dropEffect = 'move'
+      setJalonDropHoverKey(ck)
+      setJalonDropHoverInvalid(false)
+    },
+    [readOnly, onJalonDrop, clearJalonDropHover],
+  )
+
+  const handleTimeCellDragLeave = useCallback(
+    (e: DragEvent, cellKey: string) => {
+      e.stopPropagation()
+      const next = e.relatedTarget as Node | null
+      if (next && (e.currentTarget as HTMLElement).contains(next)) return
+      if (jalonDropHoverKey === cellKey) clearJalonDropHover()
+    },
+    [jalonDropHoverKey, clearJalonDropHover],
+  )
+
+  const handleTimeCellDrop = useCallback(
+    async (
+      e: DragEvent,
+      ch: Chantier,
+      blockAxe: Axe,
+      columnKey: string,
+      buckets: Map<string, Jalon[]>,
+    ) => {
+      e.preventDefault()
+      e.stopPropagation()
+      clearJalonDropHover()
+      if (readOnly || !onJalonDrop) return
+      let raw: string
+      try {
+        raw = e.dataTransfer.getData(JALON_DRAG_MIME)
+      } catch {
+        return
+      }
+      if (!raw) return
+      let parsed: { jalonId: string; chantierId: string; axe: Axe; columnKey: string }
+      try {
+        parsed = JSON.parse(raw) as { jalonId: string; chantierId: string; axe: Axe; columnKey: string }
+      } catch {
+        return
+      }
+      if (parsed.chantierId !== ch.id || parsed.axe !== blockAxe) return
+      const cellJalons = buckets.get(columnKey) ?? []
+      const others = cellJalons.filter((x) => x.id !== parsed.jalonId)
+      if (others.length > 0) {
+        onRoadmapToast?.(
+          'Cette période contient déjà un jalon. Libérez la cellule ou choisissez une autre période.',
+          'warning',
+        )
+        return
+      }
+      if (parsed.columnKey === columnKey) return
+      await onJalonDrop(parsed.jalonId, columnKey)
+    },
+    [readOnly, onJalonDrop, onRoadmapToast, clearJalonDropHover],
+  )
+
+  const defaultTimelineColumns = useMemo(() => buildTimelineColumns(new Date()), [])
+  const timeColumns = timelineColumnsProp ?? defaultTimelineColumns
 
   const headerCells: { key: string; label: string; sub: string; col: TimelineColumn }[] = timeColumns.map((c) => ({
     key: c.key,
@@ -437,8 +588,34 @@ export default function RoadmapTimelineGrid({
                     {headerCells.map((h) => {
                       const cellJalons = buckets.get(h.key) ?? []
                       const cellEmpty = cellJalons.length === 0
+                      const jalonCellKey = `jalon-${axe}-${ch.id}-${h.key}`
+                      const jalonDropActive = jalonDropHoverKey === jalonCellKey
                       return (
-                        <td key={h.key} className="mr-tgrid__cell">
+                        <td
+                          key={h.key}
+                          className={[
+                            'mr-tgrid__cell',
+                            jalonDropActive && jalonDropHoverInvalid ? 'mr-tgrid__cell--drop-invalid' : '',
+                            jalonDropActive && !jalonDropHoverInvalid ? 'mr-tgrid__cell--drop-valid' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          onDragOver={
+                            !readOnly && onJalonDrop
+                              ? (e) => handleTimeCellDragOver(e, ch, axe, h.key, buckets)
+                              : undefined
+                          }
+                          onDragLeave={
+                            !readOnly && onJalonDrop
+                              ? (e) => handleTimeCellDragLeave(e, jalonCellKey)
+                              : undefined
+                          }
+                          onDrop={
+                            !readOnly && onJalonDrop
+                              ? (e) => void handleTimeCellDrop(e, ch, axe, h.key, buckets)
+                              : undefined
+                          }
+                        >
                           <div className="mr-tgrid__cell-inner">
                             <div className="mr-tgrid__pills">
                               {cellJalons.map((j) => {
@@ -447,6 +624,9 @@ export default function RoadmapTimelineGrid({
                                   <div
                                     key={j.id}
                                     className="mr-tgrid__pill mr-tgrid__pill--matrix"
+                                    draggable={!readOnly && !!onJalonDrop}
+                                    onDragStart={(e) => handleJalonPillDragStart(e, j, ch, axe, h.key)}
+                                    onDragEnd={handleJalonPillDragEnd}
                                     style={{
                                       borderLeft: `4px solid ${projectColor}`,
                                       background: `color-mix(in srgb, ${projectColor} 22%, var(--theme-bg-card))`,
@@ -457,6 +637,7 @@ export default function RoadmapTimelineGrid({
                                         <input
                                           type="checkbox"
                                           checked={realised}
+                                          draggable={false}
                                           aria-label={`Réalisé — ${j.nom || 'Jalon'}`}
                                           onChange={(e) => {
                                             e.stopPropagation()
@@ -469,6 +650,7 @@ export default function RoadmapTimelineGrid({
                                     <button
                                       type="button"
                                       className="mr-tgrid__pill-main"
+                                      draggable={false}
                                       onClick={() => onOpenJalon(j, ch.id)}
                                       title={
                                         j.numero
