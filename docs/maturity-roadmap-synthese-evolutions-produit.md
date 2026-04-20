@@ -129,11 +129,26 @@
 - Garder les **plans d’action** et le **plan de charge** dans un module séparé, relié plus tard aux jalons.
 - Préparer le futur parcours de **controverse** (intelligence collective), articulé avec les bascules de versions majeures.
 
-### Phase G — Responsable et contributeurs (intégration future)
+### Phase G — Intégration des managers contributeurs dans le champ Responsable
 
-- Aujourd’hui le champ **Responsable** est un **texte libre** (souvent un manager).
-- **Évolution visée** : rattacher le responsable à des **managers contributeurs** du workspace (liste déroulante ou autocomplétion sur `users` / rôles métier), avec garde-fous RLS.
-- Cette phase **ne bloque pas** le couplage KPI ↔ jalon KPI auto ni le masquage des dépendances explicites en UI.
+**Contexte métier** : Aujourd'hui, le champ **Responsable** d'un jalon est un texte libre où le membre CODIR inscrit manuellement le nom du manager opérationnel en charge de l'atteinte du jalon. Ce manager sera, à terme, la personne qui déclinera le jalon en Plan d'Action d'Équipe (PAE) dans le futur module EPIC 4.
+
+**Évolution visée** : Transformer le champ Responsable en un **sélecteur** lié à une liste de managers contributeurs définis dans le workspace. Cela permettra :
+
+- D'éviter les erreurs de saisie (fautes de frappe, doublons « Jean Dupont » vs « J. Dupont »)
+- De pré-remplir automatiquement le champ « Manager » lors de la création d'un PAE à partir d'un jalon
+- De filtrer la roadmap par responsable (ex. : « Tous les jalons de Sarah »)
+- De détecter les surcharges : si un même manager est responsable de trop de jalons simultanés, alerte automatique
+
+**Implémentation technique (à prévoir)** :
+
+- Nouvelle table `managers` ou extension de la table `users` avec un flag `is_manager` et rattachement au workspace
+- Migration des responsables actuels (texte libre) vers des références si possible (détection par similarité de nom)
+- Fallback : garder le texte libre pour les cas où le manager n'est pas encore dans le système
+
+**Prérequis** : Cette phase dépend de l'existence du module PAE (EPIC 4) ou au minimum d'une gestion des contributeurs terrain dans l'application. Elle n'est **pas prioritaire** tant que le PAE n'existe pas.
+
+**Ordre de livraison** : après les Phases A→E (paramètres échéances, fenêtre glissante, versionnement, lecture/partage figé, co-owners transverses). Peut être livrée en même temps ou juste avant le module PAE pour maximiser la valeur.
 
 ### Dépendance explicite (décision UI / données)
 
@@ -155,13 +170,14 @@
 3. Versionnement mineur/majeur + brouillon (Phase C).
 4. Lecture/partage figé (Phase D).
 5. Co-owners transverses et permissions avancées (Phase E).
-6. Parcours controverse et module plans d’action (Phase F, ultérieur).
+6. Intégration managers contributeurs dans le champ Responsable (Phase G, conditionné au PAE ou à une gestion des contributeurs terrain).
+7. Parcours controverse et module plans d’action (Phase F, ultérieur).
 
 ---
 
 ## 10. État technique dans le dépôt (référence)
 
-*Mis à jour le 19 avril 2026 — aligné sur le code et les scripts SQL versionnés.*
+*Mis à jour le 20 avril 2026 — aligné sur le code et les scripts SQL versionnés.*
 
 ### Phase 1 (fonctionnelle)
 
@@ -181,8 +197,8 @@
 
 ### Suite logique côté produit / code
 
-Les **phases A–F** ci-dessus restent la feuille de route fonctionnelle ; la Phase 2 prépare surtout la maintenance, les perfs liste directions/projets, et la bascule storage sécurisée sans bloquer les évolutions métier (paramètres workspace, fenêtre glissante, révisions, etc.).
+Les **phases A à G** et le **volet Phase F** (controverse / plans d’action, ultérieur) ci-dessus restent la feuille de route fonctionnelle ; la Phase 2 prépare surtout la maintenance, les perfs liste directions/projets, et la bascule storage sécurisée sans bloquer les évolutions métier (paramètres workspace, fenêtre glissante, révisions, etc.).
 
 ---
 
-*Dernière mise à jour du document : 19 avril 2026 — synthèse métier + point d’ancrage technique repo.*
+*Dernière mise à jour du document : 20 avril 2026 — synthèse métier + point d’ancrage technique repo.*
