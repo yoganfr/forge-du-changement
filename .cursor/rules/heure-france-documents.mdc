@@ -1,0 +1,28 @@
+---
+description: Horodatages « heure France » (Europe/Paris) dans la doc — obtenir l’heure réelle, ne pas inventer
+alwaysApply: true
+---
+
+# Heure de France dans les documents (`docs/`)
+
+Pour toute ligne du type **« Dernière mise à jour »**, journal d’avancement avec heure, ou tout horodatage censé refléter **l’instant présent en France** :
+
+## Obligation
+
+1. **Ne jamais inventer** une date ou une heure (pas de valeur « plausible » au hasard).
+2. **Utiliser le fuseau `Europe/Paris`** (heure légale française, avec changement été/hiver géré par le système).
+3. **Obtenir la date/heure au moment de l’édition** en exécutant une commande dans le dépôt (voir ci-dessous). Si l’exécution est impossible, **demander l’heure à l’utilisateur** ou laisser une mention explicite à compléter — ne pas deviner.
+
+## Commande de référence (Node — fonctionne sur Windows / macOS / Linux)
+
+À lancer depuis la racine du repo (Node installé) :
+
+```bash
+node -e "const d=new Date(),z='Europe/Paris';const p=new Intl.DateTimeFormat('fr-FR',{timeZone:z,day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(d);const day=p.find(x=>x.type==='day').value,month=p.find(x=>x.type==='month').value,year=p.find(x=>x.type==='year').value,h=String(p.find(x=>x.type==='hour').value).padStart(2,'0'),m=String(p.find(x=>x.type==='minute').value).padStart(2,'0');console.log('Dernière mise à jour : **'+day+' '+month+' '+year+'**, '+h+' h '+m+' (Europe/Paris)');"
+```
+
+Adapter si besoin le libellé (`Dernière mise à jour :`) au fichier. Pour `docs/backlog.md`, recopier la sortie telle quelle (forme : `**20 avril 2026**, 03 h 42 (Europe/Paris)`).
+
+## Rappel
+
+Le champ `Today's date` ou fuseau dans les métadonnées de session Cursor peut ne pas être l’heure française : **ne pas** s’en servir seul pour une « dernière mise à jour » France si une commande `Europe/Paris` est disponible.
