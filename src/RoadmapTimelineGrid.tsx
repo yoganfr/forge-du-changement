@@ -388,10 +388,10 @@ export default function RoadmapTimelineGrid({
           <thead>
             <tr>
               <th scope="col" className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-head">
-                Axe
+                <span className="mr-tgrid__head-label mr-tgrid__head-label--axis">Axe</span>
               </th>
               <th scope="col" className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-head">
-                Chantiers
+                <span className="mr-tgrid__head-label mr-tgrid__head-label--chantier">Chantiers</span>
               </th>
               {headerCells.map((h) => (
                 <th key={h.key} scope="col" className="mr-tgrid__time-head">
@@ -425,7 +425,9 @@ export default function RoadmapTimelineGrid({
                           rowSpan={rowCount}
                           className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                         >
-                          <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                          <span className="mr-tgrid__axis-cell-inner">
+                            <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                          </span>
                         </td>
                       ) : null}
                       <th
@@ -452,7 +454,9 @@ export default function RoadmapTimelineGrid({
                           rowSpan={rowCount}
                           className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                         >
-                          <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                          <span className="mr-tgrid__axis-cell-inner">
+                            <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                          </span>
                         </td>
                       ) : null}
                       <th
@@ -518,7 +522,9 @@ export default function RoadmapTimelineGrid({
                         rowSpan={rowCount}
                         className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                       >
-                        <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                        <span className="mr-tgrid__axis-cell-inner">
+                          <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                        </span>
                       </td>
                     ) : null}
                     <th
