@@ -1059,13 +1059,6 @@
   font-weight: 800;
 }
 
-.mr-tgrid__pill-num {
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--theme-text-muted);
-  flex-shrink: 0;
-}
-
 .mr-tgrid__pill-name {
   flex: 1;
   min-width: 0;
@@ -1120,10 +1113,6 @@
 }
 
 /* Garde-fou visuel: aucune checkbox ne doit apparaître dans les pilules jalon. */
-.mr-tgrid__pill input[type='checkbox'] {
-  display: none !important;
-}
-
 .mr-tgrid__cell-plus {
   align-self: center;
   appearance: none;
