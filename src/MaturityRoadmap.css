@@ -756,7 +756,16 @@
   box-shadow: 4px 0 14px color-mix(in srgb, var(--theme-text) 8%, transparent);
 }
 
-/* En-tête colonne « Axe » — titres : tokens display comme h2/h3 */
+/* En-têtes « Axe » et « Chantiers » — même police et hiérarchie */
+.mr-tgrid__axis-head,
+.mr-tgrid__chantier-head {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--theme-text);
+}
+
 .mr-tgrid__axis-head {
   display: flex;
   align-items: center;
@@ -765,12 +774,7 @@
   max-width: 88px;
   width: 76px;
   padding: 10px 8px;
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: -0.02em;
   line-height: 1.2;
-  color: var(--theme-text);
   text-align: center;
   vertical-align: middle;
   background: var(--theme-bg-card);
@@ -790,7 +794,7 @@
   text-align: center;
   font-family: var(--font-display);
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.25;
   letter-spacing: -0.02em;
   color: var(--theme-text);
@@ -798,15 +802,23 @@
   overflow: hidden;
 }
 
-/* Option A — teintes d’axe (tokens thème, clair/sombre) */
-.mr-tgrid__sticky--axis.mr-tgrid__axis-cell--processus {
-  border-left: 4px solid color-mix(in srgb, var(--theme-accent) 70%, var(--theme-border));
-  background: color-mix(in srgb, var(--theme-accent) 8%, var(--theme-bg-card));
+/* Teintes d’axe (tokens thème, clair/sombre) — Processus = support, Organisation = accent */
+.mr-tgrid__axis-block--processus {
+  background: color-mix(in srgb, var(--theme-support) 8%, transparent);
 }
 
-.mr-tgrid__sticky--axis.mr-tgrid__axis-cell--organisation {
-  border-left: 4px solid color-mix(in srgb, var(--theme-support) 70%, var(--theme-border));
-  background: color-mix(in srgb, var(--theme-support) 8%, var(--theme-bg-card));
+.mr-tgrid__axis-cell--processus {
+  border-left: 4px solid color-mix(in srgb, var(--theme-support) 80%, var(--theme-border));
+  background: color-mix(in srgb, var(--theme-support) 8%, transparent);
+}
+
+.mr-tgrid__axis-block--organisation {
+  background: color-mix(in srgb, var(--theme-accent) 8%, transparent);
+}
+
+.mr-tgrid__axis-cell--organisation {
+  border-left: 4px solid color-mix(in srgb, var(--theme-accent) 80%, var(--theme-border));
+  background: color-mix(in srgb, var(--theme-accent) 8%, transparent);
 }
 
 .mr-tgrid__sticky--axis.mr-tgrid__axis-cell--outils {
@@ -843,10 +855,7 @@
   text-align: left;
   vertical-align: middle;
   padding: 10px 12px;
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--theme-text);
+  line-height: 1.2;
   background: color-mix(in srgb, var(--theme-bg-raised) 55%, var(--theme-bg-card));
   border-bottom: 1px solid var(--glass-border);
 }

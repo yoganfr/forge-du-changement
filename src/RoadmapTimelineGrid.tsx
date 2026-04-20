@@ -391,7 +391,7 @@ export default function RoadmapTimelineGrid({
                 Axe
               </th>
               <th scope="col" className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-head">
-                Chantier
+                Chantiers
               </th>
               {headerCells.map((h) => (
                 <th key={h.key} scope="col" className="mr-tgrid__time-head">
