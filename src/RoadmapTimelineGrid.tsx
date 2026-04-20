@@ -34,25 +34,6 @@ const STATUT_LABEL: Record<string, string> = {
 }
 
 /**
- * Variantes courantes de glyphes "checkbox" vues dans des imports/collages.
- * On les retire de l'affichage des pilules timeline.
- */
-const CHECKBOX_GLYPH_RE = /[☐☑☒✅✓✔✗✘□▢▣▪▫◻◼◽◾]/u
-const CHECKBOX_PREFIX_RE = /^[\s\-–—]*[☐☑☒✅✓✔✗✘□▢▣▪▫◻◼◽◾]\s*/u
-
-function sanitizeTimelinePillLabel(input: string): string {
-  const raw = input.trim()
-  const removedExplicitMarkers = raw
-    .replace(CHECKBOX_PREFIX_RE, '')
-    .replace(/^[\s\-–—]*\[[ xX]\]\s*/u, '')
-  const removedGenericLeadingSymbols = removedExplicitMarkers
-    .normalize('NFKC')
-    .replace(/^[\p{C}\p{Z}\p{P}\p{S}]+/u, '')
-    .trim()
-  return removedGenericLeadingSymbols || 'Sans titre'
-}
-
-/**
  * Un chantier avec `axe` renseigné n’apparaît que dans ce bloc (pas de copie sur les 4 axes).
  * Chantiers sans axe (données antérieures) : visibles uniquement dans les blocs où ils ont au moins un jalon ;
  * s’ils n’en ont aucun, une seule ligne sur Processus pour éviter les doublons vides.
@@ -634,14 +615,6 @@ export default function RoadmapTimelineGrid({
                           <div className="mr-tgrid__cell-inner">
                             <div className="mr-tgrid__pills">
                               {cellJalons.map((j) => (
-                                (() => {
-                                  const rawNumero = typeof j.numero === 'string' ? j.numero.trim() : ''
-                                  const hasDigit = /\d/.test(rawNumero)
-                                  const hasCheckboxGlyph = CHECKBOX_GLYPH_RE.test(rawNumero)
-                                  const displayNumero = hasDigit && !hasCheckboxGlyph ? rawNumero : null
-                                  const rawName = j.nom || 'Sans titre'
-                                  const displayName = sanitizeTimelinePillLabel(rawName)
-                                  return (
                                 <div
                                   key={j.id}
                                   className="mr-tgrid__pill mr-tgrid__pill--matrix"
@@ -660,17 +633,14 @@ export default function RoadmapTimelineGrid({
                                     draggable={false}
                                     onClick={() => onOpenJalon(j, ch.id)}
                                     title={
-                                      displayNumero
-                                        ? `${displayName} (${displayNumero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
-                                        : `${displayName} — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                      j.numero
+                                        ? `${j.nom || 'Jalon'} (${j.numero}) — ${STATUT_LABEL[j.statut] ?? j.statut}`
+                                        : `${j.nom || 'Jalon'} — ${STATUT_LABEL[j.statut] ?? j.statut}`
                                     }
                                   >
-                                    {displayNumero ? <span className="mr-tgrid__pill-num">{displayNumero}</span> : null}
-                                    <span className="mr-tgrid__pill-name">{displayName}</span>
+                                    <span className="mr-tgrid__pill-name">{j.nom || 'Sans titre'}</span>
                                   </button>
                                 </div>
-                                  )
-                                })()
                               ))}
                             </div>
                             {!readOnly && cellEmpty && (
