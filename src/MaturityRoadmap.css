@@ -1098,21 +1098,6 @@
   opacity: 0.5;
 }
 
-.mr-tgrid__pill-check {
-  display: flex;
-  align-items: flex-start;
-  padding: 6px 2px 6px 6px;
-  flex-shrink: 0;
-  cursor: default;
-}
-
-.mr-tgrid__pill-check input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--theme-accent, #8e3b46);
-  cursor: pointer;
-}
-
 .mr-tgrid__pill-main {
   flex: 1;
   min-width: 0;
