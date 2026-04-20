@@ -89,6 +89,7 @@ export default function RoadmapTimelineGrid({
   const handleChantierNameDragStart = useCallback(
     (e: DragEvent, ch: Chantier, blockAxe: Axe) => {
       if (readOnly || !onChantierDrop || blockAxe === 'KPI') return
+      /* Pas de preventDefault ici : annulerait le démarrage du drag HTML5. */
       e.stopPropagation()
       const sourceAxe = ch.axe != null && String(ch.axe).trim() !== '' ? ch.axe : blockAxe
       const payload = JSON.stringify({ chantierId: ch.id, sourceAxe })
@@ -100,15 +101,37 @@ export default function RoadmapTimelineGrid({
   )
 
   const handleChantierNameDragEnd = useCallback((e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     ;(e.currentTarget as HTMLElement).classList.remove('mr-dragging')
     clearChantierDropHover()
   }, [clearChantierDropHover])
+
+  const handleChantierCellDragEnter = useCallback(
+    (e: DragEvent, blockAxe: Axe, cellKey: string) => {
+      if (readOnly || !onChantierDrop) return
+      if (!Array.from(e.dataTransfer.types).includes(CHANTIER_DRAG_MIME)) return
+      e.preventDefault()
+      e.stopPropagation()
+      if (blockAxe === 'KPI') {
+        e.dataTransfer.dropEffect = 'none'
+        setChantierDropHoverKey(cellKey)
+        setChantierDropHoverInvalid(true)
+        return
+      }
+      e.dataTransfer.dropEffect = 'move'
+      setChantierDropHoverKey(cellKey)
+      setChantierDropHoverInvalid(false)
+    },
+    [readOnly, onChantierDrop],
+  )
 
   const handleChantierCellDragOver = useCallback(
     (e: DragEvent, blockAxe: Axe, cellKey: string, _chantierId: string | 'add') => {
       if (readOnly || !onChantierDrop) return
       if (!Array.from(e.dataTransfer.types).includes(CHANTIER_DRAG_MIME)) return
       e.preventDefault()
+      e.stopPropagation()
       if (blockAxe === 'KPI') {
         e.dataTransfer.dropEffect = 'none'
         setChantierDropHoverKey(cellKey)
@@ -124,6 +147,8 @@ export default function RoadmapTimelineGrid({
 
   const handleChantierCellDragLeave = useCallback(
     (e: DragEvent, cellKey: string) => {
+      /* Pas de preventDefault : évite les effets de bord sur la chaîne drag/leave du navigateur. */
+      e.stopPropagation()
       const next = e.relatedTarget as Node | null
       if (next && (e.currentTarget as HTMLElement).contains(next)) return
       if (chantierDropHoverKey === cellKey) clearChantierDropHover()
@@ -134,6 +159,7 @@ export default function RoadmapTimelineGrid({
   const handleChantierCellDrop = useCallback(
     async (e: DragEvent, blockAxe: Axe) => {
       e.preventDefault()
+      e.stopPropagation()
       clearChantierDropHover()
       if (readOnly || !onChantierDrop) return
       let raw: string
@@ -294,6 +320,11 @@ export default function RoadmapTimelineGrid({
                         ]
                           .filter(Boolean)
                           .join(' ')}
+                        onDragEnter={
+                          !readOnly && onChantierDrop
+                            ? (e) => handleChantierCellDragEnter(e, axe, `${axe}-chantier-add`)
+                            : undefined
+                        }
                         onDragOver={
                           !readOnly && onChantierDrop
                             ? (e) => handleChantierCellDragOver(e, axe, `${axe}-chantier-add`, 'add')
@@ -359,6 +390,11 @@ export default function RoadmapTimelineGrid({
                       ]
                         .filter(Boolean)
                         .join(' ')}
+                      onDragEnter={
+                        !readOnly && onChantierDrop
+                          ? (e) => handleChantierCellDragEnter(e, axe, `${axe}-chantier-${ch.id}`)
+                          : undefined
+                      }
                       onDragOver={
                         !readOnly && onChantierDrop
                           ? (e) => handleChantierCellDragOver(e, axe, `${axe}-chantier-${ch.id}`, ch.id)

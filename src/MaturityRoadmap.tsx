@@ -267,10 +267,11 @@ export default function MaturityRoadmap({
       const resolved = c?.axe != null && String(c.axe).trim() !== '' ? c.axe : null
       if (resolved !== null && resolved === newAxe) return
       try {
-        await updateChantier(chantierId, { axe: newAxe })
+        const updated = await updateChantier(chantierId, { axe: newAxe })
         const jalons = await getChantierJalons(chantierId)
         await Promise.all(jalons.map((j) => updateJalon(j.id, { axe: newAxe })))
-        await loadAll()
+        await refreshChantierJalons(chantierId)
+        setChantiers((prev) => prev.map((x) => (x.id === chantierId ? { ...x, ...updated } : x)))
         pushRoadmapToast(`Chantier déplacé vers ${AXE_META[newAxe].title}.`, 'info')
       } catch (e) {
         const msg =
@@ -280,7 +281,7 @@ export default function MaturityRoadmap({
         pushRoadmapToast(msg || 'Erreur lors du déplacement du chantier.', 'error')
       }
     },
-    [readOnly, chantiers, loadAll, pushRoadmapToast],
+    [readOnly, chantiers, pushRoadmapToast],
   )
 
   async function handleChantierModalSubmit(projetId: string, nom: string) {
