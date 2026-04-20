@@ -9,11 +9,16 @@ import {
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
-const AXE_META: Record<Axe, { short: string; color: string; title: string }> = {
-  PROCESSUS: { short: 'P', color: '#8E3B46', title: '1. Processus métiers' },
-  ORGANISATION: { short: 'O', color: '#4C86A8', title: '2. Organisation' },
-  OUTILS: { short: 'I', color: '#477890', title: '3. Outils IT' },
-  KPI: { short: 'K', color: '#B45309', title: "4. KPI's" },
+const AXE_META: Record<Axe, { short: string; title: string }> = {
+  PROCESSUS: { short: 'P', title: '1. Processus métiers' },
+  ORGANISATION: { short: 'O', title: '2. Organisation' },
+  OUTILS: { short: 'I', title: '3. Outils IT' },
+  KPI: { short: 'K', title: "4. KPI's" },
+}
+
+/** Modificateur CSS `mr-tgrid__axis-cell--*` (couleurs axe = tokens dans `MaturityRoadmap.css`). */
+function mrAxisCellModifier(axe: Axe): string {
+  return `mr-tgrid__axis-cell--${axe.toLowerCase()}`
 }
 
 /** Payload drag & drop chantier (HTML5 `dataTransfer`). */
@@ -404,7 +409,7 @@ export default function RoadmapTimelineGrid({
             const rowCount =
               showEmptyReadonlyRow ? 1 : blockChantiers.length + (readOnly ? 0 : 1)
             return (
-            <tbody key={axe} className="mr-tgrid__axis-block">
+            <tbody key={axe} className={`mr-tgrid__axis-block mr-tgrid__axis-block--${axe.toLowerCase()}`}>
               {Array.from({ length: rowCount }, (_, rowIdx) => {
                 const isAddRow = !readOnly && rowIdx === blockChantiers.length
                 const isReadonlyEmpty = showEmptyReadonlyRow && rowIdx === 0
@@ -418,11 +423,7 @@ export default function RoadmapTimelineGrid({
                       {isFirst ? (
                         <td
                           rowSpan={rowCount}
-                          className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell"
-                          style={{
-                            borderLeftColor: AXE_META[axe].color,
-                            background: `color-mix(in srgb, ${AXE_META[axe].color} 14%, var(--theme-bg-card))`,
-                          }}
+                          className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                         >
                           <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
                         </td>
@@ -449,11 +450,7 @@ export default function RoadmapTimelineGrid({
                       {isFirst ? (
                         <td
                           rowSpan={rowCount}
-                          className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell"
-                          style={{
-                            borderLeftColor: AXE_META[axe].color,
-                            background: `color-mix(in srgb, ${AXE_META[axe].color} 14%, var(--theme-bg-card))`,
-                          }}
+                          className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                         >
                           <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
                         </td>
@@ -519,11 +516,7 @@ export default function RoadmapTimelineGrid({
                     {isFirst ? (
                       <td
                         rowSpan={rowCount}
-                        className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell"
-                        style={{
-                          borderLeftColor: AXE_META[axe].color,
-                          background: `color-mix(in srgb, ${AXE_META[axe].color} 14%, var(--theme-bg-card))`,
-                        }}
+                        className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                       >
                         <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
                       </td>
