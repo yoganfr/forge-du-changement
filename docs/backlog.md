@@ -1,12 +1,12 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : 21 avril 2026
+Dernière mise à jour : 22 avril 2026
 
 ## Convention de notation
 
 | Préfixe | Signification |
 |--------|----------------|
 | **`REF-n`** | Identifiant de **tâche dans ce document** : numéro de la colonne *REF* du tableau de l’EPIC concerné (ex. `REF-36` = export Vue Synthèse dans **EPIC 13**). Toujours lire une REF **avec son EPIC** ; seul cas ambigu documenté ici : **`REF-41`** existe à la fois en **EPIC 2** (validation décideur) et en **EPIC 10** (super-admin) — utiliser « EPIC 2 · REF-41 » ou « EPIC 10 · REF-41 ». |
-| **`GH-n`** | Numéro d’[**issue GitHub**](https://github.com/yoganfr/forge-du-changement/issues) sur `yoganfr/forge-du-changement`. |
+| **`GH-n`** | Numéro d’[**issue GitHub**](https://github.com/yoganfr/forge-du-changement/issues) sur `yoganfr/forge-du-changement`. Les titres d’issues reprennent en tête le préfixe **`[REF-…]`** (plage ou numéro unique) pour lecture immédiate alignée sur ce document. |
 | **`EPIC k`** | Bloc thématique du backlog (priorisation et périmètre). |
 
 Les valeurs **`REF-*`** et **`GH-*`** sont indépendantes (ex. `GH-11` = plan de charge côté GitHub, alors que **`REF-11`** en **EPIC 4** = actions PAE).
@@ -581,6 +581,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 ### Session avril 2026 — synthèse des travaux réalisés
 
 #### Fait
+- Titres des issues GitHub **GH-1–GH-27** : préfixe **`[REF-…]`** harmonisé avec les tableaux de ce fichier.
 - Convention **REF-** (tâche dans ce document) vs **GH-** (issue GitHub), colonnes de tableaux renommées en *REF*, traçabilité et plan d’implémentation alignés (correction des confusions PAE REF-11–13 vs GH-11–13).
 - Création des issues GitHub **GH-16–GH-27** (jalons livrés + lots ouverts par epic) et tableau d’extension en tête de `docs/backlog.md`.
 - Synchronisation issues **GH-1–GH-15** avec ce backlog (fermeture des issues livrées, tableau de traçabilité en tête de document).
