@@ -1256,3 +1256,55 @@
 .mr-axes-detail[open] .mr-axes-detail__summary {
   margin-bottom: var(--space-md);
 }
+
+/* ─── Drag & drop — chantier entre axes (Vague 1) ─── */
+
+.mr-tgrid__chantier-name-btn[draggable='true'] {
+  cursor: grab;
+}
+
+.mr-tgrid__chantier-name-btn[draggable='true']:active {
+  cursor: grabbing;
+}
+
+.mr-tgrid__chantier-name-btn.mr-dragging {
+  opacity: 0.5;
+}
+
+.mr-tgrid__chantier-cell--drop-valid {
+  outline: 2px dashed #4ade80;
+  outline-offset: -2px;
+  background: color-mix(in srgb, #4ade80 12%, transparent);
+}
+
+.mr-tgrid__chantier-cell--drop-invalid {
+  outline: 2px dashed #ef4444;
+  outline-offset: -2px;
+  background: color-mix(in srgb, #ef4444 10%, transparent);
+  cursor: not-allowed;
+}
+
+.mr-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 12000;
+  max-width: min(420px, calc(100vw - 40px));
+  padding: 12px 16px;
+  border-radius: var(--ui-radius-control, 10px);
+  font-size: var(--text-sm, 14px);
+  line-height: 1.4;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--theme-text) 18%, transparent);
+}
+
+.mr-toast--error {
+  background: color-mix(in srgb, #ef4444 12%, var(--theme-bg-card));
+  border: 1px solid color-mix(in srgb, #ef4444 55%, transparent);
+  color: var(--theme-text);
+}
+
+.mr-toast--info {
+  background: color-mix(in srgb, #4ade80 10%, var(--theme-bg-card));
+  border: 1px solid color-mix(in srgb, #4ade80 45%, transparent);
+  color: var(--theme-text);
+}

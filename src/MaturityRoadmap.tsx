@@ -16,6 +16,7 @@ import {
   monthToQuarter,
   removeRaci,
   setRaci,
+  updateChantier,
   updateChantierAndReparentProject,
   updateJalon,
 } from './lib/api'
@@ -123,6 +124,13 @@ export default function MaturityRoadmap({
     axe: Axe
   } | null>(null)
   const [quickAddSaving, setQuickAddSaving] = useState(false)
+  const [roadmapToast, setRoadmapToast] = useState<{ message: string; variant: 'error' | 'info' } | null>(null)
+
+  useEffect(() => {
+    if (!roadmapToast) return
+    const t = window.setTimeout(() => setRoadmapToast(null), 4500)
+    return () => window.clearTimeout(t)
+  }, [roadmapToast])
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -240,6 +248,40 @@ export default function MaturityRoadmap({
     const list = await getChantierJalons(chantierId)
     setJalonsByChantier((prev) => ({ ...prev, [chantierId]: list }))
   }
+
+  const pushRoadmapToast = useCallback((message: string, variant: 'error' | 'info') => {
+    setRoadmapToast({ message, variant })
+  }, [])
+
+  const handleChantierAxisChange = useCallback(
+    async (chantierId: string, newAxe: Axe) => {
+      if (readOnly) return
+      if (newAxe === 'KPI') {
+        pushRoadmapToast(
+          'Un chantier ne peut pas être déplacé vers l’axe KPI (réservé aux jalons auto-créés).',
+          'error',
+        )
+        return
+      }
+      const c = chantiers.find((x) => x.id === chantierId)
+      const resolved = c?.axe != null && String(c.axe).trim() !== '' ? c.axe : null
+      if (resolved !== null && resolved === newAxe) return
+      try {
+        await updateChantier(chantierId, { axe: newAxe })
+        const jalons = await getChantierJalons(chantierId)
+        await Promise.all(jalons.map((j) => updateJalon(j.id, { axe: newAxe })))
+        await loadAll()
+        pushRoadmapToast(`Chantier déplacé vers ${AXE_META[newAxe].title}.`, 'info')
+      } catch (e) {
+        const msg =
+          typeof e === 'object' && e !== null && 'message' in e
+            ? String((e as { message?: unknown }).message ?? '').trim()
+            : ''
+        pushRoadmapToast(msg || 'Erreur lors du déplacement du chantier.', 'error')
+      }
+    },
+    [readOnly, chantiers, loadAll, pushRoadmapToast],
+  )
 
   async function handleChantierModalSubmit(projetId: string, nom: string) {
     if (readOnly) return
@@ -419,7 +461,9 @@ export default function MaturityRoadmap({
         {roadmapProjects.length} projet{roadmapProjects.length > 1 ? 's' : ''} transformant
         {roadmapProjects.length > 1 ? 's' : ''}. Cochez les projets dans la légende ci-dessous (couleurs sur la
         grille). Choisissez ensuite l’axe affiché. Cliquez sur l’intitulé d’une ligne (ou sur la ligne dédiée en bas
-        de chaque axe) pour le nom et le rattachement au projet.
+        de chaque axe) pour le nom et le rattachement au projet. Vous pouvez aussi{' '}
+        <strong>glisser-déposer l’intitulé du chantier</strong> vers une autre ligne d’axe (Processus, Organisation ou
+        Outils) pour déplacer tout le chantier ; l’axe KPI reste réservé aux jalons synchronisés automatiquement.
       </p>
 
       <div className="mr-toolbar">
@@ -521,6 +565,8 @@ export default function MaturityRoadmap({
                 setChantierModal({ mode: 'edit', chantierId })
               }
         }
+        onChantierDrop={readOnly ? undefined : handleChantierAxisChange}
+        onRoadmapToast={readOnly ? undefined : pushRoadmapToast}
       />
 
       <ChantierLineModal
@@ -613,6 +659,12 @@ export default function MaturityRoadmap({
           }}
         />
       )}
+
+      {roadmapToast ? (
+        <div className={`mr-toast mr-toast--${roadmapToast.variant}`} role="status">
+          {roadmapToast.message}
+        </div>
+      ) : null}
     </div>
   )
 }

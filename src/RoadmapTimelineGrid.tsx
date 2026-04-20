@@ -1,3 +1,4 @@
+import { useCallback, useState, type DragEvent } from 'react'
 import type { Axe, Chantier, Jalon } from './lib/types'
 import {
   assignJalonToColumn,
@@ -14,6 +15,9 @@ const AXE_META: Record<Axe, { short: string; color: string; title: string }> = {
   OUTILS: { short: 'I', color: '#477890', title: '3. Outils IT' },
   KPI: { short: 'K', color: '#B45309', title: "4. KPI's" },
 }
+
+/** Payload drag & drop chantier (HTML5 `dataTransfer`). */
+const CHANTIER_DRAG_MIME = 'application/x-forge-chantier-v1'
 
 const STATUT_LABEL: Record<string, string> = {
   a_venir: 'À venir',
@@ -54,6 +58,10 @@ type Props = {
    * `chantierId === null` = créer une ligne dans le bloc `axeForCreate` (type Processus / … / KPI).
    */
   onChantierCellClick?: (chantierId: string | null, axeForCreate?: Axe) => void
+  /** Déplacement de chantier entre axes Processus / Organisation / Outils (jamais vers KPI). */
+  onChantierDrop?: (chantierId: string, newAxe: Axe) => Promise<void>
+  /** Toast minimal (ex. blocage KPI, erreur API) — géré par le parent. */
+  onRoadmapToast?: (message: string, variant: 'error' | 'info') => void
 }
 
 export default function RoadmapTimelineGrid({
@@ -67,7 +75,92 @@ export default function RoadmapTimelineGrid({
   onQuickAddInCell,
   onToggleJalonRealise,
   onChantierCellClick,
+  onChantierDrop,
+  onRoadmapToast,
 }: Props) {
+  const [chantierDropHoverKey, setChantierDropHoverKey] = useState<string | null>(null)
+  const [chantierDropHoverInvalid, setChantierDropHoverInvalid] = useState(false)
+
+  const clearChantierDropHover = useCallback(() => {
+    setChantierDropHoverKey(null)
+    setChantierDropHoverInvalid(false)
+  }, [])
+
+  const handleChantierNameDragStart = useCallback(
+    (e: DragEvent, ch: Chantier, blockAxe: Axe) => {
+      if (readOnly || !onChantierDrop || blockAxe === 'KPI') return
+      e.stopPropagation()
+      const sourceAxe = ch.axe != null && String(ch.axe).trim() !== '' ? ch.axe : blockAxe
+      const payload = JSON.stringify({ chantierId: ch.id, sourceAxe })
+      e.dataTransfer.setData(CHANTIER_DRAG_MIME, payload)
+      e.dataTransfer.effectAllowed = 'move'
+      ;(e.currentTarget as HTMLElement).classList.add('mr-dragging')
+    },
+    [readOnly, onChantierDrop],
+  )
+
+  const handleChantierNameDragEnd = useCallback((e: DragEvent) => {
+    ;(e.currentTarget as HTMLElement).classList.remove('mr-dragging')
+    clearChantierDropHover()
+  }, [clearChantierDropHover])
+
+  const handleChantierCellDragOver = useCallback(
+    (e: DragEvent, blockAxe: Axe, cellKey: string, _chantierId: string | 'add') => {
+      if (readOnly || !onChantierDrop) return
+      if (!Array.from(e.dataTransfer.types).includes(CHANTIER_DRAG_MIME)) return
+      e.preventDefault()
+      if (blockAxe === 'KPI') {
+        e.dataTransfer.dropEffect = 'none'
+        setChantierDropHoverKey(cellKey)
+        setChantierDropHoverInvalid(true)
+        return
+      }
+      e.dataTransfer.dropEffect = 'move'
+      setChantierDropHoverKey(cellKey)
+      setChantierDropHoverInvalid(false)
+    },
+    [readOnly, onChantierDrop],
+  )
+
+  const handleChantierCellDragLeave = useCallback(
+    (e: DragEvent, cellKey: string) => {
+      const next = e.relatedTarget as Node | null
+      if (next && (e.currentTarget as HTMLElement).contains(next)) return
+      if (chantierDropHoverKey === cellKey) clearChantierDropHover()
+    },
+    [chantierDropHoverKey, clearChantierDropHover],
+  )
+
+  const handleChantierCellDrop = useCallback(
+    async (e: DragEvent, blockAxe: Axe) => {
+      e.preventDefault()
+      clearChantierDropHover()
+      if (readOnly || !onChantierDrop) return
+      let raw: string
+      try {
+        raw = e.dataTransfer.getData(CHANTIER_DRAG_MIME)
+      } catch {
+        return
+      }
+      if (!raw) return
+      let parsed: { chantierId: string; sourceAxe: Axe }
+      try {
+        parsed = JSON.parse(raw) as { chantierId: string; sourceAxe: Axe }
+      } catch {
+        return
+      }
+      if (blockAxe === 'KPI') {
+        onRoadmapToast?.(
+          'Un chantier ne peut pas être déplacé vers l’axe KPI (réservé aux jalons auto-créés).',
+          'error',
+        )
+        return
+      }
+      await onChantierDrop(parsed.chantierId, blockAxe)
+    },
+    [readOnly, onChantierDrop, onRoadmapToast, clearChantierDropHover],
+  )
+
   const timeColumns = buildTimelineColumns(new Date())
 
   const headerCells: { key: string; label: string; sub: string; col: TimelineColumn }[] = timeColumns.map((c) => ({
@@ -190,7 +283,28 @@ export default function RoadmapTimelineGrid({
                       ) : null}
                       <th
                         scope="row"
-                        className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-cell mr-tgrid__chantier-cell--add"
+                        className={[
+                          'mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-cell mr-tgrid__chantier-cell--add',
+                          chantierDropHoverKey === `${axe}-chantier-add` && chantierDropHoverInvalid
+                            ? 'mr-tgrid__chantier-cell--drop-invalid'
+                            : '',
+                          chantierDropHoverKey === `${axe}-chantier-add` && !chantierDropHoverInvalid && axe !== 'KPI'
+                            ? 'mr-tgrid__chantier-cell--drop-valid'
+                            : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        onDragOver={
+                          !readOnly && onChantierDrop
+                            ? (e) => handleChantierCellDragOver(e, axe, `${axe}-chantier-add`, 'add')
+                            : undefined
+                        }
+                        onDragLeave={
+                          !readOnly && onChantierDrop
+                            ? (e) => handleChantierCellDragLeave(e, `${axe}-chantier-add`)
+                            : undefined
+                        }
+                        onDrop={!readOnly && onChantierDrop ? (e) => void handleChantierCellDrop(e, axe) : undefined}
                       >
                         <button
                           type="button"
@@ -234,12 +348,36 @@ export default function RoadmapTimelineGrid({
                     ) : null}
                     <th
                       scope="row"
-                      className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-cell"
+                      className={[
+                        'mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-cell',
+                        chantierDropHoverKey === `${axe}-chantier-${ch.id}` && chantierDropHoverInvalid
+                          ? 'mr-tgrid__chantier-cell--drop-invalid'
+                          : '',
+                        chantierDropHoverKey === `${axe}-chantier-${ch.id}` && !chantierDropHoverInvalid && axe !== 'KPI'
+                          ? 'mr-tgrid__chantier-cell--drop-valid'
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onDragOver={
+                        !readOnly && onChantierDrop
+                          ? (e) => handleChantierCellDragOver(e, axe, `${axe}-chantier-${ch.id}`, ch.id)
+                          : undefined
+                      }
+                      onDragLeave={
+                        !readOnly && onChantierDrop
+                          ? (e) => handleChantierCellDragLeave(e, `${axe}-chantier-${ch.id}`)
+                          : undefined
+                      }
+                      onDrop={!readOnly && onChantierDrop ? (e) => void handleChantierCellDrop(e, axe) : undefined}
                     >
                       {!readOnly && onChantierCellClick ? (
                         <button
                           type="button"
                           className="mr-tgrid__chantier-name-btn"
+                          draggable={!!onChantierDrop && axe !== 'KPI'}
+                          onDragStart={(e) => handleChantierNameDragStart(e, ch, axe)}
+                          onDragEnd={handleChantierNameDragEnd}
                           onClick={() => onChantierCellClick(ch.id, undefined)}
                         >
                           <span className="mr-tgrid__chantier-name">{ch.nom}</span>
