@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-const MEMBER_SIGNIN_URL = "/acces-membres";
+const MEMBER_SIGNIN_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://forge-du-changement.vercel.app";
 const RDV_HASH = "/#rdv";
 
 export function LandingNav() {

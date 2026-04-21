@@ -112,10 +112,10 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
           </p>
 
           <a
-            href="https://forge-du-changement.vercel.app"
+            href={process.env.NEXT_PUBLIC_APP_URL ?? "https://forge-du-changement.vercel.app"}
             className="mt-8 inline-block rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white transition hover:bg-blue-700"
           >
-            Acceder a mon espace
+            Accéder à mon espace
           </a>
         </div>
       </main>
