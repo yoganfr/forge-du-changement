@@ -642,7 +642,7 @@ function App() {
       setPlatformSuperadmin(false)
       setAuthUser(null)
     } finally {
-      invalidateCache(['workspace-users:'])
+      invalidateCache(['workspace-users:', 'workspaces:list'])
     }
   }, [])
 
