@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **21 avril 2026**, 12 h 08 (Europe/Paris)
+Dernière mise à jour : **21 avril 2026**, 12 h 41 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -250,8 +250,8 @@ Les tâches **59–72** (fondations Next.js + landing workspace SEO) sont **term
 | 71 | Tests sitemap dynamique (avec/sans workspaces publics) | 🔴 | ✅ | — |
 | 72 | Documentation déploiement (`web/README.md`) | 🟡 | ✅ | — |
 | 73 | Composant trajectoire publique (`LandingRoadmapTrajectoire` — route SVG + jalons + étapes) | 🟠 | ✅ | — |
-| 74 | Images hero responsive (desktop/tablet/mobile) | 🟡 | ✅ | — |
-| 75 | CTA vers dashboard (deep link si auth, modal sinon) | 🟠 | ✅ | — |
+| 74 | ~~Images hero responsive (desktop/tablet/mobile)~~ — annulée (pivot produit RDV-only, 21 avril 2026) | 🟡 | ❌ | Revert commit — hero revenu au bloc éditorial texte |
+| 75 | ~~CTA vers dashboard (deep link si auth, modal sinon)~~ — annulée (pivot produit RDV-only, 21 avril 2026) | 🟠 | ❌ | Revert commit — CTA unique = mailto RDV ; `LandingSmartCta.tsx` supprimé |
 
 *Note (EPIC 14 · REF-73)* : le nom de composant retenu en code est `LandingRoadmapTrajectoire` (bloc « Une transformation visible » + assets `/public/images/SVG roadmap assets/`). Ancien libellé backlog : `LandingTimeline`.
 
@@ -710,10 +710,13 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 - Landing Next.js (EPIC 14): validation confidentialité en production de test (workspaces privés -> 404 homogène, aucune fuite d'information).
 - Landing Next.js (EPIC 14): confirmation du modèle opt-in (`is_public = false` par défaut), publication explicite uniquement.
 - Landing Next.js (EPIC 14 · REF-73 + homepage) : homepage publique `web/app/page.tsx` (parcours éditorial hero → constat → preuve → CTA mailto), composant `LandingRoadmapTrajectoire` (route SVG, pins, étapes statut done/current/upcoming), `LandingNav` + `ThemeToggle`, polices Satoshi / Clash Display dans `web/public/fonts/`, assets PNG/SVG roadmap, pages transition `/acces-membres` et `/bientot-disponible`, ajustements `layout` / `globals.css` / `next.config.ts`. Commit `51c390e`.
+- **Pivot produit landing (21 avril 2026)** : décision "RDV-only" pour la landing publique. Revert de REF-74 (hero responsive image) et REF-75 (CTA intelligent vers dashboard) — la landing revient à un hero éditorial texte et un unique lien `mailto:` RDV. Suppression de `web/components/LandingSmartCta.tsx`, des assets `web/public/images/hero-{desktop,tablet,mobile}.png` et du CSS associé (`.landing-hero__*` responsive, `.landing-cta-actions`, `.landing-cta-secondary`, `.landing-modal-*`, `.landing-hero--bleed`).
+- **Fix lint `react-hooks/set-state-in-effect` — `web/components/ThemeToggle.tsx`** (21 avril 2026) : migration du composant vers `useSyncExternalStore` (source de vérité = `document.documentElement.dataset.theme`) + script inline dans `<head>` de `web/app/layout.tsx` qui applique le thème **avant** hydration React. Élimine à la fois la cascade setState-in-effect (4 rendus pré-fix → 2 rendus post-fix, 0 event `effect-*`) et le FOUC (flash of unstyled theme). Preuve runtime capturée en debug mode (voir logs session `82b244`). Reste 3 warnings ESLint pré-existants hors périmètre (`@next/next/no-css-tags` x1, `@next/next/no-img-element` x2).
+- **Fix dev local SPA Vite — Supabase placeholder** (21 avril 2026) : création de `.env.local` à la racine avec `VITE_SUPABASE_URL` / `VITE_SUPABASE_KEY` du projet `kpgkxeilddeyfwiiqaha` (mêmes valeurs que `web/.env.local`, mais variables préfixées `VITE_*`). Fichier ignoré par git via le pattern `*.local`. Cause initiale : `src/lib/supabase.ts` retombait sur un fallback dev `https://example.supabase.co` → `ERR_NAME_NOT_RESOLVED` au clic "Se connecter". Preuve runtime : redirection OAuth complète jusqu'à `/auth/callback?code=...`.
+- **Convention dev local formalisée** (21 avril 2026) : deux terminaux désormais nécessaires en dev → racine `Le produit SaaS` = SPA Vite (port 5173), `web/` = landing Next.js (port 3000). À reporter dans `web/AGENTS.md` et `web/README.md` (tâche suivante).
 
 #### En cours
 - Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue décideur consolidée, Ma Direction, états RUN/BUILD variés).
-- EPIC 14 · **REF-74/75** : homepage finalisée avec hero responsive (`/images/hero-desktop.png`, `/images/hero-tablet.png`, `/images/hero-mobile.png`) et CTA intelligent “Accéder à mon espace” (deep-link vers dashboard si session détectée, modal de connexion sinon).
 
 #### À faire
 - Navigation historique navigateur: brancher la navigation interne sur l'URL/historique (retour arrière cohérent sans sortie du site).
