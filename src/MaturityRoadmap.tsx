@@ -692,11 +692,6 @@ export default function MaturityRoadmap({
       <ChantierLineModal
         open={chantierModal !== null}
         onClose={() => setChantierModal(null)}
-        workspaceId={workspaceId}
-        workspaceDirections={directions}
-        onDirectionCreated={async () => {
-          await loadAll()
-        }}
         mode={chantierModal?.mode ?? 'create'}
         projects={roadmapProjects.map((p) => ({
           id: p.id,

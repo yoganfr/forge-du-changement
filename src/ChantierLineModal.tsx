@@ -1,6 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import type { Direction } from './lib/types'
-import CreateDirectionDialog from './CreateDirectionDialog'
 import { mrBackdropProps, useBackdropPointerClose } from './lib/useBackdropPointerClose'
 
 export type ChantierLineModalProps = {
@@ -17,10 +15,6 @@ export type ChantierLineModalProps = {
   /** Axe de roadmap (zone) — affichage seul, non modifiable ici. */
   axeTypeLabel?: string | null
   readOnly?: boolean
-  /** Création de direction inline (workspace). */
-  workspaceId?: string | null
-  workspaceDirections?: Direction[]
-  onDirectionCreated?: () => void | Promise<void>
   onSubmit: (projetId: string, nom: string) => Promise<void>
   onDelete?: () => Promise<void>
 }
@@ -36,15 +30,11 @@ export default function ChantierLineModal({
   directionLabel,
   axeTypeLabel,
   readOnly = false,
-  workspaceId = null,
-  workspaceDirections = [],
-  onDirectionCreated,
   onSubmit,
   onDelete,
 }: ChantierLineModalProps) {
   const [projetId, setProjetId] = useState('')
   const [nom, setNom] = useState('')
-  const [dirCreateOpen, setDirCreateOpen] = useState(false)
   const { onBackdropPointerDown } = useBackdropPointerClose(onClose, open)
 
   useEffect(() => {
@@ -69,10 +59,6 @@ export default function ChantierLineModal({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
-
-  useEffect(() => {
-    if (!open) setDirCreateOpen(false)
-  }, [open])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -99,11 +85,9 @@ export default function ChantierLineModal({
 
   const title = mode === 'create' ? 'Chantier et projet transformant' : 'Chantier'
 
-  return (
-    <>
-    {open ? (
+  return open ? (
     <div
-      className="mr-modal-overlay"
+      className="mr-modal-overlay mr-modal-overlay--rcm"
       role="presentation"
       {...mrBackdropProps}
       onPointerDown={onBackdropPointerDown}
@@ -134,7 +118,7 @@ export default function ChantierLineModal({
           ) : null}
         </p>
         <form onSubmit={(e) => void handleSubmit(e)} className="mr-modal__form">
-          <div className="mr-modal__field">
+          <div className="mr-modal__field mr-modal__field--boxed">
             <span className="mr-modal__field-label">Projet transformant</span>
             {projects.length === 0 ? (
               <p className="mr-modal__empty-hint">Aucun projet BUILD éligible.</p>
@@ -178,7 +162,7 @@ export default function ChantierLineModal({
             {mode === 'edit' && onDelete && !readOnly ? (
               <button
                 type="button"
-                className="mr-btn-ghost mr-btn-danger"
+                className="rcm-btn rcm-btn--danger"
                 disabled={saving}
                 onClick={() => void onDelete()}
               >
@@ -188,37 +172,16 @@ export default function ChantierLineModal({
               <span aria-hidden className="mr-modal__actions-spacer" />
             )}
             <div className="mr-modal__actions-right">
-              <button type="button" className="mr-btn-ghost" onClick={onClose} disabled={saving}>
+              <button type="button" className="rcm-btn" onClick={onClose} disabled={saving}>
                 Annuler
               </button>
-              <button type="submit" className="mr-btn-primary" disabled={saving || readOnly || !projetId}>
+              <button type="submit" className="rcm-btn rcm-btn--primary" disabled={saving || readOnly || !projetId}>
                 {saving ? '…' : mode === 'create' ? 'Créer' : 'Enregistrer'}
               </button>
             </div>
           </div>
         </form>
-        {workspaceId && onDirectionCreated && !readOnly ? (
-          <p className="mr-modal__meta" style={{ marginTop: 10 }}>
-            <button type="button" className="mr-tgrid-legend__link" onClick={() => setDirCreateOpen(true)}>
-              Nouvelle direction…
-            </button>
-          </p>
-        ) : null}
       </div>
     </div>
-    ) : null}
-    {workspaceId && onDirectionCreated ? (
-      <CreateDirectionDialog
-        open={open && dirCreateOpen}
-        workspaceId={workspaceId}
-        existingDirections={workspaceDirections}
-        onClose={() => setDirCreateOpen(false)}
-        onResolved={async (direction: Direction) => {
-          void direction
-          await onDirectionCreated()
-        }}
-      />
-    ) : null}
-    </>
-  )
+  ) : null
 }

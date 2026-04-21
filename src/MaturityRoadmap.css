@@ -1162,6 +1162,12 @@
   animation: mr-fade 0.2s ease;
 }
 
+/** Même traitement de fond que le popover PCI (RACI) pour les modales roadmap concernées */
+.mr-modal-overlay--rcm {
+  background: color-mix(in srgb, #000 45%, transparent);
+  padding: var(--space-md);
+}
+
 .mr-modal {
   width: 100%;
   max-width: 420px;
@@ -1174,6 +1180,14 @@
 
 .mr-modal--chantier {
   max-width: 480px;
+  border-radius: 12px;
+  border: 1px solid var(--theme-border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+.mr-modal--chantier .mr-modal__title {
+  font-size: var(--text-md);
+  font-weight: 700;
 }
 
 .mr-modal__title {
@@ -1181,6 +1195,14 @@
   font-family: var(--font-display);
   font-size: 1.2rem;
   color: var(--theme-text);
+}
+
+.mr-modal__field--boxed {
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  padding: var(--space-md);
+  gap: 10px;
+  background: color-mix(in srgb, var(--theme-text) 2%, transparent);
 }
 
 .mr-modal__meta {
@@ -1322,6 +1344,7 @@
   background: color-mix(in srgb, var(--theme-text) 2%, transparent);
 }
 
+.rcm-btn:focus-visible,
 .mr-btn-primary:focus-visible,
 .mr-btn-ghost:focus-visible,
 .mr-btn-danger:focus-visible,
