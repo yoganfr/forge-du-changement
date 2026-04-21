@@ -347,7 +347,7 @@ export default function RoadmapTimelineGrid({
     label: c.label,
     sub:
       c.kind === 'quarter'
-        ? 'Échéance'
+        ? 'Trimestriel'
         : c.kind === 'year'
           ? 'Horizon annuel'
           : 'Projection',
@@ -383,13 +383,36 @@ export default function RoadmapTimelineGrid({
       <div className="mr-tgrid-scroll" role="region" aria-label="Tableau roadmap par axe et temps">
         <table className="mr-tgrid mr-tgrid--matrix">
           <thead>
-            <tr>
-              <th scope="col" className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-head">
+            <tr className="mr-tgrid__head-row mr-tgrid__head-row--primary">
+              <th
+                scope="col"
+                rowSpan={2}
+                className="mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-head"
+              >
                 <span className="mr-tgrid__head-label mr-tgrid__head-label--axis">Axe</span>
               </th>
-              <th scope="col" className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-head">
+              <th
+                scope="col"
+                rowSpan={2}
+                className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-head"
+              >
                 <span className="mr-tgrid__head-label mr-tgrid__head-label--chantier">Chantiers</span>
               </th>
+              <th
+                scope="colgroup"
+                colSpan={headerCells.length}
+                className="mr-tgrid__ech-group-head"
+              >
+                <span className="mr-tgrid__ech-group-head-label">Échéances</span>
+              </th>
+              <th
+                scope="col"
+                rowSpan={2}
+                className="mr-tgrid__trail-head"
+                aria-label="Prolongement du tableau après la dernière échéance"
+              />
+            </tr>
+            <tr className="mr-tgrid__head-row mr-tgrid__head-row--secondary">
               {headerCells.map((h) => (
                 <th key={h.key} scope="col" className="mr-tgrid__time-head">
                   <span className="mr-tgrid__time-label">{h.label}</span>
@@ -436,6 +459,7 @@ export default function RoadmapTimelineGrid({
                       {headerCells.map((h) => (
                         <td key={h.key} className="mr-tgrid__cell mr-tgrid__cell--filler" aria-hidden />
                       ))}
+                      <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
                     </tr>
                   )
                 }
@@ -499,6 +523,7 @@ export default function RoadmapTimelineGrid({
                       {headerCells.map((h) => (
                         <td key={h.key} className="mr-tgrid__cell mr-tgrid__cell--filler" aria-hidden />
                       ))}
+                      <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
                     </tr>
                   )
                 }
@@ -659,6 +684,7 @@ export default function RoadmapTimelineGrid({
                         </td>
                       )
                     })}
+                    <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
                   </tr>
                 )
               })}

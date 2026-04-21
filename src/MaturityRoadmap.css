@@ -1005,8 +1005,57 @@
   border-bottom: 1px solid var(--glass-border);
 }
 
-.mr-tgrid thead tr {
-  height: 56px;
+.mr-tgrid thead .mr-tgrid__axis-head[rowspan='2'],
+.mr-tgrid thead .mr-tgrid__chantier-head[rowspan='2'] {
+  vertical-align: middle;
+}
+
+.mr-tgrid thead .mr-tgrid__axis-head[rowspan='2'] .mr-tgrid__head-label,
+.mr-tgrid thead .mr-tgrid__chantier-head[rowspan='2'] .mr-tgrid__head-label {
+  min-height: 96px;
+}
+
+.mr-tgrid__head-row--primary {
+  min-height: 44px;
+}
+
+.mr-tgrid__head-row--secondary {
+  min-height: 52px;
+}
+
+.mr-tgrid__ech-group-head {
+  text-align: center;
+  vertical-align: middle;
+  padding: 8px 12px;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--theme-text);
+  background: color-mix(in srgb, var(--theme-bg-raised) 65%, var(--theme-bg-card));
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.mr-tgrid__ech-group-head-label {
+  display: block;
+}
+
+.mr-tgrid__trail-head {
+  width: 28px;
+  min-width: 28px;
+  max-width: 36px;
+  padding: 0;
+  background: color-mix(in srgb, var(--theme-border) 35%, var(--theme-bg-page));
+  border-left: 1px dashed color-mix(in srgb, var(--theme-text) 18%, transparent);
+}
+
+.mr-tgrid__trail-cell {
+  width: 28px;
+  min-width: 28px;
+  max-width: 36px;
+  padding: 0;
+  background: color-mix(in srgb, var(--theme-border) 22%, var(--theme-bg-card));
+  border-left: 1px dashed color-mix(in srgb, var(--theme-text) 14%, transparent);
 }
 
 .mr-tgrid__chantier-cell {
