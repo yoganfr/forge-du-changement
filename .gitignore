@@ -33,3 +33,6 @@ dist-ssr
 
 # Fichiers de test d'import
 test-invitations.csv
+
+# Exports recette locaux (CSV Supabase, captures)
+recette/

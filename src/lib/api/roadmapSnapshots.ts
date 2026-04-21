@@ -1,5 +1,15 @@
 import { supabase } from '../supabase'
 
+async function resolveCurrentAppUser(): Promise<{ id: string | null; email: string | null }> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const email = session?.user?.email?.trim().toLowerCase() ?? null
+  if (!email) return { id: null, email: null }
+  const { data } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
+  return { id: data?.id ?? null, email }
+}
+
 export type RoadmapSnapshotStatus = 'draft' | 'in_review' | 'closed'
 
 export type RoadmapSnapshotItemInput = {
@@ -17,6 +27,7 @@ export type RoadmapSnapshot = {
   frozen_at: string
   closed_at: string | null
   created_by: string | null
+  created_by_email: string | null
   created_at: string
 }
 
@@ -44,6 +55,7 @@ export async function createRoadmapSnapshot(params: {
   status?: RoadmapSnapshotStatus
   items: RoadmapSnapshotItemInput[]
 }): Promise<RoadmapSnapshot> {
+  const { id: created_by, email: created_by_email } = await resolveCurrentAppUser()
   const { data: snapshot, error } = await supabase
     .from('roadmap_snapshots')
     .insert({
@@ -52,6 +64,8 @@ export async function createRoadmapSnapshot(params: {
       label: params.label,
       status: params.status ?? 'draft',
       frozen_at: new Date().toISOString(),
+      created_by,
+      created_by_email,
     })
     .select('*')
     .single()

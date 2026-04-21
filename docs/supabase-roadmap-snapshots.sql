@@ -10,8 +10,13 @@ create table if not exists public.roadmap_snapshots (
   frozen_at timestamptz not null default now(),
   closed_at timestamptz null,
   created_by uuid null references public.users(id) on delete set null,
+  created_by_email text null,
   created_at timestamptz not null default now()
 );
+
+-- Back-fill script si la colonne a été ajoutée après coup :
+-- alter table public.roadmap_snapshots add column if not exists created_by_email text;
+-- update public.roadmap_snapshots rs set created_by_email = u.email from public.users u where rs.created_by = u.id and rs.created_by_email is null;
 
 create index if not exists roadmap_snapshots_workspace_created_idx
   on public.roadmap_snapshots (workspace_id, created_at desc);

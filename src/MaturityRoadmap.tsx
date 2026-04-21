@@ -475,7 +475,12 @@ export default function MaturityRoadmap({
 
   async function handleCreateSnapshot() {
     if (snapshotSaving) return
-    const label = window.prompt('Libellé du snapshot roadmap (ex. V1 avril 2026)')?.trim()
+    const now = new Date()
+    const monthLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    const suggestedLabel = `V1 ${monthLabel}`
+    const label = window
+      .prompt('Libellé du snapshot roadmap (ex. V1 avril 2026)', suggestedLabel)
+      ?.trim()
     if (!label) return
     try {
       setSnapshotSaving(true)
