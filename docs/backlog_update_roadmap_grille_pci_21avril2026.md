@@ -49,4 +49,4 @@ Lot **EPIC 3 · REF-7b.1** (matrice PCI dans la roadmap) et **ergonomie de la gr
 
 ## Référence Git
 
-Le hash du commit correspondant est visible via `git log -1 --oneline` sur la branche où ce lot a été intégré.
+Commit : `28c8831` — `feat(roadmap): refactor PCI et UX scroll grille timeline`.
