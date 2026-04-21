@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **21 avril 2026**, 03 h 45 (Europe/Paris)
+Dernière mise à jour : **21 avril 2026**, 11 h 55 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -55,6 +55,8 @@ Issues créées pour ancrer les lots **hors jeu GH-1–GH-15**. **GH-16** et **G
 | [GH-25](https://github.com/yoganfr/forge-du-changement/issues/25) | Ouverte | EPIC 8 · REF-24–29 ⬜ |
 | [GH-26](https://github.com/yoganfr/forge-du-changement/issues/26) | Ouverte | EPIC 9 · REF-30–32 ⬜ |
 | [GH-27](https://github.com/yoganfr/forge-du-changement/issues/27) | Ouverte | EPIC 13 · REF-37 — export PDF PAE Manager ⬜ |
+| GH-28 | Fermée | EPIC 14 · fusion PR homepage Next.js ✅ (merge le 21 avril 2026) |
+| (à créer) | Ouverte | EPIC 15 · REF-76–86 — migration dashboard /src → /web (proposée) ⬜ |
 
 ## Légende
 - 🔴 Priorité haute
@@ -255,6 +257,51 @@ Les tâches **59–72** (fondations Next.js + landing workspace SEO) sont **term
 
 ---
 
+## EPIC 15 — Migration dashboard `/src` (Vite) → `/web` (Next.js) 🟠 PROPOSÉE
+
+Objectif : unifier progressivement l'application sur **Next.js 16 App Router** pour réduire la surface de maintenance (1 stack, 1 design system, 1 projet Vercel cible), **sans freeze fonctionnel** et sans régression visible pour l'utilisateur.
+
+Principe : chaque vague migre un périmètre isolé, **conserve la parité comportementale** (cf. [`docs/refactor_rules.md`](refactor_rules.md) §2) et doit être validée en production avant la vague suivante.
+
+Contexte de déclenchement : incident du 21 avril 2026 — la PR #28 a mergé la branche `feat/nextjs-landing-pages` dans `main` avant que tous les commits landing ne soient poussés distant, provoquant un état prod Vercel qui affichait le template `create-next-app` par défaut. Résolu par un merge complémentaire (commit `e62a98a`). Point d'attention durable intégré à la règle Cursor consolidée : branche de travail par défaut = `main`.
+
+| REF | Titre | Priorité | Statut |
+|---|-------|----------|--------|
+| 76 | **Vague 0 · Fondations partagées** — extraire les tokens CSS (`themes.css`, `design-system.css`) en dossier partagé ou les synchroniser explicitement entre `/src` et `/web` ; aligner `eslint` / `tsconfig` ; supprimer le couplage `turbopack.root = ..` dans [web/next.config.ts](web/next.config.ts) | 🔴 | ⬜ |
+| 77 | **Vague 1 · Auth SSR Supabase** — introduire `@supabase/ssr` dans `/web` (cookies, middleware de session), migrer [src/pages/Login.tsx](src/pages/Login.tsx) et [src/pages/AuthCallback.tsx](src/pages/AuthCallback.tsx) vers `web/app/(auth)/login` et `web/app/auth/callback` | 🔴 | ⬜ |
+| 78 | **Vague 2 · Routage et layout applicatif** — créer `web/app/(app)/layout.tsx` (navbar dashboard, thème, garde d'auth), brancher `acces-membres` et `bientot-disponible` déjà présents, router `/workspace/[id]/home` (landing authentifiée distincte de la landing SEO publique `/workspace/[id]`) | 🟠 | ⬜ |
+| 79 | **Vague 3 · Écrans simples** — migrer [src/pages/Settings.tsx](src/pages/Settings.tsx), [src/ProfileSheet.tsx](src/ProfileSheet.tsx), [src/CompanySheet.tsx](src/CompanySheet.tsx) (écrans à faible logique temps-réel) | 🟠 | ⬜ |
+| 80 | **Vague 4 · Vue décideur** — migrer [src/pages/DashboardDG.tsx](src/pages/DashboardDG.tsx) + [src/DgProjectAccordion.tsx](src/DgProjectAccordion.tsx) + frises partagées ; garder la parité impression navigateur (EPIC 13 · REF-36 v1) | 🟠 | ⬜ |
+| 81 | **Vague 5 · Selector projets** — migrer [src/ProjectSelector.tsx](src/ProjectSelector.tsx) (CRUD + scoring, dépend de `src/lib/api/projets.ts`) | 🟠 | ⬜ |
+| 82 | **Vague 6 · Maturity Roadmap (cœur métier)** — migrer [src/MaturityRoadmap.tsx](src/MaturityRoadmap.tsx), [src/RoadmapTimelineGrid.tsx](src/RoadmapTimelineGrid.tsx), [src/ChantierLineModal.tsx](src/ChantierLineModal.tsx), [src/JalonQuickAddModal.tsx](src/JalonQuickAddModal.tsx), [src/GanttRangeMarkers.tsx](src/GanttRangeMarkers.tsx) ; drag & drop + `ordre_sequentiel` + KPI miroir à valider en Server/Client Components | 🔴 | ⬜ |
+| 83 | **Vague 7 · API layer** — rapatrier `src/lib/api/*` sous `web/lib/api/*`, maintenir les signatures ; `src/lib/api.ts` devient un reexport deprecated. Tests Vitest migrés vers la config Next.js | 🟠 | ⬜ |
+| 84 | **Vague 8 · Modales et flows secondaires** — [src/OnboardingFlow.tsx](src/OnboardingFlow.tsx), [src/WorkspaceCreation.tsx](src/WorkspaceCreation.tsx), [src/MemberOnboarding.tsx](src/MemberOnboarding.tsx), [src/CreateDirectionDialog.tsx](src/CreateDirectionDialog.tsx) | 🟡 | ⬜ |
+| 85 | **Vague 9 · Bascule routage prod** — une fois toutes les routes couvertes côté Next.js, basculer le domaine principal (`forge-du-changement.vercel.app`) sur le projet Next.js ; l'ancien projet Vite reste en miroir temporaire | 🔴 | ⬜ |
+| 86 | **Vague 10 · Décommissionnement `/src`** — supprimer `/src`, [vite.config.ts](../vite.config.ts), [tsconfig.app.json](../tsconfig.app.json), `eslint.config.js` Vite, [vitest.config.ts](../vitest.config.ts), [index.html](../index.html) racine ; archiver le `package.json` Vite ; un seul projet Next.js reste | 🟠 | ⬜ |
+
+### Critères de bascule (DoD de chaque vague)
+
+1. **Parité fonctionnelle** validée (même scénario utilisateur, mêmes données Supabase, mêmes messages d'erreur).
+2. **Aucun hardcoding** couleur / typo / espacement / radius introduit (cf. [`visual-coherence-theme-rules.md`](visual-coherence-theme-rules.md)).
+3. **RLS et rôles** respectés (cf. [`proposition-regles-matrice-permissions.md`](proposition-regles-matrice-permissions.md)).
+4. Tests **Vitest / unitaires** correspondants passés.
+5. Commit `feat(migration)` poussé sur `main`, **déploiement Vercel vert** sur les deux projets tant qu'ils coexistent.
+6. Vague suivante **seulement après retour utilisateur réel** sur la vague précédente (respect strict de `refactor_rules.md` §2 — aucune régression même subtile).
+
+### Risques majeurs à anticiper
+
+- **Auth SSR** : le dashboard actuel est client-only (`persistSession` Supabase) ; basculer vers cookies SSR change tout le flux d'hydratation. REF-77 est le jalon bloquant de toute la migration.
+- **Design tokens** : `themes.css` (13 k) + `design-system.css` (16 k) sont volumineux. Arbitrer en REF-76 entre duplication synchronisée et package partagé.
+- **Drag & drop roadmap** : [src/RoadmapTimelineGrid.tsx](../src/RoadmapTimelineGrid.tsx) et [src/MaturityRoadmap.tsx](../src/MaturityRoadmap.tsx) utilisent des hooks bas-niveau ; migration à préparer avec soin pour HMR Turbopack (voir [web/AGENTS.md](../web/AGENTS.md) — Next.js 16 a des breaking changes).
+- **Tests** : ré-outillage Vitest côté Next.js (ou Jest). Prévu en REF-83.
+- **Deux déploiements Vercel** : tant que la migration n'est pas finie, maintenir `forge-du-changement.vercel.app` (Vite) et `forge-du-changement-kgyg-xi.vercel.app` (Next.js). Documenter qui pointe où dans le README racine.
+
+### Impact sur la stack technique du repo
+
+Tant que l'EPIC 15 n'est pas finie, la section **Stack technique** plus bas reste valable (double projet). À la fin de REF-86, elle devra être simplifiée (Next.js seul).
+
+---
+
 ## Stack technique
 
 - **Frontend** : React + TypeScript (Vite) + Next.js App Router (`web/`) pour landing SEO
@@ -348,8 +395,8 @@ Les tâches **59–72** (fondations Next.js + landing workspace SEO) sont **term
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
 - **Maintenant** : finaliser la conversion homepage publique (EPIC 14 · REF-74 / REF-75), finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), puis fermer le gap décideur transverse (EPIC 2 · REF-3).
-- **Après** : renforcer gouvernance/sécurité (EPIC 11), arbitrer l'export PDF autonome (EPIC 13), puis lancer les évolutions roadmap avancées (versionnement, fenêtre glissante, paramètres).
-- **Plus tard** : déployer les modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète.
+- **Après** : **poser les fondations de l'EPIC 15** (REF-76 tokens partagés + REF-77 Auth SSR) avant tout, renforcer gouvernance/sécurité (EPIC 11), arbitrer l'export PDF autonome (EPIC 13), puis lancer les évolutions roadmap avancées (versionnement, fenêtre glissante, paramètres).
+- **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) qui seront idéalement construits directement dans `/web`, et l'extension design premium complète.
 
 ---
 
@@ -363,15 +410,17 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Après
 
-4. EPIC 11 · **REF-50 / REF-51** — MFA super-admin + journal des imports CSV (gouvernance/sécurité opérationnelle).
-5. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
-6. EPIC 3 (évolutions avancées) — lancer les phases de `maturity-roadmap-synthese-evolutions-produit.md` : paramètres d'échéances workspace, fenêtre glissante, versionnement major/minor.
+4. EPIC 15 · **REF-76 / REF-77** — fondations partagées + Auth SSR Supabase dans `/web` : **prérequis bloquant** avant toute grosse feature dashboard dans Next.js (migration progressive `/src` → `/web`).
+5. EPIC 11 · **REF-50 / REF-51** — MFA super-admin + journal des imports CSV (gouvernance/sécurité opérationnelle).
+6. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
+7. EPIC 3 (évolutions avancées) — lancer les phases de `maturity-roadmap-synthese-evolutions-produit.md` : paramètres d'échéances workspace, fenêtre glissante, versionnement major/minor.
 
 ### Plus tard
 
-7. EPIC 4 · **REF-10–13** — PAE complet (structure, actions, validation N+1, lien jalons).
-8. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires (plan de charge, SENS, Fabrique, management terrain, pilotage projet).
-9. EPIC 12 (complet) — extension du design premium au-delà des quick wins ciblés.
+8. EPIC 15 · **REF-78 à REF-86** — suite migration `/src` → `/web` par vagues (routage applicatif, écrans simples, Vue décideur, Selector, Maturity Roadmap, API layer, flows secondaires, bascule prod, décommissionnement Vite).
+9. EPIC 4 · **REF-10–13** — PAE complet (structure, actions, validation N+1, lien jalons). Livrer de préférence **directement dans `/web`** si l'EPIC 15 est avancée.
+10. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires (plan de charge, SENS, Fabrique, management terrain, pilotage projet). Idem : construire dans `/web` si possible.
+11. EPIC 12 (complet) — extension du design premium au-delà des quick wins ciblés.
 
 ---
 

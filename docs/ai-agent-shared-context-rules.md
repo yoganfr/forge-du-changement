@@ -3,6 +3,8 @@
 This document is model-agnostic and can be shared with Claude AI and GPT Codex.
 Its purpose is to define which project documents must be read before acting.
 
+> **For agents running inside Cursor**: the authoritative, richer version of these rules lives at [`.cursor/rules/forge-du-changement-contexte.mdc`](../.cursor/rules/forge-du-changement-contexte.mdc) (applied automatically, `alwaysApply: true`). This file is the portable mirror for agents running outside Cursor. Keep both files aligned.
+
 ## Fast-path instruction for AI agents
 
 AI agents should read and apply the **English section only** (`EN`) to save time.
@@ -32,6 +34,16 @@ Ensure consistent decisions by reading core business and process documents first
   - `docs/proposition-regles-matrice-permissions.md`
 - If the request touches UI, CSS, components styling, theme, or visual consistency, also read:
   - `docs/visual-coherence-theme-rules.md`
+- If the request touches the migration from `/src` (Vite SPA) to `/web` (Next.js), also read:
+  - `docs/backlog.md` (EPIC 15, sections "Critères de bascule" and "Risques majeurs")
+  - `web/AGENTS.md` (Next.js 16 breaking changes)
+
+## Git workflow (mandatory)
+
+- Commit format: `type(scope): short business-oriented action` in French, subject ≤ 72 chars, no trailing dot. See `docs/git-commit-conventions.md`.
+- Mandatory trailer for agent commits: empty line + `Made-with: Cursor AI` (or equivalent for the agent in use).
+- After every agent commit, immediately `git push` to the current branch. Exception: only if the user explicitly asks not to push.
+- Default working branch = `main`. If on a feature branch or if `main` diverges from `origin/main`, flag and ask for confirmation before committing.
 
 ## Consistency rules
 
@@ -70,6 +82,16 @@ Garantir des decisions coherentes en lisant d'abord les documents socles metier 
   - `docs/proposition-regles-matrice-permissions.md`
 - Si la demande touche l'UI, le CSS, le styling de composants, le theme ou la coherence visuelle, lire aussi:
   - `docs/visual-coherence-theme-rules.md`
+- Si la demande touche la migration `/src` (Vite) vers `/web` (Next.js), lire aussi:
+  - `docs/backlog.md` (EPIC 15, sections "Critères de bascule" et "Risques majeurs")
+  - `web/AGENTS.md` (ruptures de compat Next.js 16)
+
+### Workflow git (obligatoire)
+
+- Format commit : `type(scope): action courte orientee metier` en francais, sujet ≤ 72 caracteres, sans point final. Voir `docs/git-commit-conventions.md`.
+- Trailer obligatoire pour les commits agent : ligne vide + `Made-with: Cursor AI` (ou equivalent selon l'agent).
+- Apres chaque commit agent, faire immediatement `git push` vers la branche courante. Exception : uniquement si l'utilisateur demande explicitement de ne pas pusher.
+- Branche de travail par defaut = `main`. Si l'agent est sur une branche feature ou si `main` diverge de `origin/main`, signaler et demander confirmation avant de committer.
 
 ### Regles de coherence
 

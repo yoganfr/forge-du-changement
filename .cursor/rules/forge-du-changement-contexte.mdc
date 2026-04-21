@@ -1,0 +1,93 @@
+---
+description: Contexte agent consolide - docs prioritaires, git workflow, architecture Vite/Next.js, migration /src vers /web
+alwaysApply: true
+---
+
+# Contexte agent — La Forge du Changement
+
+Cette regle est le point d'entree operationnel de tout agent IA travaillant sur ce repo. Elle complete (sans le remplacer) `.cursor/rules/R-gles-IA-SaaS-avec-Supabase-Vercel-et-GitHub.mdc` (charte qualite / produit / securite) et `.cursor/rules/heure-france-documents.mdc` (commande horodatage Europe/Paris).
+
+## 1. Identite produit et stack
+
+**Produit** : SaaS d'accompagnement de transformations d'entreprise. Module coeur = **Maturity Roadmap**. Cibles = DG, CODIR, consultants, managers terrain.
+
+**Stack en cohabitation** :
+
+- `/src` — SPA React + Vite + TypeScript = **dashboard authentifie** (projet Vercel historique).
+- `/web` — Next.js 16 App Router + TypeScript + Tailwind v4 = **landing publique + SEO** (projet Vercel `forge-du-changement-kgyg-xi`).
+- Backend = **Supabase** (Postgres + RLS + Auth + Storage).
+- Deploiement = **Vercel** (2 projets distincts, cf. section 6).
+- Repo = `yoganfr/forge-du-changement`, branche de prod = `main`.
+
+Source de verite vivante pour la liste des composants, tables et modules : [docs/backlog.md](docs/backlog.md) sections "Stack technique", "Tables Supabase", "Composants principaux".
+
+## 2. Lecture documentaire obligatoire
+
+A **chaque demande utilisateur**, lire les 3 docs socles avant toute action :
+
+1. [docs/# Règles métier — Maturity Roadmap.md](docs/#%20Règles%20métier%20—%20Maturity%20Roadmap.md) — regles metier du module coeur (jalons, axes, RACI, dialogue structure).
+2. [docs/git-commit-conventions.md](docs/git-commit-conventions.md) — format `type(scope): action` + trailer `Made-with`.
+3. [docs/maturity-roadmap-synthese-evolutions-produit.md](docs/maturity-roadmap-synthese-evolutions-produit.md) — roadmap produit Phases A a G + etat technique du depot.
+
+## 3. Lecture conditionnelle selon le type de demande
+
+- **Refactor / restructuration technique** : [docs/refactor_rules.md](docs/refactor_rules.md). Regle d'or : pas de refactor sans probleme concret (bug, perf mesurable, duplication claire, complexite bloquante). Supprimer > simplifier > ajouter.
+- **Evolution produit, priorisation, sprint, feature, roadmap** : [docs/backlog.md](docs/backlog.md). Contient EPICs 1-15, convention REF-*/GH-*, trajectoire Maintenant/Apres/Plus tard.
+- **Roles, permissions, droits d'acces, matrice** : [docs/proposition-regles-matrice-permissions.md](docs/proposition-regles-matrice-permissions.md). Regle : jamais deduire un droit, toujours confirmer via la matrice et l'audit `audit_events`.
+- **UI, CSS, theme, design system, coherence visuelle** : [docs/visual-coherence-theme-rules.md](docs/visual-coherence-theme-rules.md). Source de verite tokens = [src/themes.css](src/themes.css) + [src/design-system.css](src/design-system.css) + [web/app/globals.css](web/app/globals.css).
+- **Copywriting landing publique / site Next.js** : [docs/copywriting V3.md](docs/copywriting%20V3.md) (version canonique). [docs/copywriting.md](docs/copywriting.md) n'est qu'un index.
+- **Migration de code entre /src et /web** : voir section 6 + EPIC 15 du backlog.
+
+Partage multi-agents : [docs/ai-agent-shared-context-rules.md](docs/ai-agent-shared-context-rules.md) est le miroir portable (lisible par Claude AI / GPT Codex hors Cursor). Cette regle `.mdc` doit rester alignee dessus.
+
+## 4. Regles d'or rappel (a appliquer sans discussion)
+
+- **Refactor** : aucune modification sans probleme concret. Si le gain ne tient pas en 1 phrase simple, ne pas faire.
+- **Theme** : jamais hardcoder couleurs / typo / espacement / radius / ombres / transitions. Toujours via variables CSS tokens, valider en `[data-theme='light']` ET `[data-theme='dark']`.
+- **Permissions** : consulter la matrice avant toute decision sur la Vue decideur, les invitations, la fiche entreprise. Rappel rapide : `superadmin / consultant / admin / pilote` voient la Vue decideur ; `codir / contributeur` non. Validation decideur = jalon de gouvernance (date + commentaire obligatoires).
+- **RLS Supabase** : toute nouvelle table ou colonne sensible doit avoir une policy RLS explicite. Ne jamais utiliser `SUPABASE_SERVICE_ROLE_KEY` cote client. Dans `/web`, le client admin (bypass RLS) sert **uniquement** les pages publiques (sitemap, landing workspace `is_public=true`).
+- **Clarification** : en cas de doute metier ou de conflit entre deux docs, **signaler et demander confirmation** avant d'implementer.
+
+## 5. Git workflow obligatoire
+
+Reference complete : [docs/git-commit-conventions.md](docs/git-commit-conventions.md).
+
+- **Format** : `type(scope): action courte orientee metier` en francais, sujet <= 72 caracteres, pas de point final.
+- **Types** : `feat / fix / refactor / style / perf / test / docs / chore`.
+- **Scopes** du repo : `dg / roadmap / selector / gantt / auth / supabase / rls / ui / docs / rules / web`.
+- **Trailer obligatoire pour les commits agent** : ligne vide puis `Made-with: Cursor AI` en fin de corps de message.
+- **Push systematique** : apres chaque commit agent, faire immediatement `git push` vers la branche courante. Exception : uniquement si l'utilisateur demande explicitement de ne pas push.
+- **Branche de travail par defaut = `main`**. Si l'agent se retrouve sur une branche feature (`feat/*`) ou si `main` diverge de `origin/main`, **signaler et demander confirmation** avant de committer. Ne pas reproduire l'incident du 21 avril 2026 ou la landing Next.js a vecu 24h hors de `main` et ou la prod Vercel a affiche le template create-next-app par defaut.
+
+## 6. Architecture Vite vs Next.js — regle vivante pendant la migration
+
+| Cible | Ce qui y vit aujourd'hui | Projet Vercel |
+|-------|--------------------------|---------------|
+| `/src` (Vite SPA) | Dashboard authentifie (App.tsx, MaturityRoadmap, ProjectSelector, CompanySheet, DashboardDG, Auth) | `forge-du-changement.vercel.app` |
+| `/web` (Next.js 16) | Homepage publique, landing workspace SEO `/workspace/[id]`, pages transition `/acces-membres` et `/bientot-disponible` | `forge-du-changement-kgyg-xi.vercel.app` |
+
+### Regles pendant la cohabitation
+
+1. **Modification dashboard** -> reste dans `/src`. Ne pas creer de duplicata dans `/web` sans vague de migration EPIC 15 associee.
+2. **Modification landing / SEO / page publique** -> reste dans `/web`.
+3. **Nouvel ecran** -> consulter la trajectoire EPIC 15 du backlog avant de choisir la cible. Si l'ecran sera migre a court terme, le construire directement dans `/web` et documenter.
+4. **Tokens CSS partages** : `web/app/globals.css` importe actuellement `../../src/themes.css` via le `turbopack.root` du [web/next.config.ts](web/next.config.ts). Ce couplage est temporaire et sera traite par REF-76 (vague 0 de l'EPIC 15).
+5. **Next.js 16 != versions precedentes** : [web/AGENTS.md](web/AGENTS.md) rappelle que beaucoup d'APIs ont change (ex. `params: Promise<...>` dans les pages dynamiques). Lire `node_modules/next/dist/docs/` avant d'appliquer du savoir Next.js datant de versions anterieures.
+
+### Point d'entree rapide sur le code
+
+- Dashboard : [src/App.tsx](src/App.tsx), [src/MaturityRoadmap.tsx](src/MaturityRoadmap.tsx), [src/RoadmapTimelineGrid.tsx](src/RoadmapTimelineGrid.tsx), [src/ProjectSelector.tsx](src/ProjectSelector.tsx), [src/pages/DashboardDG.tsx](src/pages/DashboardDG.tsx), [src/pages/Login.tsx](src/pages/Login.tsx).
+- API layer : [src/lib/api.ts](src/lib/api.ts) (facade) + [src/lib/api/roadmap.ts](src/lib/api/roadmap.ts), [src/lib/api/workspaces.ts](src/lib/api/workspaces.ts), [src/lib/api/users.ts](src/lib/api/users.ts), [src/lib/api/projets.ts](src/lib/api/projets.ts), [src/lib/api/audit.ts](src/lib/api/audit.ts).
+- Types et tokens : [src/lib/types.ts](src/lib/types.ts), [src/themes.css](src/themes.css), [src/design-system.css](src/design-system.css).
+- Landing Next.js : [web/app/page.tsx](web/app/page.tsx), [web/components/LandingNav.tsx](web/components/LandingNav.tsx), [web/components/LandingRoadmapTrajectoire.tsx](web/components/LandingRoadmapTrajectoire.tsx), [web/components/ThemeToggle.tsx](web/components/ThemeToggle.tsx), [web/app/workspace/[id]/page.tsx](web/app/workspace/[id]/page.tsx), [web/lib/cache.ts](web/lib/cache.ts), [web/lib/supabase.ts](web/lib/supabase.ts).
+
+## 7. Horodatage France
+
+Pour toute ligne "Derniere mise a jour" / journal avec heure / horodatage cense refleter l'instant present en France : utiliser la commande Node documentee dans [.cursor/rules/heure-france-documents.mdc](.cursor/rules/heure-france-documents.mdc). **Ne jamais inventer** une date ou une heure.
+
+## 8. Si conflit ou ambiguite
+
+1. Signaler explicitement le conflit entre docs / code / demande.
+2. Proposer une resolution argumentee.
+3. **Demander confirmation utilisateur avant d'appliquer** une decision qui contredirait un des docs socles (sections 2 ou 3).
+4. Si un document parait obsolete, le signaler avant implementation.
