@@ -794,6 +794,11 @@ export default function MaturityRoadmap({
               chantiers={chantiersForProjet}
               workspaceDirections={directions}
               readOnly={readOnly}
+              workspaceId={workspaceId}
+              onDirectionCreated={async () => {
+                const dirs = await getWorkspaceDirections(workspaceId)
+                setDirections(dirs)
+              }}
             />
           </div>
         )

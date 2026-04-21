@@ -6,6 +6,7 @@ import {
   getRaciChantiersForProjet,
   updateRaciChantier,
 } from './lib/api/raci-chantiers'
+import CreateDirectionDialog from './CreateDirectionDialog'
 
 /**
  * REF-7b.1 — Matrice PCI (Pilote / Contributeur / Informé) par chantier.
@@ -28,6 +29,10 @@ export type RaciChantiersMatrixProps = {
   readOnly?: boolean
   /** id du projet pour la clé de cache API (recalculée quand le projet change). */
   projet_id: string
+  /** Workspace id — nécessaire pour créer une direction inline depuis le popover. */
+  workspaceId: string
+  /** Callback après création d'une nouvelle direction inline (le parent doit recharger sa liste). */
+  onDirectionCreated?: (direction: Direction) => void | Promise<void>
 }
 
 type StakeholderKey = string
@@ -84,6 +89,8 @@ export default function RaciChantiersMatrix({
   workspaceDirections,
   readOnly = false,
   projet_id,
+  workspaceId,
+  onDirectionCreated,
 }: RaciChantiersMatrixProps) {
   const [raciByChantier, setRaciByChantier] = useState<Record<string, RaciChantier[]>>({})
   const [loading, setLoading] = useState(false)
@@ -91,6 +98,13 @@ export default function RaciChantiersMatrix({
   const [saving, setSaving] = useState(false)
   const [popover, setPopover] = useState<PopoverState>({ kind: 'closed' })
   const popoverRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * Colonnes "éphémères" créées via le bouton "+ Ajouter" (mode stakeholder-only, cf. REF-7b.1 fix 3).
+   * Non persistées : une colonne sans aucun rôle coché sur aucune cellule disparaît au refresh.
+   * Dès qu'un rôle est coché sur une cellule, la row DB est créée et la key rejoint `raciByChantier` —
+   * la clé canonique étant identique (entite_type|entite_nom|personne_nom), pas de doublon colonne.
+   */
+  const [pendingStakeholders, setPendingStakeholders] = useState<CanonicalStakeholder[]>([])
 
   const chantierIds = useMemo(() => chantiers.map((c) => c.id), [chantiers])
 
@@ -123,8 +137,24 @@ export default function RaciChantiersMatrix({
         if (!byKey.has(canonical.key)) byKey.set(canonical.key, canonical)
       }
     }
+    for (const pending of pendingStakeholders) {
+      if (!byKey.has(pending.key)) byKey.set(pending.key, pending)
+    }
     return [...byKey.values()].sort(sortCanonical)
-  }, [raciByChantier])
+  }, [raciByChantier, pendingStakeholders])
+
+  // Nettoie les éphémères qui sont désormais persistés (même key dans raciByChantier).
+  useEffect(() => {
+    if (pendingStakeholders.length === 0) return
+    const dbKeys = new Set<StakeholderKey>()
+    for (const list of Object.values(raciByChantier)) {
+      for (const row of list) dbKeys.add(stakeholderKey(row))
+    }
+    const nextPending = pendingStakeholders.filter((p) => !dbKeys.has(p.key))
+    if (nextPending.length !== pendingStakeholders.length) {
+      setPendingStakeholders(nextPending)
+    }
+  }, [raciByChantier, pendingStakeholders])
 
   const getRowFor = useCallback(
     (chantierId: string, key: StakeholderKey): RaciChantier | null => {
@@ -184,6 +214,42 @@ export default function RaciChantiersMatrix({
       }
     },
     [reload, closePopover],
+  )
+
+  /**
+   * REF-7b.1 fix 3 — création d'une colonne partie prenante "éphémère" (pas de call DB).
+   * La colonne apparaît dans la matrice ; la row DB ne sera créée que quand un rôle
+   * sera coché dans une cellule de cette colonne.
+   */
+  const handleAddEphemeralStakeholder = useCallback(
+    (input: {
+      entite_type: RaciChantierEntiteType
+      entite_nom: string
+      direction_id: string | null
+      personne_nom: string | null
+    }) => {
+      const key = stakeholderKey({
+        entite_type: input.entite_type,
+        entite_nom: input.entite_nom,
+        personne_nom: input.personne_nom,
+      })
+      setPendingStakeholders((prev) => {
+        if (prev.some((p) => p.key === key)) return prev
+        return [
+          ...prev,
+          {
+            key,
+            entite_type: input.entite_type,
+            entite_nom: input.entite_nom,
+            direction_id: input.direction_id,
+            personne_nom: input.personne_nom,
+            user_id: null,
+          },
+        ]
+      })
+      closePopover()
+    },
+    [closePopover],
   )
 
   const handleDeleteRow = useCallback(
@@ -333,19 +399,27 @@ export default function RaciChantiersMatrix({
           workspaceDirections={workspaceDirections}
           saving={saving}
           existingStakeholders={canonicalStakeholders}
+          raciByChantier={raciByChantier}
+          workspaceId={workspaceId}
           onClose={closePopover}
           onSave={handleSaveRow}
           onDelete={handleDeleteRow}
+          onAddEphemeral={handleAddEphemeralStakeholder}
+          onDirectionCreated={onDirectionCreated}
         />
       )}
     </section>
   )
 }
 
+type PciRole = 'pilote' | 'contributeur' | 'informe' | null
+
 type RaciPopoverProps = {
   state: Extract<PopoverState, { kind: 'cell' | 'new-stakeholder' }>
   workspaceDirections: Direction[]
   existingStakeholders: CanonicalStakeholder[]
+  raciByChantier: Record<string, RaciChantier[]>
+  workspaceId: string
   saving: boolean
   onClose: () => void
   onSave: (
@@ -363,225 +437,321 @@ type RaciPopoverProps = {
     },
   ) => Promise<void>
   onDelete: (row: RaciChantier) => Promise<void>
+  onAddEphemeral: (input: {
+    entite_type: RaciChantierEntiteType
+    entite_nom: string
+    direction_id: string | null
+    personne_nom: string | null
+  }) => void
+  onDirectionCreated?: (direction: Direction) => void | Promise<void>
+}
+
+function initialRole(row: RaciChantier | null): PciRole {
+  if (!row) return null
+  if (row.is_pilote) return 'pilote'
+  if (row.is_contributeur) return 'contributeur'
+  if (row.is_informe) return 'informe'
+  return null
 }
 
 function RaciPopover({
   state,
   workspaceDirections,
   existingStakeholders,
+  raciByChantier,
+  workspaceId,
   saving,
   onClose,
   onSave,
   onDelete,
+  onAddEphemeral,
+  onDirectionCreated,
   forwardedRef,
 }: RaciPopoverProps & { forwardedRef: React.RefObject<HTMLDivElement | null> }) {
-    const existingRow = state.kind === 'cell' ? state.existingRow : null
-    const lockedStakeholder = useMemo<CanonicalStakeholder | null>(() => {
-      if (state.kind !== 'cell') return null
-      return existingStakeholders.find((s) => s.key === state.stakeholderKey) ?? null
-    }, [state, existingStakeholders])
+  const existingRow = state.kind === 'cell' ? state.existingRow : null
+  const lockedStakeholder = useMemo<CanonicalStakeholder | null>(() => {
+    if (state.kind !== 'cell') return null
+    return existingStakeholders.find((s) => s.key === state.stakeholderKey) ?? null
+  }, [state, existingStakeholders])
 
-    const initialChantierId = state.kind === 'cell' ? state.chantierId : state.chantierIdInitial ?? ''
+  const isStakeholderOnlyMode = state.kind === 'new-stakeholder'
 
-    const [entiteType, setEntiteType] = useState<RaciChantierEntiteType>(
-      existingRow?.entite_type ?? lockedStakeholder?.entite_type ?? 'direction',
-    )
-    const [directionId, setDirectionId] = useState<string | null>(
-      existingRow?.direction_id ?? lockedStakeholder?.direction_id ?? null,
-    )
-    const [entiteNom, setEntiteNom] = useState<string>(
-      existingRow?.entite_nom ?? lockedStakeholder?.entite_nom ?? '',
-    )
-    const [personneNom, setPersonneNom] = useState<string>(
-      existingRow?.personne_nom ?? lockedStakeholder?.personne_nom ?? '',
-    )
-    const [isPilote, setIsPilote] = useState<boolean>(existingRow?.is_pilote ?? false)
-    const [isContrib, setIsContrib] = useState<boolean>(existingRow?.is_contributeur ?? false)
-    const [isInforme, setIsInforme] = useState<boolean>(existingRow?.is_informe ?? false)
-    const [motivation, setMotivation] = useState<string>(existingRow?.motivation ?? '')
+  const [entiteType, setEntiteType] = useState<RaciChantierEntiteType>(
+    existingRow?.entite_type ?? lockedStakeholder?.entite_type ?? 'direction',
+  )
+  const [directionId, setDirectionId] = useState<string | null>(
+    existingRow?.direction_id ?? lockedStakeholder?.direction_id ?? null,
+  )
+  const [entiteNom, setEntiteNom] = useState<string>(
+    existingRow?.entite_nom ?? lockedStakeholder?.entite_nom ?? '',
+  )
+  const [personneNom, setPersonneNom] = useState<string>(
+    existingRow?.personne_nom ?? lockedStakeholder?.personne_nom ?? '',
+  )
+  const [role, setRole] = useState<PciRole>(initialRole(existingRow))
+  const [motivation, setMotivation] = useState<string>(existingRow?.motivation ?? '')
+  const [createDirOpen, setCreateDirOpen] = useState<boolean>(false)
 
-    const stakeholderLocked = Boolean(lockedStakeholder && !existingRow && state.kind === 'cell')
+  const stakeholderLocked = Boolean(lockedStakeholder && !existingRow && state.kind === 'cell')
 
-    useEffect(() => {
-      if (entiteType !== 'direction') {
-        setDirectionId(null)
-      } else if (!directionId && entiteNom) {
-        const match = workspaceDirections.find(
-          (d) => d.nom.trim().toLowerCase() === entiteNom.trim().toLowerCase(),
-        )
-        if (match) setDirectionId(match.id)
-      }
-    }, [entiteType, directionId, entiteNom, workspaceDirections])
+  useEffect(() => {
+    if (entiteType !== 'direction') {
+      setDirectionId(null)
+    } else if (!directionId && entiteNom) {
+      const match = workspaceDirections.find(
+        (d) => d.nom.trim().toLowerCase() === entiteNom.trim().toLowerCase(),
+      )
+      if (match) setDirectionId(match.id)
+    }
+  }, [entiteType, directionId, entiteNom, workspaceDirections])
 
-    const disabled = useMemo(() => {
+  // Collision Pilote sur le chantier courant (cas cell uniquement, warning non bloquant).
+  const piloteConflict = useMemo<{ nom: string; personne: string | null } | null>(() => {
+    if (state.kind !== 'cell') return null
+    if (role !== 'pilote') return null
+    const rows = raciByChantier[state.chantierId] ?? []
+    const otherPilote = rows.find((r) => r.is_pilote && r.id !== existingRow?.id)
+    if (!otherPilote) return null
+    return { nom: otherPilote.entite_nom, personne: otherPilote.personne_nom }
+  }, [state, role, raciByChantier, existingRow])
+
+  const disabled = useMemo(() => {
+    const nom = entiteNom.trim()
+    if (!nom) return true
+    if (isStakeholderOnlyMode) return false
+    return role === null
+  }, [entiteNom, role, isStakeholderOnlyMode])
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (disabled) return
       const nom = entiteNom.trim()
-      if (!nom) return true
-      if (!isPilote && !isContrib && !isInforme) return true
-      return false
-    }, [entiteNom, isPilote, isContrib, isInforme])
+      const personne = personneNom.trim() || null
+      const effectiveDirectionId = entiteType === 'direction' ? directionId : null
 
-    const handleSubmit = useCallback(
-      async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (disabled) return
-        const chantierId = state.kind === 'cell' ? state.chantierId : initialChantierId
-        if (!chantierId) {
-          alert('Aucun chantier cible pour créer la partie prenante.')
-          return
-        }
-        await onSave(chantierId, existingRow, {
+      if (isStakeholderOnlyMode) {
+        onAddEphemeral({
           entite_type: entiteType,
-          entite_nom: entiteNom.trim(),
-          direction_id: entiteType === 'direction' ? directionId : null,
-          personne_nom: personneNom.trim() || null,
-          is_pilote: isPilote,
-          is_contributeur: isContrib,
-          is_informe: isInforme,
-          motivation: motivation.trim() || null,
+          entite_nom: nom,
+          direction_id: effectiveDirectionId,
+          personne_nom: personne,
         })
-      },
-      [
-        state,
-        initialChantierId,
-        entiteType,
-        entiteNom,
-        directionId,
-        personneNom,
-        isPilote,
-        isContrib,
-        isInforme,
-        motivation,
-        disabled,
-        existingRow,
-        onSave,
-      ],
-    )
+        return
+      }
 
-    return (
-      <div className="rcm-popover-backdrop">
-        <div ref={forwardedRef} className="rcm-popover" role="dialog" aria-label="Éditer partie prenante">
-          <header className="rcm-popover-header">
-            <h4>
-              {existingRow
-                ? 'Modifier la partie prenante'
-                : lockedStakeholder
-                  ? 'Impliquer cette partie prenante'
-                  : 'Ajouter une partie prenante'}
-            </h4>
-            <button type="button" className="rcm-popover-close" onClick={onClose} aria-label="Fermer">
-              ×
-            </button>
-          </header>
+      const chantierId = state.kind === 'cell' ? state.chantierId : ''
+      if (!chantierId) {
+        alert('Aucun chantier cible pour créer la partie prenante.')
+        return
+      }
 
-          <form onSubmit={handleSubmit} className="rcm-popover-form">
-            <fieldset className="rcm-popover-fieldset" disabled={stakeholderLocked}>
-              <legend className="rcm-popover-legend">Partie prenante</legend>
+      await onSave(chantierId, existingRow, {
+        entite_type: entiteType,
+        entite_nom: nom,
+        direction_id: effectiveDirectionId,
+        personne_nom: personne,
+        is_pilote: role === 'pilote',
+        is_contributeur: role === 'contributeur',
+        is_informe: role === 'informe',
+        motivation: motivation.trim() || null,
+      })
+    },
+    [
+      disabled,
+      isStakeholderOnlyMode,
+      onAddEphemeral,
+      state,
+      entiteType,
+      entiteNom,
+      directionId,
+      personneNom,
+      role,
+      motivation,
+      existingRow,
+      onSave,
+    ],
+  )
 
-              <label className="rcm-field">
-                <span>Type d'entité</span>
-                <select
-                  value={entiteType}
-                  onChange={(e) => setEntiteType(e.target.value as RaciChantierEntiteType)}
-                >
-                  <option value="direction">Direction</option>
-                  <option value="autre">Autre</option>
-                </select>
-              </label>
+  const handleDirectionSelectChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const value = e.target.value
+      if (value === '__NEW__') {
+        setCreateDirOpen(true)
+        return
+      }
+      const id = value || null
+      setDirectionId(id)
+      const match = workspaceDirections.find((d) => d.id === id)
+      if (match) setEntiteNom(match.nom)
+    },
+    [workspaceDirections],
+  )
 
-              {entiteType === 'direction' ? (
-                <label className="rcm-field">
-                  <span>Direction</span>
-                  <select
-                    value={directionId ?? ''}
-                    onChange={(e) => {
-                      const id = e.target.value || null
-                      setDirectionId(id)
-                      const match = workspaceDirections.find((d) => d.id === id)
-                      if (match) setEntiteNom(match.nom)
-                    }}
-                  >
-                    <option value="">— Choisir —</option>
-                    {workspaceDirections.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.nom}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <label className="rcm-field">
-                  <span>Nom de l'entité</span>
-                  <input
-                    type="text"
-                    value={entiteNom}
-                    onChange={(e) => setEntiteNom(e.target.value)}
-                    placeholder="ex. Cabinet XX, Comité pilotage…"
-                  />
-                </label>
-              )}
+  const headerTitle = existingRow
+    ? 'Modifier la partie prenante'
+    : isStakeholderOnlyMode
+      ? 'Ajouter une partie prenante'
+      : lockedStakeholder
+        ? 'Impliquer cette partie prenante'
+        : 'Ajouter une partie prenante'
 
-              <label className="rcm-field">
-                <span>Personne (optionnel)</span>
-                <input
-                  type="text"
-                  value={personneNom}
-                  onChange={(e) => setPersonneNom(e.target.value)}
-                  placeholder="Prénom NOM"
-                />
-              </label>
-            </fieldset>
+  return (
+    <div className="rcm-popover-backdrop">
+      <div ref={forwardedRef} className="rcm-popover" role="dialog" aria-label="Éditer partie prenante">
+        <header className="rcm-popover-header">
+          <h4>{headerTitle}</h4>
+          <button type="button" className="rcm-popover-close" onClick={onClose} aria-label="Fermer">
+            ×
+          </button>
+        </header>
 
-            <fieldset className="rcm-popover-fieldset">
-              <legend className="rcm-popover-legend">Rôles sur ce chantier</legend>
-              <div className="rcm-role-checks">
-                <label className={`rcm-role-check ${isPilote ? 'rcm-role-check--on' : ''}`}>
-                  <input type="checkbox" checked={isPilote} onChange={(e) => setIsPilote(e.target.checked)} />
-                  <span className="rcm-role-pill rcm-role-pill--p">P</span>
-                  Pilote
-                </label>
-                <label className={`rcm-role-check ${isContrib ? 'rcm-role-check--on' : ''}`}>
-                  <input type="checkbox" checked={isContrib} onChange={(e) => setIsContrib(e.target.checked)} />
-                  <span className="rcm-role-pill rcm-role-pill--c">C</span>
-                  Contributeur
-                </label>
-                <label className={`rcm-role-check ${isInforme ? 'rcm-role-check--on' : ''}`}>
-                  <input type="checkbox" checked={isInforme} onChange={(e) => setIsInforme(e.target.checked)} />
-                  <span className="rcm-role-pill rcm-role-pill--i">I</span>
-                  Informé
-                </label>
-              </div>
-            </fieldset>
+        <form onSubmit={handleSubmit} className="rcm-popover-form">
+          <fieldset className="rcm-popover-fieldset" disabled={stakeholderLocked}>
+            <legend className="rcm-popover-legend">Partie prenante</legend>
 
             <label className="rcm-field">
-              <span>Motivation (optionnel)</span>
-              <textarea
-                value={motivation}
-                onChange={(e) => setMotivation(e.target.value)}
-                rows={3}
-                placeholder="Pourquoi cette partie prenante est impliquée sur ce chantier ?"
-              />
+              <span>Type d'entité</span>
+              <select
+                value={entiteType}
+                onChange={(e) => setEntiteType(e.target.value as RaciChantierEntiteType)}
+              >
+                <option value="direction">Direction</option>
+                <option value="autre">Autre</option>
+              </select>
             </label>
 
-            <footer className="rcm-popover-footer">
-              {existingRow && (
-                <button
-                  type="button"
-                  className="rcm-btn rcm-btn--danger"
-                  onClick={() => onDelete(existingRow)}
-                  disabled={saving}
-                >
-                  Retirer du chantier
-                </button>
-              )}
-              <button type="button" className="rcm-btn" onClick={onClose} disabled={saving}>
-                Annuler
+            {entiteType === 'direction' ? (
+              <label className="rcm-field">
+                <span>Direction</span>
+                <select value={directionId ?? ''} onChange={handleDirectionSelectChange}>
+                  <option value="">— Choisir —</option>
+                  {workspaceDirections.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.nom}
+                    </option>
+                  ))}
+                  <option value="__NEW__">+ Créer une nouvelle direction…</option>
+                </select>
+              </label>
+            ) : (
+              <label className="rcm-field">
+                <span>Nom de l'entité</span>
+                <input
+                  type="text"
+                  value={entiteNom}
+                  onChange={(e) => setEntiteNom(e.target.value)}
+                  placeholder="ex. Cabinet XX, Comité pilotage…"
+                />
+              </label>
+            )}
+
+            <label className="rcm-field">
+              <span>Personne (optionnel)</span>
+              <input
+                type="text"
+                value={personneNom}
+                onChange={(e) => setPersonneNom(e.target.value)}
+                placeholder="Prénom NOM"
+              />
+            </label>
+          </fieldset>
+
+          {!isStakeholderOnlyMode && (
+            <>
+              <fieldset className="rcm-popover-fieldset">
+                <legend className="rcm-popover-legend">Rôle sur ce chantier</legend>
+                <div className="rcm-role-radios" role="radiogroup" aria-label="Rôle PCI">
+                  <label className={`rcm-role-check ${role === 'pilote' ? 'rcm-role-check--on' : ''}`}>
+                    <input
+                      type="radio"
+                      name="rcm-pci-role"
+                      checked={role === 'pilote'}
+                      onChange={() => setRole('pilote')}
+                    />
+                    <span className="rcm-role-pill rcm-role-pill--p">P</span>
+                    Pilote
+                  </label>
+                  <label className={`rcm-role-check ${role === 'contributeur' ? 'rcm-role-check--on' : ''}`}>
+                    <input
+                      type="radio"
+                      name="rcm-pci-role"
+                      checked={role === 'contributeur'}
+                      onChange={() => setRole('contributeur')}
+                    />
+                    <span className="rcm-role-pill rcm-role-pill--c">C</span>
+                    Contributeur
+                  </label>
+                  <label className={`rcm-role-check ${role === 'informe' ? 'rcm-role-check--on' : ''}`}>
+                    <input
+                      type="radio"
+                      name="rcm-pci-role"
+                      checked={role === 'informe'}
+                      onChange={() => setRole('informe')}
+                    />
+                    <span className="rcm-role-pill rcm-role-pill--i">I</span>
+                    Informé
+                  </label>
+                </div>
+                {piloteConflict && (
+                  <p className="rcm-warning-inline" role="alert">
+                    ⚠ Il y a déjà un Pilote sur ce chantier :{' '}
+                    <strong>
+                      {piloteConflict.nom}
+                      {piloteConflict.personne ? ` — ${piloteConflict.personne}` : ''}
+                    </strong>
+                    . Un co-pilotage est possible ; assurez-vous que c'est intentionnel.
+                  </p>
+                )}
+              </fieldset>
+
+              <label className="rcm-field">
+                <span>Motivation (optionnel)</span>
+                <textarea
+                  value={motivation}
+                  onChange={(e) => setMotivation(e.target.value)}
+                  rows={3}
+                  placeholder="Pourquoi cette partie prenante est impliquée sur ce chantier ?"
+                />
+              </label>
+            </>
+          )}
+
+          <footer className="rcm-popover-footer">
+            {existingRow && (
+              <button
+                type="button"
+                className="rcm-btn rcm-btn--danger"
+                onClick={() => onDelete(existingRow)}
+                disabled={saving}
+              >
+                Retirer du chantier
               </button>
-              <button type="submit" className="rcm-btn rcm-btn--primary" disabled={disabled || saving}>
-                {saving ? 'Enregistrement…' : 'Enregistrer'}
-              </button>
-            </footer>
-          </form>
-        </div>
+            )}
+            <button type="button" className="rcm-btn" onClick={onClose} disabled={saving}>
+              Annuler
+            </button>
+            <button type="submit" className="rcm-btn rcm-btn--primary" disabled={disabled || saving}>
+              {saving
+                ? 'Enregistrement…'
+                : isStakeholderOnlyMode
+                  ? 'Créer la colonne'
+                  : 'Enregistrer'}
+            </button>
+          </footer>
+        </form>
       </div>
-    )
+      <CreateDirectionDialog
+        open={createDirOpen}
+        workspaceId={workspaceId}
+        existingDirections={workspaceDirections}
+        onClose={() => setCreateDirOpen(false)}
+        onResolved={async (dir) => {
+          setDirectionId(dir.id)
+          setEntiteNom(dir.nom)
+          if (onDirectionCreated) await onDirectionCreated(dir)
+        }}
+      />
+    </div>
+  )
 }

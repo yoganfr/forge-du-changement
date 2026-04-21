@@ -1758,10 +1758,22 @@
   min-height: 64px;
 }
 
-.rcm-role-checks {
+.rcm-role-checks,
+.rcm-role-radios {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.rcm-warning-inline {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--caramel-candy-700, #b45309) 10%, transparent);
+  color: var(--caramel-candy-700, #b45309);
+  border: 1px solid color-mix(in srgb, var(--caramel-candy-700, #b45309) 30%, transparent);
+  font-size: var(--text-xs);
+  line-height: 1.4;
 }
 
 .rcm-role-check {
