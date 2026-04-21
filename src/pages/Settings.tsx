@@ -32,6 +32,7 @@ export default function SettingsPage({
         sector: null,
         size: null,
         logo_url: null,
+        trigram_convention: null,
         created_at: '',
       } as Workspace)
     }

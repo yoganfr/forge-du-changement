@@ -3,10 +3,77 @@ import type { Invitation } from '../types'
 import { dedupedFetch, invalidateCache, type ListOptions } from './cache'
 import { insertAuditEvent } from './audit'
 
+async function resolveCurrentAppUserForInvitation(): Promise<{
+  id: string | null
+  role: string | null
+  direction_id: string | null
+}> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const email = session?.user?.email?.trim().toLowerCase() ?? null
+  if (!email) return { id: null, role: null, direction_id: null }
+  const { data } = await supabase
+    .from('users')
+    .select('id, role, direction_id')
+    .eq('email', email)
+    .maybeSingle()
+  const row = (data as { id?: string; role?: string; direction_id?: string | null } | null) ?? null
+  return {
+    id: row?.id ?? null,
+    role: row?.role ?? null,
+    direction_id: row?.direction_id ?? null,
+  }
+}
+
+function deriveTrigramFromEmail(
+  email: string,
+  convention: 'prenom_nom_3' | 'nom_prenom_3' | 'custom' | null,
+): string | null {
+  if (convention === 'custom') return null
+  const local = email.split('@')[0] ?? ''
+  const normalized = local
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  const parts = normalized.split(/[.\-_]/).filter(Boolean)
+  if (parts.length === 0) return null
+  const first = parts[0] ?? ''
+  const second = parts[1] ?? ''
+  if (convention === 'nom_prenom_3') {
+    const base = `${(second || first).slice(0, 2)}${(first || second).slice(0, 1)}`
+    return base.replace(/[^A-Z]/g, '').slice(0, 3) || null
+  }
+  const base = `${first.slice(0, 2)}${second.slice(0, 1)}`
+  return base.replace(/[^A-Z]/g, '').slice(0, 3) || null
+}
+
 export async function createInvitation(data: Partial<Invitation>): Promise<Invitation> {
+  const inviter = await resolveCurrentAppUserForInvitation()
+  let workspaceConvention: 'prenom_nom_3' | 'nom_prenom_3' | 'custom' | null = null
+  if (data.workspace_id) {
+    const { data: workspace } = await supabase
+      .from('workspaces')
+      .select('trigram_convention')
+      .eq('id', data.workspace_id)
+      .maybeSingle()
+    workspaceConvention =
+      ((workspace as { trigram_convention?: 'prenom_nom_3' | 'nom_prenom_3' | 'custom' | null } | null)
+        ?.trigram_convention ?? null)
+  }
+  const directionId =
+    data.direction_id ??
+    (inviter.role === 'codir' && inviter.direction_id ? inviter.direction_id : null)
+  const trigram =
+    data.trigram?.trim().toUpperCase() ??
+    deriveTrigramFromEmail(data.email?.trim().toLowerCase() ?? '', workspaceConvention)
   const { data: invitation, error } = await supabase
     .from('invitations')
-    .insert(data)
+    .insert({
+      ...data,
+      direction_id: directionId,
+      trigram,
+    })
     .select()
     .single()
   if (error) throw error
@@ -15,7 +82,7 @@ export async function createInvitation(data: Partial<Invitation>): Promise<Invit
   void insertAuditEvent({
     workspace_id: inv.workspace_id,
     action: 'invitation_created',
-    payload: { email: inv.email, role: inv.role },
+    payload: { email: inv.email, role: inv.role, direction_id: directionId, trigram },
   })
   return inv
 }

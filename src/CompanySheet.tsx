@@ -2,15 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { sendInvitationMagicLink } from './lib/auth'
 import {
   createInvitation,
+  getWorkspaceDirections,
   getWorkspaceInvitations,
   getWorkspaceUsers,
   isStorageBucketNotFound,
   insertAuditEvent,
   listWorkspaceAuditEvents,
+  listWorkspaces,
   updateWorkspace,
   uploadImageToStorage,
 } from './lib/api'
-import type { AuditEvent, Invitation, User } from './lib/types'
+import type { AuditEvent, Direction, Invitation, User } from './lib/types'
 
 export interface CompanyMember {
   email: string
@@ -26,7 +28,6 @@ type InviteFormRole = 'Membre CODIR' | 'Pilote de projet' | 'Contributeur'
 
 const INVITE_ROLE_OPTIONS: InviteFormRole[] = ['Membre CODIR', 'Pilote de projet', 'Contributeur']
 const REMOTE_PAGE_SIZE = 500
-const MEMBERS_UI_PAGE_SIZE = 100
 
 function mapApiRoleToLabel(role: string): string {
   const r = role.toLowerCase()
@@ -35,6 +36,40 @@ function mapApiRoleToLabel(role: string): string {
   if (r === 'contributeur') return 'Contributeur'
   if (r === 'consultant') return 'Consultant'
   return role
+}
+
+// REF-7b.0 : categories d'accordeon dans la section "Membres de l'espace".
+type MemberGroupKey = 'super_admin' | 'admin' | 'consultant' | 'codir' | 'pilote' | 'contributeur' | 'autre'
+
+function normalizeMemberGroup(role: string): MemberGroupKey {
+  const r = role.toLowerCase()
+  if (r.includes('super')) return 'super_admin'
+  if (r === 'admin' || r.includes('administrateur')) return 'admin'
+  if (r.includes('consultant')) return 'consultant'
+  if (r.includes('codir')) return 'codir'
+  if (r.includes('pilote')) return 'pilote'
+  if (r.includes('contributeur')) return 'contributeur'
+  return 'autre'
+}
+
+const MEMBER_GROUP_ORDER: MemberGroupKey[] = [
+  'super_admin',
+  'admin',
+  'consultant',
+  'codir',
+  'pilote',
+  'contributeur',
+  'autre',
+]
+
+const MEMBER_GROUP_LABEL: Record<MemberGroupKey, string> = {
+  super_admin: 'Super admin',
+  admin: 'Admin',
+  consultant: 'Consultants',
+  codir: 'Membres CODIR',
+  pilote: 'Pilotes de projet',
+  contributeur: 'Contributeurs',
+  autre: 'Autres',
 }
 
 function toInvitationRole(role: InviteFormRole): 'codir' | 'pilote' | 'contributeur' {
@@ -205,10 +240,31 @@ function parseRoleCell(raw: string | undefined): InviteFormRole {
   return 'Contributeur'
 }
 
+function normalizeLabel(v: string): string {
+  return v
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function normalizeTrigram(raw: string | undefined): string | null {
+  if (!raw) return null
+  const cleaned = raw
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  if (!cleaned) return null
+  return cleaned.slice(0, 3)
+}
+
 function parseInvitationCsv(
   raw: string,
   defaultRole: InviteFormRole,
-): { rows: Array<{ email: string; role: InviteFormRole }>; lineErrors: string[] } {
+): {
+  rows: Array<{ email: string; role: InviteFormRole; directionLabel: string | null; trigram: string | null }>
+  lineErrors: string[]
+} {
   const lines = raw
     .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
@@ -216,15 +272,34 @@ function parseInvitationCsv(
     .filter(Boolean)
   if (lines.length === 0) return { rows: [], lineErrors: ['Aucune ligne à traiter.'] }
   let start = 0
-  if (/^email\b/i.test(lines[0])) start = 1
-  const rows: Array<{ email: string; role: InviteFormRole }> = []
+  let hasHeader = false
+  let headerHasRole = false
+  let headerHasDirection = false
+  let headerHasTrigram = false
+  if (/^email\b/i.test(lines[0])) {
+    hasHeader = true
+    start = 1
+    const header = lines[0].includes(';') ? lines[0].split(';') : lines[0].split(',')
+    const normalizedHeader = header.map((h) => normalizeLabel(h))
+    headerHasRole = normalizedHeader.includes('role')
+    headerHasDirection = normalizedHeader.includes('direction')
+    headerHasTrigram = normalizedHeader.includes('trigram')
+  }
+  const rows: Array<{ email: string; role: InviteFormRole; directionLabel: string | null; trigram: string | null }> =
+    []
   const lineErrors: string[] = []
   for (let i = start; i < lines.length; i++) {
     const lineNum = i + 1
     const line = lines[i]
     const parts = line.includes(';') ? line.split(';') : line.split(',')
     const email = parts[0]?.trim().toLowerCase() ?? ''
-    const roleCell = parts[1]?.trim()
+    const roleCell = hasHeader && !headerHasRole ? undefined : parts[1]?.trim()
+    const directionCell =
+      hasHeader && !headerHasDirection ? undefined : parts[headerHasRole ? 2 : 1]?.trim()
+    const trigramCell =
+      hasHeader && !headerHasTrigram
+        ? undefined
+        : parts[headerHasDirection ? (headerHasRole ? 3 : 2) : headerHasRole ? 2 : 1]?.trim()
     if (!email) {
       lineErrors.push(`Ligne ${lineNum} : email manquant`)
       continue
@@ -233,10 +308,15 @@ function parseInvitationCsv(
       lineErrors.push(`Ligne ${lineNum} : email invalide (${email})`)
       continue
     }
-    rows.push({ email, role: roleCell ? parseRoleCell(roleCell) : defaultRole })
+    rows.push({
+      email,
+      role: roleCell ? parseRoleCell(roleCell) : defaultRole,
+      directionLabel: directionCell ? directionCell : null,
+      trigram: normalizeTrigram(trigramCell),
+    })
   }
   const seen = new Set<string>()
-  const deduped: Array<{ email: string; role: InviteFormRole }> = []
+  const deduped: Array<{ email: string; role: InviteFormRole; directionLabel: string | null; trigram: string | null }> = []
   for (const r of rows) {
     if (seen.has(r.email)) continue
     seen.add(r.email)
@@ -293,21 +373,27 @@ export default function CompanySheet({
   const [remoteMembers, setRemoteMembers] = useState<CompanyMember[] | null>(null)
   const [remoteMembersLoading, setRemoteMembersLoading] = useState(false)
   const [membersRefreshKey, setMembersRefreshKey] = useState(0)
-  const [membersUiPage, setMembersUiPage] = useState(1)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<InviteFormRole>('Contributeur')
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
+  // REF-7b.0 : bandeau orange pour succes partiel (ex. invitation enregistree mais email non envoye)
+  const [inviteWarning, setInviteWarning] = useState<string | null>(null)
   const [resendingEmail, setResendingEmail] = useState<string | null>(null)
   const [resendBanner, setResendBanner] = useState<{ ok: boolean; text: string } | null>(null)
   const [csvText, setCsvText] = useState('')
   const [batchDefaultRole, setBatchDefaultRole] = useState<InviteFormRole>('Contributeur')
   const [batchSubmitting, setBatchSubmitting] = useState(false)
   const [batchSummary, setBatchSummary] = useState<string | null>(null)
+  const [batchSummaryTone, setBatchSummaryTone] = useState<'ok' | 'warning'>('ok')
   const [batchAuditEvents, setBatchAuditEvents] = useState<AuditEvent[]>([])
   const [batchAuditLoading, setBatchAuditLoading] = useState(false)
   const [userEmailById, setUserEmailById] = useState<Record<string, string>>({})
+  const [workspaceDirections, setWorkspaceDirections] = useState<Direction[]>([])
+  const [inviteDirectionId, setInviteDirectionId] = useState<string>('')
+  const [trigramConvention, setTrigramConvention] = useState<'prenom_nom_3' | 'nom_prenom_3' | 'custom'>('prenom_nom_3')
+  const [draftTrigramConvention, setDraftTrigramConvention] = useState<'prenom_nom_3' | 'nom_prenom_3' | 'custom'>('prenom_nom_3')
 
   useEffect(() => {
     setLogoUrl(companyLogoProp ?? null)
@@ -329,12 +415,98 @@ export default function CompanySheet({
   const canEdit = canEditCompany(currentUserRole)
   const canInvite = canInviteMembers(currentUserRole)
   const mergedMembers = remoteMembers ?? members
-  const totalMembersPages = Math.max(1, Math.ceil(mergedMembers.length / MEMBERS_UI_PAGE_SIZE))
-  const visibleMembers = useMemo(() => {
-    const safePage = Math.min(Math.max(membersUiPage, 1), totalMembersPages)
-    const start = (safePage - 1) * MEMBERS_UI_PAGE_SIZE
-    return mergedMembers.slice(start, start + MEMBERS_UI_PAGE_SIZE)
-  }, [membersUiPage, mergedMembers, totalMembersPages])
+
+  // REF-7b.0 : preferences UI (expand par groupe + filtre en attente) persistees par workspace dans localStorage.
+  const localStorageKey = workspaceId ? `cs-members-prefs:${workspaceId}` : null
+  type GroupPrefs = { groups: Record<MemberGroupKey, boolean>; onlyPending: boolean }
+  function defaultPrefs(): GroupPrefs {
+    const groups: Record<MemberGroupKey, boolean> = {
+      super_admin: false,
+      admin: false,
+      consultant: false,
+      codir: false,
+      pilote: false,
+      contributeur: false,
+      autre: false,
+    }
+    groups[normalizeMemberGroup(currentUserRole ?? '')] = true
+    return { groups, onlyPending: false }
+  }
+  const initialPrefs = (): GroupPrefs => {
+    if (!localStorageKey) return defaultPrefs()
+    try {
+      const raw = localStorage.getItem(localStorageKey)
+      if (!raw) return defaultPrefs()
+      const parsed = JSON.parse(raw)
+      if (!parsed || typeof parsed !== 'object') return defaultPrefs()
+      const base = defaultPrefs()
+      if (parsed.groups && typeof parsed.groups === 'object') {
+        for (const key of MEMBER_GROUP_ORDER) {
+          if (typeof parsed.groups[key] === 'boolean') base.groups[key] = parsed.groups[key]
+        }
+      }
+      if (typeof parsed.onlyPending === 'boolean') base.onlyPending = parsed.onlyPending
+      return base
+    } catch {
+      return defaultPrefs()
+    }
+  }
+  const [expandedGroups, setExpandedGroups] = useState<Record<MemberGroupKey, boolean>>(() => initialPrefs().groups)
+  const [onlyPending, setOnlyPending] = useState<boolean>(() => initialPrefs().onlyPending)
+  useEffect(() => {
+    if (!localStorageKey) return
+    try {
+      localStorage.setItem(localStorageKey, JSON.stringify({ groups: expandedGroups, onlyPending }))
+    } catch {
+      /* quota depasse : on ignore silencieusement */
+    }
+  }, [expandedGroups, onlyPending, localStorageKey])
+  function toggleGroup(key: MemberGroupKey) {
+    setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const filteredMembers = useMemo(() => {
+    if (!onlyPending) return mergedMembers
+    return mergedMembers.filter((m) => {
+      const variant = m.pillVariant ?? (m.status === 'actif' ? 'active' : 'invited')
+      return variant !== 'active' && variant !== 'inactive'
+    })
+  }, [mergedMembers, onlyPending])
+
+  // REF-7b.0 : regroupement des membres par role (accordeon par categorie)
+  // pour anticiper l'arrivee massive de reviewers (REF-7b.2 et +).
+  const groupedMembers = useMemo(() => {
+    const groups: Record<MemberGroupKey, CompanyMember[]> = {
+      super_admin: [],
+      admin: [],
+      consultant: [],
+      codir: [],
+      pilote: [],
+      contributeur: [],
+      autre: [],
+    }
+    for (const m of filteredMembers) {
+      groups[normalizeMemberGroup(m.role)].push(m)
+    }
+    return groups
+  }, [filteredMembers])
+
+  const hasAnyCollapsedGroup = MEMBER_GROUP_ORDER.some(
+    (key) => groupedMembers[key].length > 0 && !expandedGroups[key],
+  )
+  function toggleAllGroups() {
+    const allExpanded = !hasAnyCollapsedGroup
+    const target: Record<MemberGroupKey, boolean> = {
+      super_admin: !allExpanded,
+      admin: !allExpanded,
+      consultant: !allExpanded,
+      codir: !allExpanded,
+      pilote: !allExpanded,
+      contributeur: !allExpanded,
+      autre: !allExpanded,
+    }
+    setExpandedGroups(target)
+  }
 
   function onLogoFile(file: File | null) {
     if (!file) {
@@ -347,10 +519,6 @@ export default function CompanySheet({
     reader.onload = () => setLogoUrl(typeof reader.result === 'string' ? reader.result : null)
     reader.readAsDataURL(file)
   }
-
-  useEffect(() => {
-    setMembersUiPage(1)
-  }, [workspaceId, membersRefreshKey, mergedMembers.length])
 
   useEffect(() => {
     if (!workspaceId) return
@@ -408,6 +576,43 @@ export default function CompanySheet({
     if (!workspaceId) return
     let cancelled = false
     void (async () => {
+      try {
+        const directions = await getWorkspaceDirections(workspaceId)
+        if (!cancelled) setWorkspaceDirections(directions)
+      } catch {
+        if (!cancelled) setWorkspaceDirections([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId])
+
+  // REF-7b.0 : convention trigramme stockee au niveau workspace, editable par consultant/admin.
+  useEffect(() => {
+    if (!workspaceId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const all = await listWorkspaces()
+        if (cancelled) return
+        const current = all.find((w) => w.id === workspaceId)
+        const convention = current?.trigram_convention ?? 'prenom_nom_3'
+        setTrigramConvention(convention)
+        setDraftTrigramConvention(convention)
+      } catch {
+        /* RLS ou reseau : on garde le defaut */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId])
+
+  useEffect(() => {
+    if (!workspaceId) return
+    let cancelled = false
+    void (async () => {
       setBatchAuditLoading(true)
       try {
         const events = await listWorkspaceAuditEvents(workspaceId, ['invitation_batch_import'], 20)
@@ -429,6 +634,7 @@ export default function CompanySheet({
     const email = inviteEmail.trim().toLowerCase()
     setInviteError(null)
     setInviteSuccess(null)
+    setInviteWarning(null)
     if (!email || !email.includes('@')) {
       setInviteError('Saisissez une adresse email valide.')
       return
@@ -439,6 +645,10 @@ export default function CompanySheet({
         workspace_id: workspaceId,
         email,
         role: toInvitationRole(inviteRole),
+        direction_id:
+          currentUserRole === 'consultant' || currentUserRole === 'admin'
+            ? inviteDirectionId || null
+            : undefined,
       })
       try {
         await sendInvitationMagicLink(email)
@@ -446,7 +656,7 @@ export default function CompanySheet({
           `Invitation enregistrée. Un email avec un lien de connexion a été envoyé à ${email}.`,
         )
       } catch (mailErr) {
-        setInviteSuccess(
+        setInviteWarning(
           `Invitation enregistrée pour ${email}. L’email automatique n’a pas pu être envoyé (${inviteApiErrorMessage(mailErr)}). Vérifiez Auth → Email dans Supabase, ou utilisez « Mot de passe oublié » sur l’écran de connexion.`,
         )
       }
@@ -463,6 +673,7 @@ export default function CompanySheet({
     if (!workspaceId) return
     setInviteError(null)
     setInviteSuccess(null)
+    setInviteWarning(null)
     setBatchSummary(null)
     const { rows, lineErrors } = parseInvitationCsv(csvText, batchDefaultRole)
     if (rows.length === 0 && lineErrors.length > 0) {
@@ -479,12 +690,24 @@ export default function CompanySheet({
       let ok = 0
       let mailFail = 0
       const rowErrors: string[] = [...lineErrors]
-      await processWithConcurrency(rows, 4, async ({ email, role }) => {
+      const directionByLabel = new Map<string, string>()
+      for (const d of workspaceDirections) directionByLabel.set(normalizeLabel(d.nom), d.id)
+      await processWithConcurrency(rows, 4, async ({ email, role, directionLabel, trigram }) => {
         try {
+          let directionId: string | null | undefined = undefined
+          if (directionLabel) {
+            directionId = directionByLabel.get(normalizeLabel(directionLabel)) ?? null
+            if (!directionId) {
+              rowErrors.push(`${email} : direction inconnue (${directionLabel})`)
+              return
+            }
+          }
           await createInvitation({
             workspace_id: workspaceId,
             email,
             role: toInvitationRole(role),
+            direction_id: directionId,
+            trigram,
           })
           ok += 1
           try {
@@ -505,6 +728,7 @@ export default function CompanySheet({
         parts.push(`Détail : ${rowErrors.slice(0, 8).join(' ')}${rowErrors.length > 8 ? '…' : ''}`)
       }
       setBatchSummary(parts.join(' '))
+      setBatchSummaryTone(mailFail > 0 || rowErrors.length > 0 ? 'warning' : 'ok')
       await insertAuditEvent({
         workspace_id: workspaceId,
         action: 'invitation_batch_import',
@@ -575,12 +799,14 @@ export default function CompanySheet({
           sector: draftSector || null,
           size: (draftSize || null) as 'PME' | 'ETI' | 'Grand groupe' | null,
           logo_url: logoForDb,
+          trigram_convention: draftTrigramConvention,
         })
         if (logoForDb && !updated.logo_url) {
           updated = await updateWorkspace(workspaceId, { logo_url: logoForDb })
         }
         setLogoFile(null)
         setLogoUrl(updated.logo_url ?? null)
+        setTrigramConvention(updated.trigram_convention ?? 'prenom_nom_3')
         onCompanyUpdate?.({
           companyName: updated.company_name,
           sector: updated.sector ?? 'Non renseigné',
@@ -664,6 +890,28 @@ export default function CompanySheet({
                 <strong>{draftSize}</strong>
               )}
             </div>
+            <div>
+              <span className="cs-label">Convention trigramme</span>
+              {canEdit && editing ? (
+                <select
+                  value={draftTrigramConvention}
+                  onChange={(e) => setDraftTrigramConvention(e.target.value as 'prenom_nom_3' | 'nom_prenom_3' | 'custom')}
+                  className="cs-edit-input"
+                >
+                  <option value="prenom_nom_3">Prénom + Nom (ex : MAD = MArie Dupont)</option>
+                  <option value="nom_prenom_3">Nom + Prénom (ex : DUM = DUpont Marie)</option>
+                  <option value="custom">Personnalisée (édition manuelle)</option>
+                </select>
+              ) : (
+                <strong>
+                  {trigramConvention === 'nom_prenom_3'
+                    ? 'Nom + Prénom'
+                    : trigramConvention === 'custom'
+                      ? 'Personnalisée'
+                      : 'Prénom + Nom'}
+                </strong>
+              )}
+            </div>
           </div>
         </div>
 
@@ -675,70 +923,96 @@ export default function CompanySheet({
             <>
               <div className="cs-members-meta">
                 <span>
-                  {mergedMembers.length} membre(s) • page {Math.min(membersUiPage, totalMembersPages)}/{totalMembersPages}
+                  {mergedMembers.length} membre(s) au total
+                  {onlyPending && mergedMembers.length !== filteredMembers.length && (
+                    <> · {filteredMembers.length} en attente</>
+                  )}
                 </span>
                 {remoteMembersLoading && <span>Actualisation…</span>}
               </div>
-              <div className="cs-members">
-                {visibleMembers.map((member) => {
-                const badgeColor = memberAvatarColor(member.role)
-                const pillLabel =
-                  member.pillLabel ?? (member.status === 'actif' ? 'Actif' : 'Invité')
-                const pillVariant = member.pillVariant ?? (member.status === 'actif' ? 'active' : 'invited')
-                const emailKey = member.email.trim().toLowerCase()
-                const showResend =
-                  canInvite && workspaceId && memberCanReceiveInviteResend(member)
-                return (
-                  <div key={member.email.toLowerCase()} className="cs-member-row">
-                    <div className="cs-member-avatar" style={{ background: badgeColor }}>
-                      {getInitials(getEmailLocal(member.email))}
-                    </div>
-                    <div className="cs-member-main">
-                      <span className="cs-member-email">{member.email}</span>
-                      {member.detail && (
-                        <span className="cs-member-detail">{member.detail}</span>
+              <div className="cs-members-toolbar">
+                <button
+                  type="button"
+                  className="cs-members-toolbar-btn"
+                  onClick={toggleAllGroups}
+                  disabled={filteredMembers.length === 0}
+                >
+                  {hasAnyCollapsedGroup ? 'Tout déplier' : 'Tout replier'}
+                </button>
+                <label className="cs-members-toolbar-check">
+                  <input
+                    type="checkbox"
+                    checked={onlyPending}
+                    onChange={(e) => setOnlyPending(e.target.checked)}
+                  />
+                  <span>Afficher uniquement les invitations en attente</span>
+                </label>
+              </div>
+              <div className="cs-members-groups">
+                {MEMBER_GROUP_ORDER.map((groupKey) => {
+                  const rows = groupedMembers[groupKey]
+                  if (rows.length === 0) return null
+                  const expanded = expandedGroups[groupKey]
+                  return (
+                    <div key={groupKey} className={`cs-members-group${expanded ? ' cs-members-group--open' : ''}`}>
+                      <button
+                        type="button"
+                        className="cs-members-group-header"
+                        onClick={() => toggleGroup(groupKey)}
+                        aria-expanded={expanded}
+                      >
+                        <span className="cs-members-group-caret" aria-hidden>
+                          {expanded ? '▾' : '▸'}
+                        </span>
+                        <span className="cs-members-group-label">{MEMBER_GROUP_LABEL[groupKey]}</span>
+                        <span className="cs-members-group-count">{rows.length}</span>
+                      </button>
+                      {expanded && (
+                        <div className="cs-members">
+                          {rows.map((member) => {
+                            const badgeColor = memberAvatarColor(member.role)
+                            const pillLabel =
+                              member.pillLabel ?? (member.status === 'actif' ? 'Actif' : 'Invité')
+                            const pillVariant = member.pillVariant ?? (member.status === 'actif' ? 'active' : 'invited')
+                            const emailKey = member.email.trim().toLowerCase()
+                            const showResend =
+                              canInvite && workspaceId && memberCanReceiveInviteResend(member)
+                            return (
+                              <div key={member.email.toLowerCase()} className="cs-member-row">
+                                <div className="cs-member-avatar" style={{ background: badgeColor }}>
+                                  {getInitials(getEmailLocal(member.email))}
+                                </div>
+                                <div className="cs-member-main">
+                                  <span className="cs-member-email">{member.email}</span>
+                                  {member.detail && (
+                                    <span className="cs-member-detail">{member.detail}</span>
+                                  )}
+                                  {showResend && (
+                                    <button
+                                      type="button"
+                                      className="cs-member-resend"
+                                      disabled={resendingEmail === emailKey}
+                                      onClick={() => { void resendInvitationEmail(member.email) }}
+                                    >
+                                      {resendingEmail === emailKey ? 'Envoi en cours…' : 'Renvoyer l’email de connexion'}
+                                    </button>
+                                  )}
+                                </div>
+                                <span className="cs-member-role" style={{ borderColor: badgeColor, color: badgeColor }}>
+                                  {member.role}
+                                </span>
+                                <span className={pillClass(pillVariant)}>
+                                  {pillLabel}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
                       )}
-                      {showResend && (
-                        <button
-                          type="button"
-                          className="cs-member-resend"
-                          disabled={resendingEmail === emailKey}
-                          onClick={() => { void resendInvitationEmail(member.email) }}
-                        >
-                          {resendingEmail === emailKey ? 'Envoi en cours…' : 'Renvoyer l’email de connexion'}
-                        </button>
-                      )}
                     </div>
-                    <span className="cs-member-role" style={{ borderColor: badgeColor, color: badgeColor }}>
-                      {member.role}
-                    </span>
-                    <span className={pillClass(pillVariant)}>
-                      {pillLabel}
-                    </span>
-                  </div>
-                )
+                  )
                 })}
               </div>
-              {totalMembersPages > 1 && (
-                <div className="cs-members-pagination">
-                  <button
-                    type="button"
-                    className="cs-members-page-btn"
-                    onClick={() => setMembersUiPage((p) => Math.max(1, p - 1))}
-                    disabled={membersUiPage <= 1}
-                  >
-                    ← Précédent
-                  </button>
-                  <button
-                    type="button"
-                    className="cs-members-page-btn"
-                    onClick={() => setMembersUiPage((p) => Math.min(totalMembersPages, p + 1))}
-                    disabled={membersUiPage >= totalMembersPages}
-                  >
-                    Suivant →
-                  </button>
-                </div>
-              )}
             </>
           )}
           {resendBanner && (
@@ -790,6 +1064,23 @@ export default function CompanySheet({
                   ))}
                 </select>
               </label>
+              {(currentUserRole === 'consultant' || currentUserRole === 'admin') && (
+                <label className="cs-invite-field cs-invite-field--role">
+                  <span className="cs-label">Direction (optionnel)</span>
+                  <select
+                    className="cs-edit-input cs-edit-input--select"
+                    value={inviteDirectionId}
+                    onChange={(e) => setInviteDirectionId(e.target.value)}
+                  >
+                    <option value="">Aucune</option>
+                    {workspaceDirections.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.nom}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <button
                 type="button"
                 className="cs-invite-submit"
@@ -801,6 +1092,7 @@ export default function CompanySheet({
             </div>
             {inviteError && <p className="cs-invite-msg cs-invite-msg--error">{inviteError}</p>}
             {inviteSuccess && <p className="cs-invite-msg cs-invite-msg--ok">{inviteSuccess}</p>}
+            {inviteWarning && <p className="cs-invite-msg cs-invite-msg--warning">{inviteWarning}</p>}
 
             <h4 className="cs-invite-batch-title">Invitation par lot (CSV)</h4>
             <label className="cs-batch-file-label">
@@ -823,10 +1115,10 @@ export default function CompanySheet({
             </label>
             <p className="cs-invite-batch-hint">
               Après accord avec le client sur la liste des personnes : une ligne par email. Colonnes{' '}
-              <strong>email</strong> puis <strong>role</strong> (séparateur virgule ou point-virgule). Rôle optionnel :
-              sinon le rôle par défaut ci-dessous s’applique. Valeurs reconnues : codir / pilote / contributeur, ou
-              Membre CODIR / Pilote de projet / Contributeur. Première ligne optionnelle :{' '}
-              <code>email,role</code>
+              <strong>email</strong>, puis optionnellement <strong>role</strong>, <strong>direction</strong>,{' '}
+              <strong>trigram</strong> (séparateur virgule ou point-virgule). Rôle optionnel : sinon le rôle par défaut
+              ci-dessous s’applique. Valeurs reconnues : codir / pilote / contributeur, ou Membre CODIR / Pilote de
+              projet / Contributeur. Première ligne optionnelle : <code>email,role,direction,trigram</code>
             </p>
             <label className="cs-invite-field cs-invite-field--batch-role">
               <span className="cs-label">Rôle par défaut (si absent par ligne)</span>
@@ -844,7 +1136,7 @@ export default function CompanySheet({
               className="cs-csv-textarea"
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
-              placeholder={'email,role\njean.dupont@client.fr,codir\nmarie@client.fr\npierre@client.fr,pilote'}
+              placeholder={'email,role,direction,trigram\njean.dupont@client.fr,codir,Finance,JDU\nmarie@client.fr,contributeur,Finance,\npierre@client.fr,pilote,,PMA'}
               rows={6}
               spellCheck={false}
             />
@@ -856,7 +1148,9 @@ export default function CompanySheet({
             >
               {batchSubmitting ? 'Traitement…' : 'Lancer les invitations depuis le CSV'}
             </button>
-            {batchSummary && <p className="cs-invite-msg cs-invite-msg--ok">{batchSummary}</p>}
+            {batchSummary && (
+              <p className={`cs-invite-msg cs-invite-msg--${batchSummaryTone}`}>{batchSummary}</p>
+            )}
             <div className="cs-batch-history">
               <h4 className="cs-invite-batch-title">Historique des imports CSV</h4>
               {batchAuditLoading ? (
@@ -1053,6 +1347,99 @@ const CSS = `
 
 .cs-members { display: flex; flex-direction: column; gap: 8px; }
 
+.cs-members-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.cs-members-toolbar-btn {
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-bg-page);
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.cs-members-toolbar-btn:hover:not(:disabled) {
+  background: var(--theme-surface-hover, rgba(255,255,255,0.04));
+}
+.cs-members-toolbar-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cs-members-toolbar-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.cs-members-toolbar-check input[type='checkbox'] {
+  cursor: pointer;
+}
+
+.cs-members-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cs-members-group {
+  border: 1px solid var(--theme-border-soft, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  background: var(--theme-surface-subtle, rgba(255,255,255,0.02));
+  overflow: hidden;
+}
+.cs-members-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+.cs-members-group-header:hover {
+  background: var(--theme-surface-hover, rgba(255,255,255,0.04));
+}
+.cs-members-group-caret {
+  width: 14px;
+  display: inline-block;
+  font-size: 11px;
+  color: var(--theme-text-muted);
+}
+.cs-members-group-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.cs-members-group-count {
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--theme-surface-strong, rgba(255,255,255,0.08));
+  color: var(--theme-text);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+.cs-members-group--open .cs-members {
+  padding: 4px 12px 12px;
+}
+
 .cs-members-meta {
   display: flex;
   justify-content: space-between;
@@ -1060,29 +1447,6 @@ const CSS = `
   margin-bottom: 8px;
   font-size: 12px;
   color: var(--theme-text-muted);
-}
-
-.cs-members-pagination {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.cs-members-page-btn {
-  border: 1px solid var(--theme-border);
-  border-radius: 8px;
-  background: var(--theme-bg-page);
-  color: var(--theme-text);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-
-.cs-members-page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .cs-member-row {
@@ -1313,6 +1677,7 @@ const CSS = `
 
 .cs-invite-msg--error { color: #B91C1C; }
 .cs-invite-msg--ok { color: #10B981; }
+.cs-invite-msg--warning { color: #B45309; }
 
 .cs-note {
   margin: 24px 0 0;

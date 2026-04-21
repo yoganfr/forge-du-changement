@@ -4,6 +4,7 @@ export type Workspace = {
   sector: string | null
   size: 'PME' | 'ETI' | 'Grand groupe' | null
   logo_url: string | null
+  trigram_convention: 'prenom_nom_3' | 'nom_prenom_3' | 'custom' | null
   created_at: string
 }
 
@@ -18,6 +19,8 @@ export type User = {
   role: 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
   direction_type: 'Fonctionnel' | 'Métier' | 'Géographique' | null
   direction_nom: string | null
+  direction_id: string | null
+  trigram: string | null
   managed_count: number
   total_effectif: number
   status: 'invite' | 'actif' | 'inactif'
@@ -72,6 +75,8 @@ export type Invitation = {
   workspace_id: string
   email: string
   role: 'consultant' | 'codir' | 'pilote' | 'contributeur'
+  direction_id: string | null
+  trigram: string | null
   invited_by: string | null
   token: string
   status: 'en_attente' | 'acceptee' | 'expiree'

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   createUser,
+  getAcceptedInvitationAwaitingUserRow,
   getWorkspaceUsers,
   isStorageBucketNotFound,
   markInvitationsAcceptedForWorkspaceEmail,
@@ -258,6 +259,7 @@ export default function ProfileSheet({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(avatarUrlProp)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem('lfdc-user-id'))
+  const [trigram, setTrigram] = useState<string>('')
   const [mfaLoading, setMfaLoading] = useState(false)
   const [mfaError, setMfaError] = useState<string | null>(null)
   const [mfaInfo, setMfaInfo] = useState<{ factorId: string; qrCode: string | null; uri: string | null } | null>(null)
@@ -323,6 +325,7 @@ export default function ProfileSheet({
           return prev
         })
         setAvatarUrl((prev) => selected.avatar_url?.trim() || prev || avatarUrlProp || null)
+        setTrigram((prev) => selected.trigram?.trim().toUpperCase() || prev || '')
       } catch {
         // Keep local fallback if Supabase fetch fails
       }
@@ -453,6 +456,9 @@ export default function ProfileSheet({
               ? 'contributeur'
               : 'codir'
 
+      const trigramCleaned = trigram.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3)
+      const trigramToPersist: string | null = trigramCleaned.length === 3 ? trigramCleaned : null
+
       if (currentUserId) {
         await updateUser(
           currentUserId,
@@ -465,6 +471,7 @@ export default function ProfileSheet({
             direction_nom: directionName || null,
             managed_count: managedCount,
             total_effectif: totalEffectif,
+            trigram: trigramToPersist,
           },
           workspaceId ? { workspace_id: workspaceId } : undefined,
         )
@@ -476,6 +483,16 @@ export default function ProfileSheet({
         if (!authEmail) {
           throw new Error('Session sans email')
         }
+        // REF-7b.0 : recuperer l'invitation acceptee pour heriter de direction_id et trigram derive a l'invitation.
+        let inheritedDirectionId: string | null = null
+        let inheritedTrigram: string | null = null
+        try {
+          const accepted = await getAcceptedInvitationAwaitingUserRow(authEmail)
+          inheritedDirectionId = accepted?.direction_id ?? null
+          inheritedTrigram = accepted?.trigram?.trim().toUpperCase() || null
+        } catch {
+          /* invitation absente ou RLS : on cree sans heritage */
+        }
         const created = await createUser({
           workspace_id: workspaceId,
           email: authEmail,
@@ -486,8 +503,10 @@ export default function ProfileSheet({
           role: roleDb,
           direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
           direction_nom: directionName || null,
+          direction_id: inheritedDirectionId,
           managed_count: managedCount,
           total_effectif: totalEffectif,
+          trigram: trigramToPersist ?? inheritedTrigram,
           status: 'actif',
         })
         try {
@@ -669,6 +688,15 @@ export default function ProfileSheet({
             label="Poste"
             value={jobTitle}
             onCommit={(v) => { setJobTitle(v); markDirty() }}
+          />
+          <InlineTextField
+            label="Trigramme (3 lettres)"
+            value={trigram}
+            onCommit={(v) => {
+              const cleaned = v.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3)
+              setTrigram(cleaned)
+              markDirty()
+            }}
           />
         </section>
 

@@ -42,7 +42,7 @@ export async function listWorkspaces(): Promise<Workspace[]> {
   return dedupedFetch('workspaces:list', async () => {
     const { data, error } = await supabase
       .from('workspaces')
-      .select('id, company_name, sector, size, logo_url, created_at')
+      .select('id, company_name, sector, size, logo_url, trigram_convention, created_at')
       .order('company_name', { ascending: true })
     if (error) throw error
     return (data ?? []) as Workspace[]
@@ -51,7 +51,7 @@ export async function listWorkspaces(): Promise<Workspace[]> {
 
 export async function updateWorkspace(
   id: string,
-  data: Partial<Pick<Workspace, 'company_name' | 'sector' | 'size' | 'logo_url'>>,
+  data: Partial<Pick<Workspace, 'company_name' | 'sector' | 'size' | 'logo_url' | 'trigram_convention'>>,
 ): Promise<Workspace> {
   const { data: workspace, error } = await supabase
     .from('workspaces')
