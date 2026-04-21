@@ -44,6 +44,16 @@ import {
 } from './lib/kpiMirrorSync'
 import './MaturityRoadmap.css'
 
+const PCI_PANEL_SS_KEY = 'forge-mr-pci-panel-expanded'
+
+function readPciPanelExpandedFromSession(): boolean {
+  try {
+    return sessionStorage.getItem(PCI_PANEL_SS_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
 const AXE_META: Record<
@@ -135,6 +145,15 @@ export default function MaturityRoadmap({
     message: string
     variant: 'error' | 'info' | 'warning'
   } | null>(null)
+  const [pciPanelExpanded, setPciPanelExpanded] = useState(readPciPanelExpandedFromSession)
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(PCI_PANEL_SS_KEY, pciPanelExpanded ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [pciPanelExpanded])
 
   useEffect(() => {
     if (!roadmapToast) return
@@ -255,6 +274,35 @@ export default function MaturityRoadmap({
     }
     return m
   }, [roadmapProjects])
+
+  /** Blocs matrice PCI (REF-7b.1 B2 : rendus dans le volet à droite de la timeline). */
+  const pciPanelBlocks = useMemo(
+    () =>
+      selectedProjectIds.flatMap((pid) => {
+        const chantiersForProjet = visibleChantiers.filter((c) => c.projet_id === pid)
+        if (chantiersForProjet.length === 0) return []
+        const projet = projectsById.get(pid)
+        return [
+          <div key={`rcm-projet-${pid}`} className="rcm-projet-wrap">
+            {selectedProjectIds.length > 1 && projet ? (
+              <h4 className="rcm-projet-title">{projet.nom}</h4>
+            ) : null}
+            <RaciChantiersMatrix
+              projet_id={pid}
+              chantiers={chantiersForProjet}
+              workspaceDirections={directions}
+              readOnly={readOnly}
+              workspaceId={workspaceId}
+              onDirectionCreated={async () => {
+                const dirs = await getWorkspaceDirections(workspaceId)
+                setDirections(dirs)
+              }}
+            />
+          </div>,
+        ]
+      }),
+    [selectedProjectIds, visibleChantiers, projectsById, directions, readOnly, workspaceId],
+  )
 
   /** Aligné sur `RoadmapTimelineGrid` (colonnes temps stables pour la session). */
   const roadmapTimeColumns = useMemo(() => buildTimelineColumns(new Date()), [])
@@ -653,41 +701,72 @@ export default function MaturityRoadmap({
         </label>
       </div>
 
-      <RoadmapTimelineGrid
-        chantiers={visibleChantiers}
-        jalonsByChantier={jalonsByChantier}
-        timelineColumns={roadmapTimeColumns}
-        axeFilter={axeFilter}
-        readOnly={readOnly}
-        projectColorById={projectColorById}
-        projetNomById={projetNomById}
-        onOpenJalon={(j, chId) => void openDrawer(j, chId)}
-        onQuickAddInCell={(chId, col, axe) => setQuickAdd({ chantierId: chId, column: col, axe })}
-        onChantierCellClick={
-          readOnly
-            ? undefined
-            : (chantierId, axeForCreate) => {
-                if (chantierId === null) {
-                  if (roadmapProjects.length === 0) {
-                    window.alert(
-                      'Aucun projet BUILD validé par le décideur pour cette direction. Validez un projet dans la Vue décideur avant d’ajouter des chantiers.',
-                    )
-                    return
+      <div className="mr-roadmap-pci-split">
+        <div className="mr-roadmap-pci-split__timeline">
+          <RoadmapTimelineGrid
+            chantiers={visibleChantiers}
+            jalonsByChantier={jalonsByChantier}
+            timelineColumns={roadmapTimeColumns}
+            axeFilter={axeFilter}
+            readOnly={readOnly}
+            projectColorById={projectColorById}
+            projetNomById={projetNomById}
+            onOpenJalon={(j, chId) => void openDrawer(j, chId)}
+            onQuickAddInCell={(chId, col, axe) => setQuickAdd({ chantierId: chId, column: col, axe })}
+            onChantierCellClick={
+              readOnly
+                ? undefined
+                : (chantierId, axeForCreate) => {
+                    if (chantierId === null) {
+                      if (roadmapProjects.length === 0) {
+                        window.alert(
+                          'Aucun projet BUILD validé par le décideur pour cette direction. Validez un projet dans la Vue décideur avant d’ajouter des chantiers.',
+                        )
+                        return
+                      }
+                      if (axeForCreate == null) {
+                        window.alert('Impossible de déterminer l’axe du chantier. Rechargez la page et réessayez.')
+                        return
+                      }
+                      setChantierModal({ mode: 'create', chantierId: null, axeForCreate })
+                      return
+                    }
+                    setChantierModal({ mode: 'edit', chantierId })
                   }
-                  if (axeForCreate == null) {
-                    window.alert('Impossible de déterminer l’axe du chantier. Rechargez la page et réessayez.')
-                    return
-                  }
-                  setChantierModal({ mode: 'create', chantierId: null, axeForCreate })
-                  return
-                }
-                setChantierModal({ mode: 'edit', chantierId })
-              }
-        }
-        onChantierDrop={readOnly ? undefined : handleChantierAxisChange}
-        onRoadmapToast={readOnly ? undefined : pushRoadmapToast}
-        onJalonDrop={readOnly ? undefined : handleJalonDateChange}
-      />
+            }
+            onChantierDrop={readOnly ? undefined : handleChantierAxisChange}
+            onRoadmapToast={readOnly ? undefined : pushRoadmapToast}
+            onJalonDrop={readOnly ? undefined : handleJalonDateChange}
+          />
+        </div>
+        <button
+          type="button"
+          className="mr-pci-split-gutter"
+          onClick={() => setPciPanelExpanded((v) => !v)}
+          aria-expanded={pciPanelExpanded}
+          aria-controls="mr-pci-split-panel"
+          aria-label={pciPanelExpanded ? 'Replier le volet matrice PCI' : 'Déplier le volet matrice PCI'}
+          title={pciPanelExpanded ? 'Replier la matrice PCI' : 'Déplier la matrice PCI'}
+        >
+          <span className="mr-pci-split-gutter__glyph" aria-hidden>
+            {pciPanelExpanded ? '‹' : '›'}
+          </span>
+        </button>
+        <aside
+          id="mr-pci-split-panel"
+          className={`mr-roadmap-pci-split__panel${pciPanelExpanded ? '' : ' mr-roadmap-pci-split__panel--collapsed'}`}
+          aria-hidden={!pciPanelExpanded}
+        >
+          {pciPanelBlocks.length === 0 ? (
+            <p className="mr-pci-split-empty">
+              Sélectionnez au moins un projet affiché avec des chantiers pour éditer la matrice PCI (Pilote / Contributeur
+              / Informé).
+            </p>
+          ) : (
+            pciPanelBlocks
+          )}
+        </aside>
+      </div>
 
       <ChantierLineModal
         open={chantierModal !== null}
@@ -774,30 +853,6 @@ export default function MaturityRoadmap({
           }}
         />
       )}
-
-      {selectedProjectIds.map((pid) => {
-        const chantiersForProjet = visibleChantiers.filter((c) => c.projet_id === pid)
-        if (chantiersForProjet.length === 0) return null
-        const projet = projectsById.get(pid)
-        return (
-          <div key={`rcm-projet-${pid}`} className="rcm-projet-wrap">
-            {selectedProjectIds.length > 1 && projet ? (
-              <h4 className="rcm-projet-title">{projet.nom}</h4>
-            ) : null}
-            <RaciChantiersMatrix
-              projet_id={pid}
-              chantiers={chantiersForProjet}
-              workspaceDirections={directions}
-              readOnly={readOnly}
-              workspaceId={workspaceId}
-              onDirectionCreated={async () => {
-                const dirs = await getWorkspaceDirections(workspaceId)
-                setDirections(dirs)
-              }}
-            />
-          </div>
-        )
-      })}
 
       {roadmapToast ? (
         <div className={`mr-toast mr-toast--${roadmapToast.variant}`} role="status">
