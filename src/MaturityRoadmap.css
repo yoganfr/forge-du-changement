@@ -1681,14 +1681,74 @@
 }
 
 .rcm-popover {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   width: min(480px, 100%);
   max-height: min(90vh, 720px);
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--theme-bg-card);
   border: 1px solid var(--theme-border);
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
   padding: var(--space-lg);
+}
+
+.rcm-popover-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.rcm-popover-confirm-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: color-mix(in srgb, var(--theme-bg-card) 82%, transparent);
+  backdrop-filter: blur(4px);
+  border-radius: 12px;
+}
+
+.rcm-popover-confirm-card {
+  width: 100%;
+  max-width: 360px;
+  padding: var(--space-md);
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.rcm-popover-confirm-card h5 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.rcm-popover-confirm-card p {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--theme-text-muted);
+}
+
+.rcm-popover-confirm-card strong {
+  color: var(--theme-text);
+}
+
+.rcm-popover-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .rcm-popover-header {

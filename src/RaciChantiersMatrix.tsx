@@ -296,17 +296,6 @@ export default function RaciChantiersMatrix({
           if (stakeholderKey(row) === key) affected.push(row)
         }
       }
-      const pending = pendingStakeholders.find((p) => p.key === key)
-      const label = affected[0]?.entite_nom ?? pending?.entite_nom ?? 'cette colonne'
-      const personne = affected[0]?.personne_nom ?? pending?.personne_nom ?? null
-      const displayLabel = personne ? `${label} — ${personne}` : label
-      const count = affected.length
-      const msg =
-        count > 0
-          ? `Supprimer définitivement la colonne "${displayLabel}" ?\n\n${count} implication(s) sur des chantiers vont être effacées (rôles P/C/I, motivations).`
-          : `Supprimer la colonne "${displayLabel}" ?`
-      if (!window.confirm(msg)) return
-
       setSaving(true)
       try {
         for (const row of affected) {
@@ -640,8 +629,49 @@ function RaciPopover({
   const [role, setRole] = useState<PciRole>(initialRole(existingRow))
   const [motivation, setMotivation] = useState<string>(existingRow?.motivation ?? '')
   const [createDirOpen, setCreateDirOpen] = useState<boolean>(false)
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false)
 
   const stakeholderLocked = Boolean(lockedStakeholder && !existingRow && state.kind === 'cell')
+
+  const popoverResetKey =
+    state.kind === 'cell'
+      ? `c:${state.chantierId}:${state.stakeholderKey}`
+      : state.kind === 'stakeholder-edit'
+        ? `e:${state.stakeholderKey}`
+        : `n:${state.chantierIdInitial ?? '_'}`
+
+  useEffect(() => {
+    setBulkDeleteConfirmOpen(false)
+  }, [popoverResetKey])
+
+  useEffect(() => {
+    if (!bulkDeleteConfirmOpen) return
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        setBulkDeleteConfirmOpen(false)
+      }
+    }
+    document.addEventListener('keydown', onEsc, true)
+    return () => document.removeEventListener('keydown', onEsc, true)
+  }, [bulkDeleteConfirmOpen])
+
+  const bulkDeletePreview = useMemo(() => {
+    if (state.kind !== 'stakeholder-edit') return null
+    const key = state.stakeholderKey
+    let count = 0
+    for (const list of Object.values(raciByChantier)) {
+      for (const row of list) {
+        if (stakeholderKey(row) === key) count++
+      }
+    }
+    const canon = existingStakeholders.find((s) => s.key === key)
+    const label = canon?.entite_nom ?? 'cette colonne'
+    const personne = canon?.personne_nom ?? null
+    const displayLabel = personne ? `${label} — ${personne}` : label
+    return { displayLabel, count, key }
+  }, [state, raciByChantier, existingStakeholders])
 
   useEffect(() => {
     if (entiteType !== 'direction') {
@@ -790,18 +820,24 @@ function RaciPopover({
           ? 'Impliquer cette partie prenante'
           : 'Ajouter une partie prenante'
 
+  function dismissOrClose() {
+    if (bulkDeleteConfirmOpen) setBulkDeleteConfirmOpen(false)
+    else onClose()
+  }
+
   return (
     <div className="rcm-popover-backdrop">
       <div ref={forwardedRef} className="rcm-popover-wrap">
         <div className="rcm-popover" role="dialog" aria-label="Éditer partie prenante">
-        <header className="rcm-popover-header">
-          <h4>{headerTitle}</h4>
-          <button type="button" className="rcm-popover-close" onClick={onClose} aria-label="Fermer">
-            ×
-          </button>
-        </header>
+          <div className="rcm-popover-body">
+            <header className="rcm-popover-header">
+              <h4>{headerTitle}</h4>
+              <button type="button" className="rcm-popover-close" onClick={dismissOrClose} aria-label="Fermer">
+                ×
+              </button>
+            </header>
 
-        <form onSubmit={handleSubmit} className="rcm-popover-form">
+            <form onSubmit={handleSubmit} className="rcm-popover-form">
           <fieldset className="rcm-popover-fieldset" disabled={stakeholderLocked}>
             <legend className="rcm-popover-legend">Partie prenante</legend>
 
@@ -938,14 +974,14 @@ function RaciPopover({
               <button
                 type="button"
                 className="rcm-btn rcm-btn--danger"
-                onClick={() => onBulkDeleteStakeholder(state.stakeholderKey)}
-                disabled={saving}
+                onClick={() => setBulkDeleteConfirmOpen(true)}
+                disabled={saving || bulkDeleteConfirmOpen}
                 title="Supprime la colonne et toutes les implications P/C/I associées"
               >
                 Supprimer la colonne
               </button>
             )}
-            <button type="button" className="rcm-btn" onClick={onClose} disabled={saving}>
+            <button type="button" className="rcm-btn" onClick={dismissOrClose} disabled={saving}>
               Annuler
             </button>
             <button type="submit" className="rcm-btn rcm-btn--primary" disabled={disabled || saving}>
@@ -956,7 +992,55 @@ function RaciPopover({
                   : 'Enregistrer'}
             </button>
           </footer>
-        </form>
+            </form>
+          </div>
+
+          {bulkDeleteConfirmOpen && bulkDeletePreview && (
+            <div
+              className="rcm-popover-confirm-layer"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="rcm-bulk-delete-title"
+              aria-describedby="rcm-bulk-delete-desc"
+            >
+              <div className="rcm-popover-confirm-card">
+                <h5 id="rcm-bulk-delete-title">Supprimer cette colonne ?</h5>
+                <p id="rcm-bulk-delete-desc">
+                  {bulkDeletePreview.count > 0 ? (
+                    <>
+                      La colonne <strong>{bulkDeletePreview.displayLabel}</strong> sera retirée.{' '}
+                      <strong>{bulkDeletePreview.count}</strong> implication
+                      {bulkDeletePreview.count > 1 ? 's' : ''} sur les chantiers (rôles P/C/I, motivations) seront
+                      effacées. Cette action est irréversible.
+                    </>
+                  ) : (
+                    <>
+                      La colonne <strong>{bulkDeletePreview.displayLabel}</strong> sera retirée de la grille. Aucune
+                      implication n’est encore enregistrée en base pour cette partie prenante.
+                    </>
+                  )}
+                </p>
+                <div className="rcm-popover-confirm-actions">
+                  <button
+                    type="button"
+                    className="rcm-btn"
+                    onClick={() => setBulkDeleteConfirmOpen(false)}
+                    disabled={saving}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    className="rcm-btn rcm-btn--danger"
+                    onClick={() => void onBulkDeleteStakeholder(bulkDeletePreview.key)}
+                    disabled={saving}
+                  >
+                    Supprimer définitivement
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <CreateDirectionDialog
           open={createDirOpen}
