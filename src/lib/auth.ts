@@ -98,23 +98,41 @@ function readBrowserMemberUserId(): string | null {
  * Ligne `public.users` pour l’email de la session.
  * Plusieurs lignes peuvent exister (même email, espaces différents) : on évite de prendre
  * la plus « récente » si c’est un stub vide qui écraserait le profil à chaque reco Google.
+ *
+ * Priorité : (1) sélection explicite multi-espace (`lfdc-user-id` ≠ auth.uid) ;
+ * (2) ligne dont `id` = `auth.uid()` — celle utilisée par la RLS sur `workspaces` ;
+ * (3) filtre email + workspace courant ; (4) heuristique sur doublons d’email.
  */
 export async function getCurrentUser() {
   const session = await getSession()
   if (!session?.user.email) return null
 
   const email = session.user.email.trim().toLowerCase()
+  const authId = session.user.id
+
+  const emailMatches = (r: { email?: string | null } | null) =>
+    r?.email?.trim().toLowerCase() === email
+
+  const { data: authRow, error: authErr } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', authId)
+    .maybeSingle()
 
   const storedUserId = readBrowserMemberUserId()
-  if (storedUserId) {
+  if (storedUserId && storedUserId !== authId) {
     const { data: byId, error: errId } = await supabase
       .from('users')
       .select('*')
       .eq('id', storedUserId)
       .maybeSingle()
-    if (!errId && byId && byId.email?.trim().toLowerCase() === email) {
+    if (!errId && byId && emailMatches(byId)) {
       return byId
     }
+  }
+
+  if (!authErr && authRow && emailMatches(authRow)) {
+    return authRow
   }
 
   const ws = readBrowserWorkspaceId()
