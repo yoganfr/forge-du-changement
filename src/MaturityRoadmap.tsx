@@ -28,6 +28,7 @@ import CreateDirectionDialog from './CreateDirectionDialog'
 import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
+import RaciChantiersMatrix from './RaciChantiersMatrix'
 import type { TimelineColumn } from './lib/roadmapTimelineColumns'
 import {
   assignJalonToColumn,
@@ -778,6 +779,25 @@ export default function MaturityRoadmap({
           }}
         />
       )}
+
+      {selectedProjectIds.map((pid) => {
+        const chantiersForProjet = visibleChantiers.filter((c) => c.projet_id === pid)
+        if (chantiersForProjet.length === 0) return null
+        const projet = projectsById.get(pid)
+        return (
+          <div key={`rcm-projet-${pid}`} className="rcm-projet-wrap">
+            {selectedProjectIds.length > 1 && projet ? (
+              <h4 className="rcm-projet-title">{projet.nom}</h4>
+            ) : null}
+            <RaciChantiersMatrix
+              projet_id={pid}
+              chantiers={chantiersForProjet}
+              workspaceDirections={directions}
+              readOnly={readOnly}
+            />
+          </div>
+        )
+      })}
 
       {roadmapToast ? (
         <div className={`mr-toast mr-toast--${roadmapToast.variant}`} role="status">

@@ -1404,3 +1404,463 @@
   border: 1px solid color-mix(in srgb, var(--muted-yellow-green-600) 42%, transparent);
   color: var(--theme-text);
 }
+
+/* ==== REF-7b.1 Matrice PCI par chantier (RaciChantiersMatrix) ==== */
+
+.rcm-projet-wrap {
+  margin-top: var(--space-xl);
+}
+
+.rcm-projet-title {
+  margin: 0 0 var(--space-xs);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
+.rcm {
+  margin-top: 0;
+  padding: var(--space-lg);
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  background: var(--theme-bg-card);
+}
+
+.rcm-header {
+  margin-bottom: var(--space-md);
+}
+
+.rcm-title {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.rcm-title-sub {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--theme-text-muted);
+  margin-left: 8px;
+}
+
+.rcm-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--theme-text-muted);
+}
+
+.rcm-error {
+  margin: 0 0 var(--space-md);
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--theme-error, #c53030) 10%, transparent);
+  color: var(--theme-error, #c53030);
+  font-size: var(--text-sm);
+}
+
+.rcm-loading {
+  margin: 8px 0 0;
+  font-size: var(--text-xs);
+  color: var(--theme-text-muted);
+}
+
+.rcm-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--theme-border);
+}
+
+.rcm-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 480px;
+  font-size: var(--text-sm);
+}
+
+.rcm-table th,
+.rcm-table td {
+  padding: 10px 12px;
+  text-align: center;
+  border-right: 1px solid var(--theme-border);
+  border-bottom: 1px solid var(--theme-border);
+  vertical-align: middle;
+}
+
+.rcm-table th:last-child,
+.rcm-table td:last-child {
+  border-right: none;
+}
+
+.rcm-table tbody tr:last-child td,
+.rcm-table tbody tr:last-child th {
+  border-bottom: none;
+}
+
+.rcm-col-chantier {
+  text-align: left;
+  min-width: 180px;
+  max-width: 280px;
+  background: color-mix(in srgb, var(--theme-border) 18%, var(--theme-bg-card));
+  font-weight: 700;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--theme-text-muted);
+}
+
+.rcm-col-stakeholder {
+  min-width: 110px;
+  background: color-mix(in srgb, var(--theme-border) 12%, var(--theme-bg-card));
+}
+
+.rcm-stakeholder-nom {
+  display: block;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.rcm-stakeholder-personne {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--theme-text-muted);
+}
+
+.rcm-col-add {
+  min-width: 100px;
+  background: color-mix(in srgb, var(--theme-border) 8%, var(--theme-bg-card));
+}
+
+.rcm-add-btn {
+  appearance: none;
+  border: 1px dashed color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 50%, transparent);
+  background: transparent;
+  color: var(--theme-accent, var(--caramel-candy-600));
+  font-weight: 600;
+  font-size: var(--text-xs);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.rcm-add-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 12%, transparent);
+  border-color: var(--theme-accent, var(--caramel-candy-600));
+}
+
+.rcm-add-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rcm-row-title {
+  text-align: left;
+  font-weight: 600;
+  color: var(--theme-text);
+  background: color-mix(in srgb, var(--theme-border) 8%, transparent);
+}
+
+.rcm-cell {
+  cursor: pointer;
+  transition: background 0.12s ease;
+  min-width: 80px;
+}
+
+.rcm-cell--readonly {
+  cursor: default;
+}
+
+.rcm-cell:hover:not(.rcm-cell--readonly) {
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 8%, transparent);
+}
+
+.rcm-cell:focus-visible {
+  outline: 2px solid var(--theme-accent, var(--caramel-candy-600));
+  outline-offset: -2px;
+}
+
+.rcm-cell--filled {
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 4%, transparent);
+}
+
+.rcm-cell-empty-dot {
+  color: color-mix(in srgb, var(--theme-text-muted) 40%, transparent);
+  font-weight: 300;
+}
+
+.rcm-cell-roles {
+  display: inline-flex;
+  gap: 3px;
+  justify-content: center;
+}
+
+.rcm-role {
+  display: inline-block;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+}
+
+.rcm-role--p {
+  background: color-mix(in srgb, var(--caramel-candy-700, #b45309) 18%, transparent);
+  color: var(--caramel-candy-700, #b45309);
+  border: 1px solid color-mix(in srgb, var(--caramel-candy-700, #b45309) 40%, transparent);
+}
+
+.rcm-role--c {
+  background: color-mix(in srgb, var(--muted-yellow-green-600, #65a30d) 14%, transparent);
+  color: var(--muted-yellow-green-600, #65a30d);
+  border: 1px solid color-mix(in srgb, var(--muted-yellow-green-600, #65a30d) 36%, transparent);
+}
+
+.rcm-role--i {
+  background: color-mix(in srgb, var(--theme-text-muted) 10%, transparent);
+  color: var(--theme-text-muted);
+  border: 1px solid color-mix(in srgb, var(--theme-text-muted) 30%, transparent);
+}
+
+.rcm-cell--add-target .rcm-add-inline {
+  color: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 70%, transparent);
+  font-weight: 700;
+  font-size: var(--text-md);
+}
+
+.rcm-empty {
+  padding: var(--space-lg);
+  color: var(--theme-text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Popover unifié (édition cellule + ajout partie prenante) */
+
+.rcm-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #000 45%, transparent);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+}
+
+.rcm-popover {
+  width: min(480px, 100%);
+  max-height: min(90vh, 720px);
+  overflow-y: auto;
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  padding: var(--space-lg);
+}
+
+.rcm-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.rcm-popover-header h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.rcm-popover-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.rcm-popover-close:hover {
+  color: var(--theme-text);
+}
+
+.rcm-popover-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.rcm-popover-fieldset {
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.rcm-popover-fieldset:disabled {
+  opacity: 0.75;
+  background: color-mix(in srgb, var(--theme-border) 10%, transparent);
+}
+
+.rcm-popover-legend {
+  padding: 0 6px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--theme-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rcm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--text-sm);
+  color: var(--theme-text);
+}
+
+.rcm-field > span {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--theme-text-muted);
+}
+
+.rcm-field input,
+.rcm-field select,
+.rcm-field textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+
+.rcm-field textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.rcm-role-checks {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rcm-role-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--theme-text);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.rcm-role-check:hover {
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 6%, transparent);
+}
+
+.rcm-role-check--on {
+  border-color: var(--theme-accent, var(--caramel-candy-600));
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 8%, transparent);
+}
+
+.rcm-role-check input {
+  accent-color: var(--theme-accent, var(--caramel-candy-600));
+}
+
+.rcm-role-pill {
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: var(--text-xs);
+}
+
+.rcm-role-pill--p {
+  background: color-mix(in srgb, var(--caramel-candy-700, #b45309) 18%, transparent);
+  color: var(--caramel-candy-700, #b45309);
+}
+
+.rcm-role-pill--c {
+  background: color-mix(in srgb, var(--muted-yellow-green-600, #65a30d) 14%, transparent);
+  color: var(--muted-yellow-green-600, #65a30d);
+}
+
+.rcm-role-pill--i {
+  background: color-mix(in srgb, var(--theme-text-muted) 12%, transparent);
+  color: var(--theme-text-muted);
+}
+
+.rcm-popover-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.rcm-btn {
+  appearance: none;
+  border: 1px solid var(--theme-border);
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--theme-text);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.rcm-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-border) 30%, transparent);
+}
+
+.rcm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rcm-btn--primary {
+  background: var(--theme-accent, var(--caramel-candy-600));
+  border-color: var(--theme-accent, var(--caramel-candy-600));
+  color: var(--theme-accent-text, #fff);
+}
+
+.rcm-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 88%, black);
+}
+
+.rcm-btn--danger {
+  margin-right: auto;
+  color: var(--theme-error, #c53030);
+  border-color: color-mix(in srgb, var(--theme-error, #c53030) 40%, transparent);
+}
+
+.rcm-btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-error, #c53030) 10%, transparent);
+}
