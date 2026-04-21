@@ -27,3 +27,9 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Cursor IDE local plans
+.cursor/plans/
+
+# Fichiers de test d'import
+test-invitations.csv

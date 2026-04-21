@@ -2,6 +2,7 @@ import {
   getAcceptedInvitationAwaitingUserRow,
   getLatestPendingInvitationForEmail,
 } from './api'
+import { insertAuditEvent } from './api/audit'
 import { supabase } from './supabase'
 
 /** Délai minimum entre deux envois OTP (même email) — complète le rate limiting Supabase Auth. */
@@ -175,6 +176,111 @@ export async function isPlatformSuperadmin(): Promise<boolean> {
   const { data, error } = await supabase.rpc('is_platform_superadmin')
   if (error) return false
   return data === true
+}
+
+type MfaTotpEnrollResult = {
+  factorId: string
+  qrCode: string | null
+  uri: string | null
+}
+
+export async function listMfaFactors() {
+  const mfaApi = (supabase.auth as unknown as { mfa?: { listFactors?: () => Promise<{ data?: unknown; error?: { message?: string } }> } }).mfa
+  if (!mfaApi?.listFactors) {
+    return { totp: [], all: [] as Array<{ id: string; status: string; factor_type: string }> }
+  }
+  const { data, error } = await mfaApi.listFactors()
+  if (error) throw new Error(error.message || 'Impossible de lire les facteurs MFA')
+  const parsed = (data ?? {}) as {
+    all?: Array<{ id: string; status: string; factor_type: string }>
+    totp?: Array<{ id: string; status: string; factor_type: string }>
+  }
+  return {
+    totp: parsed.totp ?? [],
+    all: parsed.all ?? [],
+  }
+}
+
+export async function isMfaEnrollmentRequiredForSuperadmin(): Promise<boolean> {
+  if (!(await isPlatformSuperadmin())) return false
+  const factors = await listMfaFactors()
+  const hasVerifiedTotp = factors.totp.some((factor) => factor.status === 'verified')
+  return !hasVerifiedTotp
+}
+
+export async function enrollMfaTotp(): Promise<MfaTotpEnrollResult> {
+  const mfaApi = (supabase.auth as unknown as {
+    mfa?: {
+      enroll?: (params: { factorType: 'totp' }) => Promise<{ data?: unknown; error?: { message?: string } }>
+    }
+  }).mfa
+  if (!mfaApi?.enroll) throw new Error('MFA non disponible sur ce client Supabase')
+  const { data, error } = await mfaApi.enroll({ factorType: 'totp' })
+  if (error) throw new Error(error.message || 'Impossible d’activer le MFA')
+  const payload = (data ?? {}) as {
+    id?: string
+    totp?: { qr_code?: string | null; uri?: string | null }
+  }
+  if (!payload.id) throw new Error('Réponse MFA invalide : identifiant de facteur manquant')
+  return {
+    factorId: payload.id,
+    qrCode: payload.totp?.qr_code ?? null,
+    uri: payload.totp?.uri ?? null,
+  }
+}
+
+export async function verifyMfaTotp(factorId: string, code: string): Promise<void> {
+  const mfaApi = (supabase.auth as unknown as {
+    mfa?: {
+      challenge?: (params: { factorId: string }) => Promise<{ data?: { id?: string }; error?: { message?: string } }>
+      verify?: (params: { factorId: string; challengeId: string; code: string }) => Promise<{ error?: { message?: string } }>
+      challengeAndVerify?: (params: { factorId: string; code: string }) => Promise<{ error?: { message?: string } }>
+    }
+  }).mfa
+  if (!mfaApi) throw new Error('MFA non disponible sur ce client Supabase')
+
+  const trimmedCode = code.trim()
+  if (!/^\d{6}$/.test(trimmedCode)) {
+    throw new Error('Le code MFA doit contenir 6 chiffres.')
+  }
+
+  if (mfaApi.challengeAndVerify) {
+    const { error } = await mfaApi.challengeAndVerify({ factorId, code: trimmedCode })
+    if (error) throw new Error(error.message || 'Échec de vérification MFA')
+  } else {
+    if (!mfaApi.challenge || !mfaApi.verify) throw new Error('API MFA incomplète sur ce client Supabase')
+    const { data: challenge, error: challengeError } = await mfaApi.challenge({ factorId })
+    if (challengeError || !challenge?.id) {
+      throw new Error(challengeError?.message || 'Impossible de générer le challenge MFA')
+    }
+    const { error: verifyError } = await mfaApi.verify({
+      factorId,
+      challengeId: challenge.id,
+      code: trimmedCode,
+    })
+    if (verifyError) throw new Error(verifyError.message || 'Échec de vérification MFA')
+  }
+}
+
+export async function unenrollMfaFactor(factorId: string): Promise<void> {
+  const mfaApi = (supabase.auth as unknown as {
+    mfa?: { unenroll?: (params: { factorId: string }) => Promise<{ error?: { message?: string } }> }
+  }).mfa
+  if (!mfaApi?.unenroll) throw new Error('MFA non disponible sur ce client Supabase')
+  const { error } = await mfaApi.unenroll({ factorId })
+  if (error) throw new Error(error.message || 'Impossible de supprimer le facteur MFA')
+}
+
+export async function auditMfaEvent(
+  action: 'mfa_enrolled' | 'mfa_verified' | 'mfa_unenrolled',
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  const appUser = await getCurrentUser()
+  void insertAuditEvent({
+    workspace_id: appUser?.workspace_id ?? null,
+    action,
+    payload: metadata,
+  })
 }
 
 /** Accès app : super-admin, ligne `users`, invitation en attente, ou invitation acceptée sans profil `users` encore. */

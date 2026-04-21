@@ -39,7 +39,12 @@ type ServerAccess =
   | { source: 'invitation'; role: AppUserRole; workspaceId: string }
   /** `dbProfile` : ligne `public.users` pour l’email courant (avatar, noms), même si l’accès métier est « super-admin ». */
   | { source: 'superadmin'; dbProfile: AppDbUser | null }
-import { getCurrentUser, isPlatformSuperadmin, signOut } from './lib/auth'
+import {
+  getCurrentUser,
+  isMfaEnrollmentRequiredForSuperadmin,
+  isPlatformSuperadmin,
+  signOut,
+} from './lib/auth'
 import { supabase } from './lib/supabase'
 import {
   applyThemeToDocument,
@@ -349,6 +354,7 @@ function App() {
   const [workspacesError, setWorkspacesError] = useState<string | null>(null)
   const [serverAccess, setServerAccess] = useState<ServerAccess | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [mfaEnrollmentRequired, setMfaEnrollmentRequired] = useState(false)
 
   const currentUserRole: AppUserRole =
     serverAccess?.source === 'superadmin'
@@ -446,6 +452,7 @@ function App() {
     setWorkspacesLoading(true)
     setWorkspacesError(null)
     try {
+      invalidateCache(['workspaces:list'])
       const list = await listWorkspaces()
       setWorkspacesCatalog(list)
     } catch (err) {
@@ -513,7 +520,7 @@ function App() {
       const patchAuth = profilePatchFromAuthUser(authUser)
       const prev = readStoredProfile(email) ?? {}
       // Auth → base → cache : la base bat Google sur les champs renseignés ; le cache bat tout pour les retouches locales.
-      let next: StoredMemberProfile = { ...patchAuth, ...patchDb, ...prev }
+      const next: StoredMemberProfile = { ...patchAuth, ...patchDb, ...prev }
 
       const nDb = Object.keys(patchDb).length
       const nAuth = Object.keys(patchAuth).length
@@ -539,7 +546,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [serverAccess, oauthAvatarHydrationKey, authUser?.email, authUser?.id])
+  }, [serverAccess, oauthAvatarHydrationKey, authUser, authUser?.email, authUser?.id])
 
   const handleSelectWorkspaceFromSettings = useCallback((id: string) => {
     localStorage.setItem('workspaceId', id)
@@ -600,6 +607,12 @@ function App() {
 
       if (platformSuper || invitedUser) {
         setPlatformSuperadmin(platformSuper)
+        if (platformSuper) {
+          const requiresMfa = await isMfaEnrollmentRequiredForSuperadmin()
+          setMfaEnrollmentRequired(requiresMfa)
+        } else {
+          setMfaEnrollmentRequired(false)
+        }
         setAuthUser(user)
         if (invitedUser) {
           setServerAccess({ source: 'users', dbUser: invitedUser })
@@ -640,6 +653,7 @@ function App() {
       setServerAccess(null)
       await signOut()
       setPlatformSuperadmin(false)
+      setMfaEnrollmentRequired(false)
       setAuthUser(null)
     } finally {
       invalidateCache(['workspace-users:', 'workspaces:list'])
@@ -938,7 +952,7 @@ function App() {
             <button
               type="button"
               className="user-badge dashboard__topbar-user-orb"
-              onClick={() => setShowProfile(true)}
+                onClick={() => setShowProfile(true)}
               title="Mon profil"
               aria-label="Mon profil"
             >
@@ -1219,15 +1233,41 @@ function App() {
           managedCount={storedProfile?.managedCount}
           totalEffectif={storedProfile?.totalEffectif}
           avatarUrl={avatarDisplayUrl}
+          isPlatformSuperadmin={platformSuperadmin}
           onSaved={async () => {
             const nextProfile = readStoredProfile(authUser?.email)
             setStoredProfile(nextProfile)
             setUserInitials(profileInitials(nextProfile))
             const row = await getCurrentUser()
             if (row) setServerAccess({ source: 'users', dbUser: row })
+            if (platformSuperadmin) {
+              const requiresMfa = await isMfaEnrollmentRequiredForSuperadmin()
+              setMfaEnrollmentRequired(requiresMfa)
+            }
           }}
         />
       </Suspense>
+      {mfaEnrollmentRequired && platformSuperadmin && !showProfile && (
+        <div className="dashboard__mfa-guard" role="alertdialog" aria-modal="true" aria-label="MFA requis">
+          <div className="dashboard__mfa-guard-card">
+            <h3>MFA requis pour le compte super-admin</h3>
+            <p>
+              Activez l’authentification multi-facteurs (TOTP) dans votre profil avant de continuer.
+            </p>
+            <div className="dashboard__mfa-guard-actions">
+              <button
+                type="button"
+                onClick={() => setShowProfile(true)}
+              >
+                Ouvrir mon profil
+              </button>
+              <button type="button" onClick={handleLogout}>
+                Se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

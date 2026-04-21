@@ -13,6 +13,13 @@ import {
   memberProfileStorageKey,
   migrateLegacyMemberProfileIfNeeded,
 } from './lib/memberProfileStorage'
+import {
+  auditMfaEvent,
+  enrollMfaTotp,
+  listMfaFactors,
+  unenrollMfaFactor,
+  verifyMfaTotp,
+} from './lib/auth'
 import UserAvatarImg from './UserAvatarImg'
 
 export type DirectionType = 'fonctionnel' | 'metier' | 'geographique'
@@ -45,6 +52,7 @@ export interface ProfileSheetProps {
   managedCount?: number
   totalEffectif?: number
   avatarUrl?: string | null
+  isPlatformSuperadmin?: boolean
   /** Email session Auth : clé `localStorage` du cache profil (survit à la déconnexion). */
   storageEmail?: string | null
   onSaved?: (data: StoredMemberProfile) => void
@@ -232,6 +240,7 @@ export default function ProfileSheet({
   managedCount: managedCountProp = 0,
   totalEffectif: totalEffectifProp = 0,
   avatarUrl: avatarUrlProp = null,
+  isPlatformSuperadmin = false,
   storageEmail = null,
   onSaved,
 }: ProfileSheetProps) {
@@ -249,6 +258,12 @@ export default function ProfileSheet({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(avatarUrlProp)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem('lfdc-user-id'))
+  const [mfaLoading, setMfaLoading] = useState(false)
+  const [mfaError, setMfaError] = useState<string | null>(null)
+  const [mfaInfo, setMfaInfo] = useState<{ factorId: string; qrCode: string | null; uri: string | null } | null>(null)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaVerifiedCount, setMfaVerifiedCount] = useState(0)
+
   useEffect(() => {
     if (!open) return
     const s = loadStored(storageEmail)
@@ -316,6 +331,80 @@ export default function ProfileSheet({
       cancelled = true
     }
   }, [open, workspaceId, firstNameProp, lastNameProp, jobTitleProp, directionProp, managedCountProp, totalEffectifProp, avatarUrlProp])
+
+  useEffect(() => {
+    if (!open || !isPlatformSuperadmin) return
+    let cancelled = false
+    void (async () => {
+      try {
+        setMfaLoading(true)
+        const factors = await listMfaFactors()
+        if (cancelled) return
+        setMfaVerifiedCount(factors.totp.filter((factor) => factor.status === 'verified').length)
+      } catch (err) {
+        if (cancelled) return
+        const message = err instanceof Error ? err.message : 'Impossible de charger l’état MFA'
+        setMfaError(message)
+      } finally {
+        if (!cancelled) setMfaLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, isPlatformSuperadmin])
+
+  async function handleMfaEnroll() {
+    try {
+      setMfaLoading(true)
+      setMfaError(null)
+      const result = await enrollMfaTotp()
+      setMfaInfo(result)
+      await auditMfaEvent('mfa_enrolled', { factor_id: result.factorId })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Impossible d’activer le MFA'
+      setMfaError(message)
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  async function handleMfaVerify() {
+    if (!mfaInfo?.factorId) return
+    try {
+      setMfaLoading(true)
+      setMfaError(null)
+      await verifyMfaTotp(mfaInfo.factorId, mfaCode)
+      await auditMfaEvent('mfa_verified', { factor_id: mfaInfo.factorId })
+      const factors = await listMfaFactors()
+      setMfaVerifiedCount(factors.totp.filter((factor) => factor.status === 'verified').length)
+      setMfaCode('')
+      setMfaInfo(null)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Code MFA invalide'
+      setMfaError(message)
+    } finally {
+      setMfaLoading(false)
+    }
+  }
+
+  async function handleMfaDisableAll() {
+    try {
+      setMfaLoading(true)
+      setMfaError(null)
+      const factors = await listMfaFactors()
+      for (const factor of factors.totp.filter((entry) => entry.status === 'verified')) {
+        await unenrollMfaFactor(factor.id)
+        await auditMfaEvent('mfa_unenrolled', { factor_id: factor.id })
+      }
+      setMfaVerifiedCount(0)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Impossible de désactiver le MFA'
+      setMfaError(message)
+    } finally {
+      setMfaLoading(false)
+    }
+  }
 
   const initials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.toUpperCase() || '?'
 
@@ -456,6 +545,71 @@ export default function ProfileSheet({
         </div>
 
         <hr className="psd-sep" />
+
+        {isPlatformSuperadmin && (
+          <>
+            <section className="psd-block">
+              <h3 className="psd-block-title">Sécurité super-admin</h3>
+              <p className="psd-note">
+                MFA TOTP requis pour les comptes super-admin.
+              </p>
+              <p className="psd-security-status">
+                {mfaVerifiedCount > 0 ? `MFA actif (${mfaVerifiedCount} facteur vérifié)` : 'MFA non activé'}
+              </p>
+              {mfaError && <p className="psd-security-error">{mfaError}</p>}
+              {!mfaInfo ? (
+                <button
+                  type="button"
+                  className="psd-security-btn"
+                  disabled={mfaLoading}
+                  onClick={() => { void handleMfaEnroll() }}
+                >
+                  {mfaLoading ? 'Activation...' : 'Activer le MFA (TOTP)'}
+                </button>
+              ) : (
+                <div className="psd-security-panel">
+                  {mfaInfo.qrCode && (
+                    <img
+                      src={mfaInfo.qrCode}
+                      alt="QR code MFA"
+                      className="psd-security-qr"
+                    />
+                  )}
+                  {mfaInfo.uri && (
+                    <p className="psd-note">Si besoin, copiez la clé dans votre app d’authentification : {mfaInfo.uri}</p>
+                  )}
+                  <input
+                    type="text"
+                    className="psd-inline-input"
+                    value={mfaCode}
+                    maxLength={6}
+                    placeholder="Code 6 chiffres"
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  />
+                  <button
+                    type="button"
+                    className="psd-security-btn"
+                    disabled={mfaLoading || mfaCode.length !== 6}
+                    onClick={() => { void handleMfaVerify() }}
+                  >
+                    {mfaLoading ? 'Vérification...' : 'Vérifier le code'}
+                  </button>
+                </div>
+              )}
+              {mfaVerifiedCount > 0 && (
+                <button
+                  type="button"
+                  className="psd-security-btn psd-security-btn--danger"
+                  disabled={mfaLoading}
+                  onClick={() => { void handleMfaDisableAll() }}
+                >
+                  Désactiver le MFA
+                </button>
+              )}
+            </section>
+            <hr className="psd-sep" />
+          </>
+        )}
 
         <section className="psd-block">
           <h3 className="psd-block-title">Mon périmètre</h3>
@@ -791,6 +945,48 @@ const CSS = `
   color: var(--theme-text-muted);
   margin: 8px 0 0;
   line-height: 1.4;
+}
+
+.psd-security-status {
+  margin: 8px 0 10px;
+  font-size: 13px;
+  color: var(--theme-text);
+}
+
+.psd-security-error {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.psd-security-btn {
+  margin-top: 8px;
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-border);
+  background: color-mix(in srgb, var(--theme-accent) 12%, transparent);
+  color: var(--theme-text);
+  font-weight: 600;
+}
+
+.psd-security-btn--danger {
+  border-color: color-mix(in srgb, #dc2626 40%, var(--theme-border));
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+}
+
+.psd-security-panel {
+  margin-top: 8px;
+  display: grid;
+  gap: 10px;
+}
+
+.psd-security-qr {
+  width: 180px;
+  height: 180px;
+  border-radius: 12px;
+  border: 1px solid var(--theme-border);
+  background: white;
 }
 
 .psd-save-all {

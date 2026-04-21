@@ -5,10 +5,12 @@ import {
   getWorkspaceInvitations,
   getWorkspaceUsers,
   isStorageBucketNotFound,
+  insertAuditEvent,
+  listWorkspaceAuditEvents,
   updateWorkspace,
   uploadImageToStorage,
 } from './lib/api'
-import type { Invitation, User } from './lib/types'
+import type { AuditEvent, Invitation, User } from './lib/types'
 
 export interface CompanyMember {
   email: string
@@ -261,6 +263,14 @@ async function processWithConcurrency<T>(
   await Promise.all(runners)
 }
 
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 export default function CompanySheet({
   workspaceId = null,
   companyName,
@@ -295,6 +305,9 @@ export default function CompanySheet({
   const [batchDefaultRole, setBatchDefaultRole] = useState<InviteFormRole>('Contributeur')
   const [batchSubmitting, setBatchSubmitting] = useState(false)
   const [batchSummary, setBatchSummary] = useState<string | null>(null)
+  const [batchAuditEvents, setBatchAuditEvents] = useState<AuditEvent[]>([])
+  const [batchAuditLoading, setBatchAuditLoading] = useState(false)
+  const [userEmailById, setUserEmailById] = useState<Record<string, string>>({})
 
   useEffect(() => {
     setLogoUrl(companyLogoProp ?? null)
@@ -372,12 +385,38 @@ export default function CompanySheet({
           fetchAllInvitations(workspaceId),
         ])
         if (cancelled) return
+        setUserEmailById(
+          users.reduce<Record<string, string>>((acc, user) => {
+            acc[user.id] = user.email
+            return acc
+          }, {}),
+        )
         setRemoteMembers(mergeUsersAndInvitations(users, invitations))
       } catch {
         if (cancelled) return
         setRemoteMembers(null)
       } finally {
         if (!cancelled) setRemoteMembersLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId, membersRefreshKey])
+
+  useEffect(() => {
+    if (!workspaceId) return
+    let cancelled = false
+    void (async () => {
+      setBatchAuditLoading(true)
+      try {
+        const events = await listWorkspaceAuditEvents(workspaceId, ['invitation_batch_import'], 20)
+        if (cancelled) return
+        setBatchAuditEvents(events)
+      } catch {
+        if (!cancelled) setBatchAuditEvents([])
+      } finally {
+        if (!cancelled) setBatchAuditLoading(false)
       }
     })()
     return () => {
@@ -436,6 +475,7 @@ export default function CompanySheet({
     }
     setBatchSubmitting(true)
     try {
+      const batchHash = await sha256Hex(csvText)
       let ok = 0
       let mailFail = 0
       const rowErrors: string[] = [...lineErrors]
@@ -457,7 +497,6 @@ export default function CompanySheet({
         }
       })
       setCsvText('')
-      setMembersRefreshKey((k) => k + 1)
       const parts = [`${ok} invitation(s) enregistrée(s).`]
       if (mailFail > 0) {
         parts.push(`${mailFail} email(s) de connexion non envoyés (réessayez ou « Renvoyer l’email »).`)
@@ -466,6 +505,19 @@ export default function CompanySheet({
         parts.push(`Détail : ${rowErrors.slice(0, 8).join(' ')}${rowErrors.length > 8 ? '…' : ''}`)
       }
       setBatchSummary(parts.join(' '))
+      await insertAuditEvent({
+        workspace_id: workspaceId,
+        action: 'invitation_batch_import',
+        payload: {
+          count_ok: ok,
+          count_mail_fail: mailFail,
+          count_errors: rowErrors.length,
+          sample_errors: rowErrors.slice(0, 5),
+          csv_hash: batchHash,
+          default_role: toInvitationRole(batchDefaultRole),
+        },
+      })
+      setMembersRefreshKey((k) => k + 1)
     } finally {
       setBatchSubmitting(false)
     }
@@ -805,6 +857,33 @@ export default function CompanySheet({
               {batchSubmitting ? 'Traitement…' : 'Lancer les invitations depuis le CSV'}
             </button>
             {batchSummary && <p className="cs-invite-msg cs-invite-msg--ok">{batchSummary}</p>}
+            <div className="cs-batch-history">
+              <h4 className="cs-invite-batch-title">Historique des imports CSV</h4>
+              {batchAuditLoading ? (
+                <p className="cs-invite-batch-hint">Chargement…</p>
+              ) : batchAuditEvents.length === 0 ? (
+                <p className="cs-invite-batch-hint">Aucun import lot enregistré pour le moment.</p>
+              ) : (
+                <div className="cs-batch-history-list">
+                  {batchAuditEvents.map((event) => {
+                    const payload = (event.payload ?? {}) as Record<string, unknown>
+                    const actorEmail = event.actor_user_id ? userEmailById[event.actor_user_id] : null
+                    const createdAt = new Date(event.created_at).toLocaleString('fr-FR')
+                    const ok = Number(payload.count_ok ?? 0)
+                    const failed = Number(payload.count_errors ?? 0)
+                    const mailFail = Number(payload.count_mail_fail ?? 0)
+                    return (
+                      <div key={event.id} className="cs-batch-history-item">
+                        <strong>{createdAt}</strong>
+                        <span>
+                          {actorEmail ? `par ${actorEmail}` : 'par utilisateur inconnu'} · {ok} OK · {failed} erreurs · {mailFail} emails non envoyés
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1163,6 +1242,27 @@ const CSS = `
 .cs-batch-file {
   font-size: 12px;
   max-width: 100%;
+}
+
+.cs-batch-history {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--theme-border);
+}
+
+.cs-batch-history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.cs-batch-history-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--theme-text-muted);
 }
 
 .cs-invite-row {

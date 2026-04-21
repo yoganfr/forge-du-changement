@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **21 avril 2026**, 12 h 41 (Europe/Paris)
+Dernière mise à jour : **21 avril 2026**, 13 h 31 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -122,7 +122,10 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 4 | Structure 4 axes par projet BUILD (Processus/Orga/Outils/KPI) | 🔴 | ✅ |
 | 5 | Création et gestion des jalons | 🔴 | ✅ |
 | 6 | Macro RACI par jalon | 🔴 | ✅ |
-| 7 | Système Réactions/Réponses sur jalons | 🟠 | ⬜ |
+| 7a | Snapshot roadmap figée (V1) + ouverture cycle de review | 🟠 | ⬜ |
+| 7b | Invitation et périmètre reviewers (membres des équipes du périmètre) | 🟠 | ⬜ |
+| 7c | Propositions reviewers (ajout/suppression/évolution chantiers-jalons) + justification | 🔴 | ⬜ |
+| 7d | Arbitrage responsable roadmap (OK/NOK/conditionnel) + clôture cycle feedback | 🔴 | ⬜ |
 | 8 | Vue matrice complète (grille temps × 4 axes, chantiers typés par axe) | 🟠 | ✅ |
 | 9 | Dépendances inter-jalons (séquence ligne + `jalon_dependance_id` conservée, **UI masquée**) | 🟡 | ✅ |
 
@@ -404,7 +407,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-1. EPIC 3 · **REF-7** — activer les réactions/réponses sur jalons (différenciation métier "dialogue structuré").
+1. EPIC 3 · **REF-7a → REF-7d** — figer une roadmap V1, ouvrir un cycle reviewers, collecter des propositions typées, puis arbitrer/clôturer.
 2. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
 3. EPIC 11 · **REF-50 / REF-51** — enclencher gouvernance/sécurité opérationnelle (MFA super-admin + journal import CSV) si fenêtre disponible avant REF-76/77.
 
@@ -544,8 +547,13 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 #### T11 — Macro RACI par jalon (GH-6 · EPIC 3 · REF-6)
 - **Estimation** : 1 jour.
 
-#### T12 — Réactions/Réponses sur jalons (GH-7 · EPIC 3 · REF-7)
-- **Estimation** : 1 jour.
+#### T12 — Dialogue structuré roadmap versionnée (GH-7 · EPIC 3 · REF-7a→7d)
+- **Scope** :
+  - figer une version roadmap V1 (snapshot),
+  - ouvrir une fenêtre de review sur périmètre invité,
+  - collecter des propositions structurées (ajout/suppression/évolution chantier/jalon, justification obligatoire),
+  - arbitrer (OK/NOK/conditionnel) puis clôturer le cycle.
+- **Estimation** : 6 à 8 jours (découpage en 4 sous-vagues).
 
 #### T13 — Vue matrice complète (GH-8 · EPIC 3 · REF-8)
 - **Estimation** : 1.5 jours.
@@ -714,6 +722,11 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 - **Fix lint `react-hooks/set-state-in-effect` — `web/components/ThemeToggle.tsx`** (21 avril 2026) : migration du composant vers `useSyncExternalStore` (source de vérité = `document.documentElement.dataset.theme`) + script inline dans `<head>` de `web/app/layout.tsx` qui applique le thème **avant** hydration React. Élimine à la fois la cascade setState-in-effect (4 rendus pré-fix → 2 rendus post-fix, 0 event `effect-*`) et le FOUC (flash of unstyled theme). Preuve runtime capturée en debug mode (voir logs session `82b244`). Reste 3 warnings ESLint pré-existants hors périmètre (`@next/next/no-css-tags` x1, `@next/next/no-img-element` x2).
 - **Fix dev local SPA Vite — Supabase placeholder** (21 avril 2026) : création de `.env.local` à la racine avec `VITE_SUPABASE_URL` / `VITE_SUPABASE_KEY` du projet `kpgkxeilddeyfwiiqaha` (mêmes valeurs que `web/.env.local`, mais variables préfixées `VITE_*`). Fichier ignoré par git via le pattern `*.local`. Cause initiale : `src/lib/supabase.ts` retombait sur un fallback dev `https://example.supabase.co` → `ERR_NAME_NOT_RESOLVED` au clic "Se connecter". Preuve runtime : redirection OAuth complète jusqu'à `/auth/callback?code=...`.
 - **Convention dev local formalisée** (21 avril 2026) : deux terminaux désormais nécessaires en dev → racine `Le produit SaaS` = SPA Vite (port 5173), `web/` = landing Next.js (port 3000). À reporter dans `web/AGENTS.md` et `web/README.md` (tâche suivante).
+- **REF-50 MFA super-admin livré et validé en recette** (21 avril 2026) : helpers `enrollMfaTotp`, `verifyMfaTotp`, `unenrollMfaFactor`, `listMfaFactors`, `isMfaEnrollmentRequiredForSuperadmin`, `auditMfaEvent` dans `src/lib/auth.ts`. Section "Sécurité super-admin" dans `ProfileSheet.tsx` (QR + champ code 6 chiffres + bouton désactiver). Garde bloquante dans `App.tsx` qui empêche l'usage de l'app tant que le MFA n'est pas activé pour un super-admin. Audit `mfa_totp_enrolled` / `mfa_totp_disabled` dans `audit_events`.
+- **Fix runtime popin MFA vs drawer profil** (21 avril 2026) : le backdrop plein écran de la guard MFA (z-index 3000, inset 0) interceptait les clics destinés au drawer profil. Correctif 1 ligne dans `App.tsx` : conditionner le rendu de la guard à `!showProfile`. Dès que l'utilisateur ouvre son profil, la guard se démonte → drawer pleinement interactif. Si le drawer se referme sans MFA activé, la guard réapparaît automatiquement. Preuve runtime : capture montrant le drawer ouvert derrière la guard + validation post-fix utilisateur.
+- **Fix RLS super-admin sur `workspaces`** (21 avril 2026) : la seule policy SELECT (`authenticated_read_own_workspace`) filtrait par appartenance membre ; les policies INSERT/UPDATE/DELETE appelaient `is_platform_superadmin()` mais pas la SELECT. Un super-admin plateforme ne voyait qu'un seul workspace (celui dont il était membre). Ajout de la policy `workspaces_superadmin_select` → permet à un super-admin de lister tous les workspaces de la plateforme. Migration appliquée sur `kpgkxeilddeyfwiiqaha` + sauvegardée dans `docs/supabase-workspaces-superadmin-select.sql`. Ajout d'un `invalidateCache(['workspaces:list'])` dans `refreshWorkspacesCatalog` (`App.tsx`) pour fiabiliser le bouton "Actualiser la liste".
+- **REF-51 Journal des imports CSV livré et validé en recette** (21 avril 2026) : `CompanySheet.tsx` insère un event `invitation_batch_import` dans `audit_events` à chaque import batch (payload : `count_ok`, `count_mail_fail`, `count_errors`, `sample_errors`, `csv_hash` SHA-256, `default_role`). Section "Historique des imports CSV" dans le drawer "Mon entreprise" qui liste les 20 derniers imports via `listWorkspaceAuditEvents` (date, auteur, compteurs). Fix timing : `await insertAuditEvent` avant `setMembersRefreshKey(+1)` pour que la relecture voie la nouvelle ligne immédiatement.
+- **REF-7a — schéma roadmap_snapshots** (21 avril 2026) : migration appliquée sur `kpgkxeilddeyfwiiqaha` → tables `roadmap_snapshots` (workspace_id, projet_id, label, status draft/in_review/closed, frozen_at, closed_at, created_by) et `roadmap_snapshot_items` (snapshot_id, kind chantier/jalon, source_id, payload jsonb). RLS SELECT/INSERT avec `is_platform_superadmin()` + `is_workspace_org_admin()` + `has_workspace_consultant_access()`. API `createRoadmapSnapshot` / `listRoadmapSnapshots` dans `src/lib/api/roadmapSnapshots.ts`. Bouton "Figer la V1 (snapshot)" dans `MaturityRoadmap.tsx` + affichage des snapshots récents. Recette à dérouler dans la foulée (REF-7b/c/d viennent ensuite).
 
 #### En cours
 - Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue décideur consolidée, Ma Direction, états RUN/BUILD variés).

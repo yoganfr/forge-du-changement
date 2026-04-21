@@ -1832,3 +1832,47 @@
     display: none !important;
   }
 }
+
+.dashboard__mfa-guard {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.58);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.dashboard__mfa-guard-card {
+  width: min(560px, 100%);
+  background: var(--theme-bg-card);
+  color: var(--theme-text);
+  border: 1px solid var(--theme-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+}
+
+.dashboard__mfa-guard-card h3 {
+  margin: 0 0 10px;
+  font-size: 1.08rem;
+}
+
+.dashboard__mfa-guard-card p {
+  margin: 0 0 14px;
+  color: var(--theme-text-muted);
+}
+
+.dashboard__mfa-guard-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.dashboard__mfa-guard-actions button {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-border);
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  color: var(--theme-text);
+  padding: 0 14px;
+}
