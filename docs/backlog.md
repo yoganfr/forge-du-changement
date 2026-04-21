@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **21 avril 2026**, 13 h 31 (Europe/Paris)
+Dernière mise à jour : **21 avril 2026**, 15 h 45 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -99,8 +99,9 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 47 | Invitation unitaire avec email + rôle | — | ✅ |
 | 48 | Invitation par lot CSV (parsing + import) | — | ✅ |
 | 49 | Renvoi d'email de connexion pour invitation en attente | — | ✅ |
-| 50 | MFA sur comptes super-admin | 🟠 | ⬜ |
-| 51 | Journal "qui a lancé le lot" visible UI | 🟡 | ⬜ |
+| 50 | MFA sur comptes super-admin | 🟠 | ✅ |
+| 51 | Journal "qui a lancé le lot" visible UI | 🟡 | ✅ |
+| 51b | Extension CSV d'invitation : colonnes optionnelles `direction` (résolue en direction_id) + `trigram` (sinon dérivé via convention workspace) — couvre les fondations utilisateur nécessaires à REF-7b | 🟠 | ⬜ |
 
 ---
 
@@ -122,10 +123,19 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 4 | Structure 4 axes par projet BUILD (Processus/Orga/Outils/KPI) | 🔴 | ✅ |
 | 5 | Création et gestion des jalons | 🔴 | ✅ |
 | 6 | Macro RACI par jalon | 🔴 | ✅ |
-| 7a | Snapshot roadmap figée (V1) + ouverture cycle de review | 🟠 | ⬜ |
-| 7b | Invitation et périmètre reviewers (membres des équipes du périmètre) | 🟠 | ⬜ |
-| 7c | Propositions reviewers (ajout/suppression/évolution chantiers-jalons) + justification | 🔴 | ⬜ |
-| 7d | Arbitrage responsable roadmap (OK/NOK/conditionnel) + clôture cycle feedback | 🔴 | ⬜ |
+| 7a | Snapshot roadmap figée (V1) + label + created_by + created_by_email + back-fill | 🟠 | ✅ |
+| 7b | Invitation et périmètre reviewers (cycle de revue V1 complet) — **voir spec détaillée ci-dessous** | 🟠 | 🚧 |
+| 7b.0 | Fondations utilisateur (users.direction_id + users.trigram + workspaces.trigram_convention + héritage direction à l'invitation + extension CSV REF-51) | 🔴 | ⬜ |
+| 7b.1 | RACI chantier (table `raci_chantiers` + matrice cochable dans MaturityRoadmap + accordéon latéral droit) — indispensable avant ReviewerPage | 🔴 | ⬜ |
+| 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS) | 🔴 | ⬜ |
+| 7b.3 | Modal "Ouvrir la revue" côté CODIR (multi-sélect reviewers + deadline + magic link + transition draft→in_review + audit) | 🔴 | ⬜ |
+| 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers) | 🟠 | ⬜ |
+| 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + autosave commentaires + modal "Soumettre ma review") | 🔴 | ⬜ |
+| 7b.6 | Panneau flottant déplaçable (migration drawer latéral → `react-rnd` floating panel, multi-ouverture, persistence position) | 🟠 | ⬜ |
+| 7b.7 | Écran récap arbitrages (tableau global + badges inline + email/in-app cumulatif quand 0 feedback pending restant pour le reviewer) | 🟠 | ⬜ |
+| 7c | Propositions reviewers (ajout/suppression/évolution chantiers-jalons) + justification structurée Constat/Proposition/Bénéfice — **intégré à REF-7b.5** | 🔴 | ⬜ |
+| 7d | Arbitrage responsable roadmap : OK / NOK / Sous condition (propositions + demandes de décision) + Accusé réception (réactions) + clôture cycle feedback + notif cumulative reviewer | 🔴 | ⬜ |
+| 7e | Workflow de relance automatique (email avant/après deadline reviewer, rappels dégradés) | 🟡 | ⬜ |
 | 8 | Vue matrice complète (grille temps × 4 axes, chantiers typés par axe) | 🟠 | ✅ |
 | 9 | Dépendances inter-jalons (séquence ligne + `jalon_dependance_id` conservée, **UI masquée**) | 🟡 | ✅ |
 
@@ -137,6 +147,213 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 **Drag & drop — grille matrice (compléments avril 2026)**  
 - **Vague 1** : déplacement d’une **ligne chantier** entre axes (Processus / Organisation / Outils ; pas KPI), refetch ciblé — **sans rechargement complet de page**.  
 - **Vague 2** : déplacement des **pilules jalons** sur la **même ligne** (même `chantier_id` + même `axe`) pour ajuster l’échéance (`mois_cible` / `annee_cible`) ; **une pilule par cellule** temps (sinon toast + drop refusé) ; **renumérotation automatique** des `ordre_sequentiel` sur l’axe si l’ordre chronologique change ; mode **lecture seule** sans drag. API : `recalculateOrdreSequentielForChantierAxe` dans `src/lib/api/roadmap.ts`.
+
+---
+
+## EPIC 3 — Spec détaillée REF-7b (ReviewerPage & cycle de revue) 🚧 NOUVEAU
+
+Session de cadrage produit du **21 avril 2026** entre Yogan et l'agent Cursor. Spec consolidée ici pour guider l'implémentation des lots 7b.0 → 7b.7.
+
+### Persona reviewer
+
+- **N-1 d'un membre CODIR** (managers / contributeurs opérationnels de la direction du CODIR).
+- Rôle technique plateforme : `contributeur` classique (pas de nouveau rôle spécifique). La revue est l'une des activités possibles du contributeur (au même titre que les plans d'action / plans de charge).
+- Invité via le flux magic link **standard** (REF-47 unitaire ou REF-48 CSV), avec onboarding classique.
+- Différence d'expérience : UI **resserrée à la page de revue** tant qu'un snapshot `in_review` lui est assigné ; le reste de la plateforme est masqué.
+
+### Cycle d'usage cible
+
+1. Le CODIR Finance construit sa roadmap, la fige en V1 (REF-7a ✅).
+2. Réunion CODIR → N-1 : présentation de la V1 en direct, annonce de la démarche de revue.
+3. Le CODIR clique **« Ouvrir la revue »** sur le snapshot → sélectionne les reviewers (ses N-1), fixe une deadline. Les reviewers manquants reçoivent un magic link ; les membres existants reçoivent une notif + email.
+4. Les reviewers accèdent à la page dédiée, explorent, commentent, soumettent des propositions.
+5. Chacun clique **« Soumettre ma review »** avant la deadline (modal de confirmation). Une seule soumission par reviewer.
+6. Le CODIR reçoit les feedbacks, les arbitre dans son écran dédié (REF-7d).
+7. Une fois **tous** les feedbacks d'un reviewer arbitrés → email + notif in-app cumulative au reviewer (« vos contributions ont été arbitrées »).
+8. Seconde réunion CODIR → N-1 : présentation de la V2 qui intègre les retours → passe d'intelligence collective.
+
+### Architecture de la page (3 parties sur une seule page scrollable)
+
+**Header minimaliste** · `[Logo] REVUE ROADMAP · Direction Finance   |   avatar ▾` (pas de nom de workspace)
+
+**Bandeau deadline** (toujours visible en haut)
+- Label du snapshot (ex: `V1 avril 2026`).
+- Deadline humanisée (`vendredi 2 mai 2026 à 18h00 (Europe/Paris)`).
+- Pastille couleur fondée sur **temps restant / durée totale** :
+  - `≥ 50 %` → 🟢 VERT
+  - `30 % – 50 %` → 🟠 ORANGE
+  - `< 30 %` → 🔴 ROUGE
+  - `dépassé` → ⚫ bandeau "En retard" mais page reste commentable.
+- Bouton **« Soumettre ma review »** (désactivé si déjà soumis → remplacé par un bandeau `Revue soumise le XX/YY à HHhmm`).
+
+**Partie 1 · Accordéon projets transformants**
+- Ordre **par score transformation décroissant** mais **score non affiché** (règle : le score est un outil amont d'arbitrage, pas une info à montrer aux N-1).
+- En-tête repliée = `Thématique · Nom · Période consolidée` (ex: `Systèmes & outillage · Refonte CG · Jan 26 → Juin 27`).
+- Bouton global **« Tout déplier / Tout replier »**.
+- Carte dépliée = `Thématique / Problématique / Description / Planning consolidé (début = mois du premier jalon du projet dans le snapshot, fin = mois du dernier) / zone commentaire`.
+- Zone commentaire avec **toggle Réaction / Demande de décision** (voir "Modèle unifié feedbacks" ci-dessous).
+- Indicateur commentaire : icône 💬 avec compteur + fond légèrement coloré sur l'en-tête repliée.
+
+**Partie 2 · Roadmap visuelle (lecture seule + commentable)**
+- Rendu identique à `MaturityRoadmap` CODIR, mais **scroll horizontal** avec colonnes de gauche (Axe + Titre chantier) figées (sticky).
+- Zoom / labels timeline **adaptatifs** (mensuel / trimestriel / semestriel selon densité affichée).
+- Toute interaction d'édition désactivée (pas de drag, pas d'ajout, pas de suppression, pas d'édition inline).
+- Clic sur en-tête chantier OU jalon → **panneau flottant déplaçable** (lib `react-rnd` en REF-7b.6 ; drawer latéral droit en REF-7b.5 comme V1 acceptable).
+- Panneau affiche : contexte de l'élément + zone commentaire (Réaction/Demande de décision) + fil de discussion si réponses CODIR.
+- Badge 💬 compteur + bordure colorée sur les éléments qui ont au moins un commentaire du reviewer connecté.
+- **RACI** : accordéon latéral droit à l'issue de chaque chantier, matrice cochable (chantier × entités/personnes) — pose les fondations de **REF-7b.1** (nouvelle feature côté CODIR) puis version read-only commentable côté reviewer.
+
+**Partie 3 · Proposer un nouveau chantier**
+- Formulaire à champs fixes :
+  - `Projet transformant père` (select parmi les projets du snapshot).
+  - `Axe de rattachement` (select parmi les 4 axes fixes : `PROCESSUS`, `ORGANISATION`, `OUTILS`, `KPI` — déjà en enum `Axe` côté code).
+  - `Titre du chantier` (texte court).
+  - `Constat` (textarea, obligatoire — ce qui est observé).
+  - `Proposition` (textarea, obligatoire — ce qui est suggéré).
+  - `Bénéfice anticipé` (textarea, obligatoire — pourquoi ça vaut le coup).
+  - **Pas** de période souhaitée : si le reviewer veut décaler une échéance, il commente sur le chantier/jalon en Partie 2.
+- Bouton **« Soumettre au CODIR »**.
+- Tableau récap **des propositions déjà soumises par ce reviewer** : `Projet · Axe · Titre · Soumis le · Statut · Motivation CODIR (si arbitrée)`.
+- Édition / suppression d'une proposition possible **jusqu'à l'arbitrage CODIR**, figée ensuite.
+
+### Modèle unifié feedbacks (transverse aux 3 parties)
+
+Chaque feedback est d'un `kind` parmi : `reaction`, `decision`, `proposition_chantier`.
+
+| Kind | Contenu | Où on le saisit | Action CODIR |
+|---|---|---|---|
+| `reaction` | `comment` texte libre | Partie 1 (projet), Partie 2 (chantier/jalon) | **Accusé réception** + commentaire optionnel |
+| `decision` | 3 champs obligatoires : `constat`, `proposition`, `benefice` | Partie 1 ou Partie 2 via toggle "Demande de décision" | **OK / NOK / Sous condition** + motivation obligatoire |
+| `proposition_chantier` | Idem `decision` + `projet_pere_id`, `axe`, `titre_chantier` | Partie 3 | **OK / NOK / Sous condition** + motivation obligatoire |
+
+Toggle dans chaque champ commentaire : **`Réaction` (défaut) / `Demande de décision`**. Les propositions Partie 3 sont implicitement des demandes de décision (pas de toggle visible).
+
+### Workflow "Soumettre ma review"
+
+1. Avant 1ʳᵉ soumission : statut reviewer = `draft`, tous les feedbacks enregistrés en autosave **invisibles du CODIR**.
+2. Clic sur « Soumettre ma review » → modal de confirmation avec récap (nb réactions / nb demandes de décision / nb propositions) + rappel de l'implication (notification CODIR).
+3. Après confirmation :
+   - Statut reviewer → `submitted`, `submitted_at` daté.
+   - Email + notif in-app au CODIR owner avec synthèse des feedbacks.
+   - Bandeau `Revue soumise le XX/YY à HHhmm` en haut de page.
+4. Édition post-soumission :
+   - **Réactions** : éditables tant que le CODIR n'a pas accusé réception, figées ensuite.
+   - **Demandes de décision + propositions** : figées dès soumission.
+5. **Une seule soumission possible** — pas de re-soumission d'une nouvelle vague.
+6. Ré-ouverture par le CODIR : en 1 clic (action considérée légitime) → statut reviewer revient à `draft` + audit `review_reopened`.
+
+### Visibilité & notifications
+
+- **Entre reviewers** : toujours privé (scénario 3). Chaque reviewer ne voit que ses propres commentaires et les réponses du CODIR. La synthèse partagée se fait en **présentiel** lors de la 2ᵉ réunion CODIR.
+- **Réponses CODIR** : visibles uniquement par l'auteur du commentaire/proposition.
+- **Auteurs affichés** : par **trigramme** (ex: `MDU` pour Marie DUpont). Convention configurable par workspace pour reprendre celle de l'entreprise cliente → **REF-7b.0**.
+- **Notifications** :
+  - Reviewer invité → email magic link (REF-7b.3).
+  - CODIR owner au clic "Soumettre ma review" du reviewer → email + notif in-app.
+  - Reviewer, **une seule fois**, quand le CODIR a traité **tous** ses feedbacks sur cette revue (0 feedback `pending` restant) → email + notif in-app `vos contributions ont été arbitrées`.
+
+### Modèle de données cible (REF-7b.2)
+
+```sql
+-- Table reviewers (une ligne par reviewer invité sur un snapshot)
+create table public.roadmap_snapshot_reviewers (
+  id uuid primary key default gen_random_uuid(),
+  snapshot_id uuid not null references public.roadmap_snapshots(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'draft', 'submitted', 'closed')),
+  invited_at timestamptz not null default now(),
+  submitted_at timestamptz null,
+  closed_at timestamptz null,
+  invited_by uuid null references public.users(id) on delete set null,
+  invited_by_email text null,
+  unique (snapshot_id, user_id)
+);
+
+-- Colonne deadline sur le snapshot
+alter table public.roadmap_snapshots add column if not exists review_deadline timestamptz null;
+
+-- Table feedbacks unifiée
+create table public.roadmap_review_feedbacks (
+  id uuid primary key default gen_random_uuid(),
+  snapshot_id uuid not null references public.roadmap_snapshots(id) on delete cascade,
+  reviewer_user_id uuid not null references public.users(id) on delete cascade,
+  kind text not null check (kind in ('reaction', 'decision', 'proposition_chantier')),
+  target_type text not null check (target_type in ('projet', 'chantier', 'jalon', 'proposition')),
+  target_id uuid null,                       -- nullable si kind='proposition_chantier'
+  comment text null,                          -- si kind='reaction'
+  constat text null,                          -- si kind='decision' ou 'proposition_chantier'
+  proposition text null,
+  benefice text null,
+  projet_pere_id uuid null,                   -- si kind='proposition_chantier'
+  axe text null check (axe in ('PROCESSUS','ORGANISATION','OUTILS','KPI')),
+  titre_chantier text null,
+  codir_status text null check (codir_status in ('pending','noted','ok','nok','sous_condition')),
+  codir_motivation text null,
+  codir_user_id uuid null references public.users(id) on delete set null,
+  codir_at timestamptz null,
+  parent_id uuid null references public.roadmap_review_feedbacks(id) on delete cascade,  -- threads
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Table RACI chantiers (REF-7b.1)
+create table public.raci_chantiers (
+  id uuid primary key default gen_random_uuid(),
+  chantier_id uuid not null references public.chantiers(id) on delete cascade,
+  direction_id uuid null references public.directions(id) on delete cascade,
+  user_id uuid null references public.users(id) on delete cascade,
+  role text not null check (role in ('R','A','C','I')),
+  created_at timestamptz not null default now(),
+  check ((direction_id is not null) or (user_id is not null)),
+  unique (chantier_id, direction_id, role),
+  unique (chantier_id, user_id, role)
+);
+```
+
+### Fondations utilisateur (REF-7b.0)
+
+Indispensable avant tout le reste :
+
+```sql
+alter table public.users add column if not exists direction_id uuid null references public.directions(id) on delete set null;
+alter table public.users add column if not exists trigram text null;
+alter table public.workspaces add column if not exists trigram_convention text not null default 'prenom_nom_3';
+```
+
+- `users.direction_id` : rattachement opérationnel du contributeur à une direction. Hérite **automatiquement** de la direction du CODIR qui l'invite (règle métier). Si l'inviteur est Super Admin ou Consultant, la direction doit être précisée (drawer invite : sélecteur ; CSV batch : colonne `direction`).
+- `users.trigram` : stocké en dur (3 chars). Dérivé à l'invitation selon `workspaces.trigram_convention` si non fourni, éditable ensuite.
+- `workspaces.trigram_convention` : valeurs `prenom_nom_3` (ex: `MAD` = **MA**rie **D**upont), `nom_prenom_3` (ex: `DUM` = **DU**pont **M**arie), `custom` (édition manuelle obligatoire sur chaque user).
+
+### Hors scope REF-7b.0 → REF-7b.7
+
+- **REF-7c** est **intégré** à REF-7b.5 (propositions de chantier Partie 3 couvertes par le modèle unifié feedbacks).
+- **REF-7d** (écran d'arbitrage CODIR) reste un item distinct : il traite tous les `target_type` et tous les `kind` (pas seulement les propositions). Actions : Accusé réception sur réactions, OK/NOK/Sous condition + motivation obligatoire sur demandes de décision et propositions. Émet la notif cumulative reviewer quand 0 feedback pending restant.
+- **REF-7e** (relances automatiques) : workflow email avant/après deadline. Pas bloquant pour le cycle de base.
+- **REF-51b** (extension CSV) : nécessaire à REF-7b.0 pour permettre au Super Admin / Consultant d'importer des reviewers en batch avec leur direction et leur trigramme.
+
+### Ordre d'exécution recommandé
+
+```
+REF-7b.0 (users.direction_id + trigrammes + héritage invite + CSV)
+    ↓
+REF-7b.1 (RACI chantier : matrice cochable dans MaturityRoadmap)
+    ↓
+REF-7b.2 (schéma revue : tables reviewers + feedbacks + deadline)
+    ↓
+REF-7b.3 (modal "Ouvrir la revue" côté CODIR)
+    ↓
+REF-7b.4 (routing conditionnel reviewer)
+    ↓
+REF-7b.5 (ReviewerPage V1 avec drawer latéral droit, pas encore flottant)
+    ↓
+REF-7d (écran arbitrage CODIR)  ← peut démarrer en parallèle après 7b.2
+    ↓
+REF-7b.6 (migration vers panneau flottant déplaçable react-rnd)
+REF-7b.7 (récap arbitrages côté reviewer + notif cumulative)
+REF-7e (relances automatiques) — itération ultérieure
+```
+
+Chaque lot est livré en commit atomique, avec recette utilisateur dédiée avant de passer au suivant (respect strict de `docs/refactor_rules.md` §2).
 
 ---
 
@@ -727,6 +944,8 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 - **Fix RLS super-admin sur `workspaces`** (21 avril 2026) : la seule policy SELECT (`authenticated_read_own_workspace`) filtrait par appartenance membre ; les policies INSERT/UPDATE/DELETE appelaient `is_platform_superadmin()` mais pas la SELECT. Un super-admin plateforme ne voyait qu'un seul workspace (celui dont il était membre). Ajout de la policy `workspaces_superadmin_select` → permet à un super-admin de lister tous les workspaces de la plateforme. Migration appliquée sur `kpgkxeilddeyfwiiqaha` + sauvegardée dans `docs/supabase-workspaces-superadmin-select.sql`. Ajout d'un `invalidateCache(['workspaces:list'])` dans `refreshWorkspacesCatalog` (`App.tsx`) pour fiabiliser le bouton "Actualiser la liste".
 - **REF-51 Journal des imports CSV livré et validé en recette** (21 avril 2026) : `CompanySheet.tsx` insère un event `invitation_batch_import` dans `audit_events` à chaque import batch (payload : `count_ok`, `count_mail_fail`, `count_errors`, `sample_errors`, `csv_hash` SHA-256, `default_role`). Section "Historique des imports CSV" dans le drawer "Mon entreprise" qui liste les 20 derniers imports via `listWorkspaceAuditEvents` (date, auteur, compteurs). Fix timing : `await insertAuditEvent` avant `setMembersRefreshKey(+1)` pour que la relecture voie la nouvelle ligne immédiatement.
 - **REF-7a — schéma roadmap_snapshots** (21 avril 2026) : migration appliquée sur `kpgkxeilddeyfwiiqaha` → tables `roadmap_snapshots` (workspace_id, projet_id, label, status draft/in_review/closed, frozen_at, closed_at, created_by) et `roadmap_snapshot_items` (snapshot_id, kind chantier/jalon, source_id, payload jsonb). RLS SELECT/INSERT avec `is_platform_superadmin()` + `is_workspace_org_admin()` + `has_workspace_consultant_access()`. API `createRoadmapSnapshot` / `listRoadmapSnapshots` dans `src/lib/api/roadmapSnapshots.ts`. Bouton "Figer la V1 (snapshot)" dans `MaturityRoadmap.tsx` + affichage des snapshots récents. Recette à dérouler dans la foulée (REF-7b/c/d viennent ensuite).
+- **REF-7a — fixes gouvernance snapshots** (21 avril 2026, commit `aa720e2`) : `createRoadmapSnapshot` exploite désormais la session auth pour renseigner `created_by` (UUID utilisateur) et `created_by_email` (dénormalisation pour lisibilité humaine). Migration SQL `alter table roadmap_snapshots add column if not exists created_by_email text` + back-fill via jointure `users`. `window.prompt` dans `MaturityRoadmap.tsx` enrichi d'un `defaultValue` type `V1 avril 2026` pour éviter les labels incorrects. `.gitignore` étendu avec `recette/` pour les exports CSV Supabase locaux.
+- **REF-7b — session de cadrage produit "ReviewerPage & cycle de revue"** (21 avril 2026) : cadrage complet en 6 blocs (A Header & pastille / B Accordéon projets / C Roadmap visuelle & commentaires / D Proposer un chantier / E Visibilité & notifications / F Workflow Soumettre ma review) entre Yogan et l'agent. Éclatement de REF-7b en **8 sous-lots** (7b.0 → 7b.7) et spec détaillée consolidée dans une section dédiée de `docs/backlog.md`. Apprentissages structurants : (1) les reviewers sont des contributeurs N-1 des CODIR, invités via le flux magic link standard mais avec UI resserrée à la page de revue ; (2) les 4 axes `PROCESSUS / ORGANISATION / OUTILS / KPI` sont fixes dans la démarche FdC (déjà en enum code) ; (3) modèle unifié feedbacks avec 3 kinds (reaction / decision / proposition_chantier) et toggle Réaction vs Demande de décision dans chaque commentaire ; (4) demandes de décision structurées en 3 champs obligatoires `constat / proposition / bénéfice` ; (5) visibilité "scénario 3" toujours privé entre reviewers, la synthèse se fait en présentiel ; (6) affichage par trigramme avec convention configurable par workspace ; (7) notification reviewer cumulative envoyée **une fois** quand 0 feedback pending restant ; (8) soumission unique par reviewer, ré-ouverture possible par le CODIR en 1 clic. Nouveaux items backlog identifiés : REF-7b.0 fondations utilisateur (users.direction_id + trigrammes), REF-7b.1 RACI chantier (matrice cochable), REF-7b.6 panneau flottant déplaçable (react-rnd), REF-7e relances automatiques, REF-51b extension CSV avec colonnes `direction` + `trigram`. Prochain lot à démarrer : **REF-7b.0** (fondations utilisateur) après validation de ce cadrage.
 
 #### En cours
 - Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue décideur consolidée, Ma Direction, états RUN/BUILD variés).
