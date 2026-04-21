@@ -172,3 +172,37 @@ export type RaciJalon = {
   role: RaciRole
   created_at: string
 }
+
+/**
+ * Matrice PCI par chantier (REF-7b.1) — stakeholder-centric.
+ * Une ligne = une partie prenante (colonne de la matrice UI) avec ses rôles P/C/I multi-cochables.
+ * Modèle simplifié du RACI classique : P combine R+A, C = consulté/contribue, I = informé.
+ */
+export type RaciChantierEntiteType = 'direction' | 'autre'
+
+export type RaciChantier = {
+  id: string
+  chantier_id: string
+  /** Niveau de l'entité. Pour V1 : `direction` (lien optionnel vers public.directions) ou `autre` (texte libre). */
+  entite_type: RaciChantierEntiteType
+  /** Nom de l'entité affiché en en-tête de colonne (ex : "DRH", "Cabinet XX"). */
+  entite_nom: string
+  /** Lien optionnel vers public.directions si l'entité existe déjà dans le référentiel du workspace. */
+  direction_id: string | null
+  /** Personne nommément désignée (optionnel, saisie libre "Prénom NOM"). */
+  personne_nom: string | null
+  /** Lien optionnel vers public.users si la personne est un user du workspace. */
+  user_id: string | null
+  /** P : Pilote (combine Responsible + Accountable du RACI classique). */
+  is_pilote: boolean
+  /** C : Contributeur (ancien "Consulted", acteur qui contribue / est sollicité). */
+  is_contributeur: boolean
+  /** I : Informé (reçoit l'information, pas de contribution active). */
+  is_informe: boolean
+  /** Explication du pourquoi cette partie prenante est impliquée (affichée en tooltip). */
+  motivation: string | null
+  ordre_affichage: number
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}

@@ -781,6 +781,7 @@ function App() {
               size: snap.size as Workspace['size'],
               logo_url: snap.logo_url,
               created_at: prev?.workspace?.created_at ?? '',
+              trigram_convention: 'prenom_nom_3',
             },
             companyName: snap.company_name,
             sector: snap.sector ?? 'Non renseigné',

@@ -63,3 +63,14 @@ export {
   markInvitationsAcceptedForWorkspaceEmail,
 } from './api/invitations'
 export { createRoadmapSnapshot, listRoadmapSnapshots } from './api/roadmapSnapshots'
+export type { CreateRaciChantierInput, UpdateRaciChantierInput } from './api/raci-chantiers'
+export {
+  createRaciChantier,
+  deleteRaciChantier,
+  getRaciChantiersByChantierIds,
+  getRaciChantiersForProjet,
+  listRaciChantiersForChantier,
+  reorderRaciChantiersForChantier,
+  toggleRaciChantierRole,
+  updateRaciChantier,
+} from './api/raci-chantiers'
