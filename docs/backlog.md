@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **21 avril 2026**, 18 h 05 (Europe/Paris)
+Dernière mise à jour : **21 avril 2026**, 21 h 18 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -145,6 +145,11 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - **V1** : backdrop drawer/modales (mousedown+mouseup), RACI typographie + grilles 2 col (pilote radio, autres cases), échéance = maille timeline.  
 - **V2** : pas de saisie dépendance en UI ; création **Direction** inline (modal chantier + drawer RACI) avec détection de doublon.  
 - **V3** : jalon KPI **miroir** sync indicateur/cible/échéance parent, verrou nom+date sur miroir, suppression miroir → vide KPI parent. Script : `docs/supabase-jalons-kpi-source.sql`.
+
+**21 avril 2026 — UX grille timeline + PCI (jalon livré)**  
+- Scroll horizontal **interne** à la carte grille (P0). Fonds d’axe Processus / Organisation **opaques** au scroll (P1). Scrollbar plus lisible, **dégradé droit** discret si contenu à droite, texte d’aide (échéances + parties prenantes), **flèches** latérales en **3 repères** (haut / centre / bas) calés sur la **hauteur visible** (viewport), pas sur la hauteur totale du tableau.  
+- **Refactor PCI** : `pciMatrixTypes.ts`, `usePciMatrix.tsx`, `RaciChantiersPopover.tsx` ; allègement `RaciChantiersMatrix.tsx` et `MaturityRoadmap.tsx`.  
+- Bilan détaillé : [`docs/backlog_update_roadmap_grille_pci_21avril2026.md`](backlog_update_roadmap_grille_pci_21avril2026.md).
 
 **Drag & drop — grille matrice (compléments avril 2026)**  
 - **Vague 1** : déplacement d’une **ligne chantier** entre axes (Processus / Organisation / Outils ; pas KPI), refetch ciblé — **sans rechargement complet de page**.  

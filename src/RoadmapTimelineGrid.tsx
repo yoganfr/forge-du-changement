@@ -1,5 +1,7 @@
-import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
-import type { Axe, Chantier, Jalon } from './lib/types'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react'
+import type { Axe, Chantier, Jalon, RaciChantier } from './lib/types'
+import type { CanonicalStakeholder, StakeholderKey } from './pciMatrixTypes'
+import { roleBadge } from './pciMatrixTypes'
 import {
   assignJalonToColumn,
   buildTimelineColumns,
@@ -26,6 +28,8 @@ const CHANTIER_DRAG_MIME = 'application/x-forge-chantier-v1'
 /** Payload drag & drop jalon (même ligne / ajustement échéance). */
 const JALON_DRAG_MIME = 'application/x-forge-jalon-v1'
 
+const SCROLL_NAV_BAND_LABELS = ['haut', 'centre', 'bas'] as const
+
 const STATUT_LABEL: Record<string, string> = {
   a_venir: 'À venir',
   en_cours: 'En cours',
@@ -47,6 +51,17 @@ function chantierVisibleInAxisBlock(c: Chantier, blockAxe: Axe, jalons: Jalon[])
     return blockAxe === 'PROCESSUS'
   }
   return jalons.some((j) => j.axe === blockAxe)
+}
+
+/** API minimale pour intégrer la matrice PCI dans la grille roadmap (fournie par `usePciMatrix`). */
+export type RoadmapPciColumnApi = {
+  canonicalStakeholders: CanonicalStakeholder[]
+  readOnly: boolean
+  getRowFor: (chantierId: string, key: StakeholderKey) => RaciChantier | null
+  openCell: (chantierId: string, key: StakeholderKey) => void
+  openNewStakeholder: (chantierIdInitial: string | null) => void
+  openEditStakeholder: (key: StakeholderKey) => void
+  firstChantierId: string | null
 }
 
 type Props = {
@@ -71,6 +86,8 @@ type Props = {
   onRoadmapToast?: (message: string, variant: 'error' | 'info' | 'warning') => void
   /** Déplacement d’un jalon sur la même ligne (nouvelle colonne temps). */
   onJalonDrop?: (jalonId: string, targetColumnKey: string) => Promise<void>
+  /** Colonnes PCI (Parties prenantes) — même lignes que les chantiers ; absent = colonne « trail » après les échéances. */
+  pci?: RoadmapPciColumnApi | null
 }
 
 export default function RoadmapTimelineGrid({
@@ -87,6 +104,7 @@ export default function RoadmapTimelineGrid({
   onChantierDrop,
   onRoadmapToast,
   onJalonDrop,
+  pci,
 }: Props) {
   const [chantierDropHoverKey, setChantierDropHoverKey] = useState<string | null>(null)
   const [chantierDropHoverInvalid, setChantierDropHoverInvalid] = useState(false)
@@ -98,6 +116,16 @@ export default function RoadmapTimelineGrid({
     axe: Axe
     columnKey: string
   } | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrollFadeRight, setScrollFadeRight] = useState(false)
+  const [scrollOverflow, setScrollOverflow] = useState(false)
+  const [scrollCanLeft, setScrollCanLeft] = useState(false)
+  const [scrollCanRight, setScrollCanRight] = useState(false)
+  /** Zone visible (viewport) dans le tableau : repères répartis sur cette hauteur, pas sur toute la hauteur du DOM. */
+  const [scrollNavStrip, setScrollNavStrip] = useState<{ top: number; height: number }>({
+    top: 0,
+    height: 0,
+  })
 
   const clearChantierDropHover = useCallback(() => {
     setChantierDropHoverKey(null)
@@ -354,6 +382,183 @@ export default function RoadmapTimelineGrid({
     col: c,
   }))
 
+  const pciColSpan =
+    pci != null && (pci.canonicalStakeholders.length > 0 || !pci.readOnly)
+      ? pci.canonicalStakeholders.length + (pci.readOnly ? 0 : 1)
+      : 0
+  const pciEnabled = pciColSpan > 0
+
+  const syncHorizontalScrollUi = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) {
+      setScrollFadeRight(false)
+      setScrollOverflow(false)
+      setScrollCanLeft(false)
+      setScrollCanRight(false)
+      setScrollNavStrip({ top: 0, height: 0 })
+      return
+    }
+    const r = el.getBoundingClientRect()
+    const vh = window.innerHeight
+    const intersectH = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0))
+    const stripTop = Math.max(0, -r.top)
+    const scrollbarPad = 16
+    setScrollNavStrip({
+      top: stripTop,
+      height: Math.max(0, intersectH - scrollbarPad),
+    })
+
+    const { scrollLeft, scrollWidth, clientWidth } = el
+    const maxScroll = Math.max(0, scrollWidth - clientWidth)
+    if (maxScroll <= 2) {
+      setScrollFadeRight(false)
+      setScrollOverflow(false)
+      setScrollCanLeft(false)
+      setScrollCanRight(false)
+      return
+    }
+    setScrollOverflow(true)
+    setScrollFadeRight(scrollLeft < maxScroll - 2)
+    setScrollCanLeft(scrollLeft > 2)
+    setScrollCanRight(scrollLeft < maxScroll - 2)
+  }, [])
+
+  const scrollTableBy = useCallback((direction: -1 | 1) => {
+    const el = scrollRef.current
+    if (!el) return
+    const delta = Math.min(240, Math.round(el.clientWidth * 0.45)) * direction
+    el.scrollBy({ left: delta, behavior: 'smooth' })
+  }, [])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const run = () => syncHorizontalScrollUi()
+    const ro = new ResizeObserver(run)
+    ro.observe(el)
+    window.addEventListener('resize', run)
+    window.addEventListener('scroll', run, true)
+    const id = requestAnimationFrame(run)
+    return () => {
+      cancelAnimationFrame(id)
+      ro.disconnect()
+      window.removeEventListener('resize', run)
+      window.removeEventListener('scroll', run, true)
+    }
+  }, [syncHorizontalScrollUi, headerCells.length, pciColSpan, axeFilter])
+
+  /** `data` = ligne chantier ; `row-filler` = ligne « Ajoutez un chantier » (PCI inerte, pas de +) ; `grid-filler` = ligne vide lecture seule. */
+  function renderPciRow(
+    mode: 'data' | 'row-filler' | 'grid-filler',
+    chantierId: string | null,
+  ): ReactNode {
+    if (!pciEnabled || !pci) return null
+    const pciRo = pci.readOnly
+    const out: ReactNode[] = []
+    for (const s of pci.canonicalStakeholders) {
+      if (mode !== 'data') {
+        out.push(
+          <td key={s.key} className="mr-tgrid__cell mr-tgrid__pci-cell mr-tgrid__pci-cell--filler" aria-hidden />,
+        )
+        continue
+      }
+      if (!chantierId) continue
+      const row = pci.getRowFor(chantierId, s.key)
+      const badge = row ? roleBadge(row) : null
+      const roles: string[] = []
+      if (row?.is_pilote) roles.push('P')
+      if (row?.is_contributeur) roles.push('C')
+      if (row?.is_informe) roles.push('I')
+      const cellTitle =
+        row?.motivation ?? (badge ? badge.title : 'Cliquer pour impliquer cette partie prenante')
+      out.push(
+        <td
+          key={s.key}
+          className={[
+            'mr-tgrid__cell mr-tgrid__pci-cell',
+            row ? 'mr-tgrid__pci-cell--filled' : 'mr-tgrid__pci-cell--empty',
+            pciRo ? 'mr-tgrid__pci-cell--readonly' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <div className="mr-tgrid__pci-cell-inner">
+            {roles.length > 0 ? (
+              pciRo ? (
+                <span className="rcm-cell-roles" title={cellTitle}>
+                  {roles.map((r) => (
+                    <span key={r} className={`rcm-role rcm-role--${r.toLowerCase()}`}>
+                      {r}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="mr-tgrid__pci-cell-edit"
+                  onClick={() => pci.openCell(chantierId, s.key)}
+                  title={cellTitle}
+                  aria-label="Modifier le rôle de cette partie prenante sur ce chantier"
+                >
+                  <span className="rcm-cell-roles">
+                    {roles.map((r) => (
+                      <span key={r} className={`rcm-role rcm-role--${r.toLowerCase()}`}>
+                        {r}
+                      </span>
+                    ))}
+                  </span>
+                </button>
+              )
+            ) : pciRo ? (
+              <span className="rcm-cell-empty-dot" aria-hidden>
+                ·
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="mr-tgrid__pci-plus"
+                onClick={() => pci.openCell(chantierId, s.key)}
+                title={cellTitle}
+                aria-label="Impliquer cette partie prenante sur ce chantier"
+              >
+                <span className="mr-tgrid__pci-plus-ring" aria-hidden>
+                  +
+                </span>
+              </button>
+            )}
+          </div>
+        </td>,
+      )
+    }
+    if (!pciRo) {
+      if (mode === 'grid-filler') {
+        out.push(<td key="pci-add" className="mr-tgrid__cell mr-tgrid__pci-cell mr-tgrid__pci-cell--filler" aria-hidden />)
+      } else if (mode === 'row-filler') {
+        out.push(
+          <td key="pci-add" className="mr-tgrid__cell mr-tgrid__pci-cell mr-tgrid__pci-cell--filler" aria-hidden />,
+        )
+      } else {
+        out.push(
+          <td key="pci-add" className="mr-tgrid__cell mr-tgrid__pci-cell mr-tgrid__pci-cell--add">
+            <div className="mr-tgrid__pci-cell-inner">
+              <button
+                type="button"
+                className="mr-tgrid__pci-plus"
+                onClick={() => pci.openNewStakeholder(chantierId)}
+                aria-label="Ajouter une partie prenante sur cette ligne"
+              >
+                <span className="mr-tgrid__pci-plus-ring" aria-hidden>
+                  +
+                </span>
+              </button>
+            </div>
+          </td>,
+        )
+      }
+    }
+    return <>{out}</>
+  }
+
   const axesToShow: Axe[] = axeFilter === 'all' ? AXES : [axeFilter]
 
   function bucketForChantierAxis(chId: string, blockAxe: Axe): Map<string, Jalon[]> {
@@ -376,11 +581,68 @@ export default function RoadmapTimelineGrid({
       <p className="mr-tgrid-intro">
         Chaque <strong>chantier</strong> n’apparaît que dans le <strong>bloc d’axe</strong> où vous le créez (pas de doublon
         sur les autres axes). Rattachement au projet transformant ; les <strong>jalons</strong> reprennent la couleur du
-        projet. Un seul jalon par case temps — le <strong>+</strong> disparaît une fois le jalon créé. Faites défiler
-        horizontalement si besoin ; les colonnes sont condensées pour limiter la largeur.
+        projet. Un seul jalon par case temps — le <strong>+</strong> disparaît une fois le jalon créé. Les colonnes
+        <strong>échéances</strong> et <strong>parties prenantes</strong> peuvent dépasser la largeur de l’écran : utilisez le{' '}
+        <strong>défilement horizontal</strong> du tableau (barre en bas ou flèches sur les côtés) pour les parcourir.
       </p>
 
-      <div className="mr-tgrid-scroll" role="region" aria-label="Tableau roadmap par axe et temps">
+      <div
+        className={[
+          'mr-tgrid-scroll-outer',
+          scrollFadeRight ? 'mr-tgrid-scroll-outer--fade-right' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        {scrollOverflow && scrollCanLeft && scrollNavStrip.height > 0 ? (
+          <div
+            className="mr-tgrid-scroll-nav-col mr-tgrid-scroll-nav-col--left"
+            style={{ top: scrollNavStrip.top, height: scrollNavStrip.height }}
+          >
+            {SCROLL_NAV_BAND_LABELS.map((band) => (
+              <div key={`L-${band}`} className="mr-tgrid-scroll-nav__band">
+                <button
+                  type="button"
+                  className="mr-tgrid-scroll-nav__btn"
+                  onClick={() => scrollTableBy(-1)}
+                  aria-label={`Faire défiler le tableau vers la gauche (repère ${band})`}
+                >
+                  <span className="mr-tgrid-scroll-nav__chev" aria-hidden>
+                    ‹
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {scrollOverflow && scrollCanRight && scrollNavStrip.height > 0 ? (
+          <div
+            className="mr-tgrid-scroll-nav-col mr-tgrid-scroll-nav-col--right"
+            style={{ top: scrollNavStrip.top, height: scrollNavStrip.height }}
+          >
+            {SCROLL_NAV_BAND_LABELS.map((band) => (
+              <div key={`R-${band}`} className="mr-tgrid-scroll-nav__band">
+                <button
+                  type="button"
+                  className="mr-tgrid-scroll-nav__btn"
+                  onClick={() => scrollTableBy(1)}
+                  aria-label={`Faire défiler le tableau vers la droite (repère ${band})`}
+                >
+                  <span className="mr-tgrid-scroll-nav__chev" aria-hidden>
+                    ›
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div
+          ref={scrollRef}
+          className="mr-tgrid-scroll"
+          role="region"
+          aria-label="Tableau roadmap par axe et temps"
+          onScroll={syncHorizontalScrollUi}
+        >
         <table className="mr-tgrid mr-tgrid--matrix">
           <thead>
             <tr className="mr-tgrid__head-row mr-tgrid__head-row--primary">
@@ -405,12 +667,18 @@ export default function RoadmapTimelineGrid({
               >
                 <span className="mr-tgrid__ech-group-head-label">Échéances</span>
               </th>
-              <th
-                scope="col"
-                rowSpan={2}
-                className="mr-tgrid__trail-head"
-                aria-label="Prolongement du tableau après la dernière échéance"
-              />
+              {pciEnabled ? (
+                <th scope="colgroup" colSpan={pciColSpan} className="mr-tgrid__pci-group-head">
+                  <span className="mr-tgrid__ech-group-head-label">Parties prenantes</span>
+                </th>
+              ) : (
+                <th
+                  scope="col"
+                  rowSpan={2}
+                  className="mr-tgrid__trail-head"
+                  aria-label="Prolongement du tableau après la dernière échéance"
+                />
+              )}
             </tr>
             <tr className="mr-tgrid__head-row mr-tgrid__head-row--secondary">
               {headerCells.map((h) => (
@@ -419,6 +687,55 @@ export default function RoadmapTimelineGrid({
                   <span className="mr-tgrid__time-sub">{h.sub}</span>
                 </th>
               ))}
+              {pciEnabled && pci
+                ? pci.canonicalStakeholders.map((s) => (
+                    <th
+                      key={s.key}
+                      scope="col"
+                      className={[
+                        'mr-tgrid__pci-head',
+                        'rcm-col-stakeholder',
+                        pci.readOnly ? '' : 'rcm-col-stakeholder--editable',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      title={pci.readOnly ? s.personne_nom ?? undefined : 'Cliquer pour modifier cette partie prenante'}
+                      onClick={pci.readOnly ? undefined : () => pci.openEditStakeholder(s.key)}
+                      role={pci.readOnly ? undefined : 'button'}
+                      tabIndex={pci.readOnly ? -1 : 0}
+                      onKeyDown={
+                        pci.readOnly
+                          ? undefined
+                          : (e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                pci.openEditStakeholder(s.key)
+                              }
+                            }
+                      }
+                    >
+                      <span className="rcm-stakeholder-nom">{s.entite_nom}</span>
+                      {s.personne_nom ? (
+                        <span className="rcm-stakeholder-personne">{s.personne_nom}</span>
+                      ) : null}
+                    </th>
+                  ))
+                : null}
+              {pciEnabled && pci && !pci.readOnly ? (
+                <th scope="col" className="mr-tgrid__pci-head mr-tgrid__pci-head--add rcm-col-add">
+                  <div className="mr-tgrid__pci-cell-inner">
+                    <button
+                      type="button"
+                      className="rcm-add-btn"
+                      onClick={() => pci.openNewStakeholder(pci.firstChantierId)}
+                      disabled={chantiers.length === 0}
+                      title="Ajouter une partie prenante"
+                    >
+                      + Ajouter
+                    </button>
+                  </div>
+                </th>
+              ) : null}
             </tr>
           </thead>
           {axesToShow.map((axe, blockIndex) => {
@@ -459,7 +776,11 @@ export default function RoadmapTimelineGrid({
                       {headerCells.map((h) => (
                         <td key={h.key} className="mr-tgrid__cell mr-tgrid__cell--filler" aria-hidden />
                       ))}
-                      <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
+                      {pciEnabled ? (
+                        renderPciRow('grid-filler', null)
+                      ) : (
+                        <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
+                      )}
                     </tr>
                   )
                 }
@@ -523,7 +844,11 @@ export default function RoadmapTimelineGrid({
                       {headerCells.map((h) => (
                         <td key={h.key} className="mr-tgrid__cell mr-tgrid__cell--filler" aria-hidden />
                       ))}
-                      <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
+                      {pciEnabled ? (
+                        renderPciRow('row-filler', null)
+                      ) : (
+                        <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
+                      )}
                     </tr>
                   )
                 }
@@ -684,7 +1009,11 @@ export default function RoadmapTimelineGrid({
                         </td>
                       )
                     })}
-                    <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
+                    {pciEnabled ? (
+                      renderPciRow('data', ch.id)
+                    ) : (
+                      <td className="mr-tgrid__cell mr-tgrid__trail-cell mr-tgrid__cell--filler" aria-hidden />
+                    )}
                   </tr>
                 )
               })}
@@ -692,6 +1021,7 @@ export default function RoadmapTimelineGrid({
             )
           })}
         </table>
+        </div>
       </div>
     </div>
   )
