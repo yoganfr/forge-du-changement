@@ -1,5 +1,6 @@
 import { LandingNav } from "@/components/LandingNav";
 import { LandingRoadmapTrajectoire } from "@/components/LandingRoadmapTrajectoire";
+import { LandingSmartCta } from "@/components/LandingSmartCta";
 
 const RDV_MAILTO =
   "mailto:contact@laforge.fr?subject=Rendez-vous%20%E2%80%94%20transformation";
@@ -10,23 +11,33 @@ export default function Home() {
       <LandingNav />
 
       <main>
-        {/* 1. Hero — bloc éditorial large aligné à gauche */}
-        <section className="landing-stack landing-stack--hero landing-surface-hero" aria-labelledby="hero-heading">
-          <div className="landing-shell">
-            <div className="landing-col-hero">
-              <h1 id="hero-heading" className="landing-type-hero">
-                Vous lancez <span className="landing-type-hero-accent">UNE</span> transformation.
-                <br />
-                Vos équipes en font déjà 10 différentes.
-              </h1>
-              <p className="landing-body landing-body-muted landing-hero-sub">
-                Le CODIR a validé.
-                <br />
-                Le terrain diverge.
-              </p>
-              <p className="landing-body landing-body-muted landing-hero-sub">
-                À la fin, personne ne pilote vraiment la même chose.
-              </p>
+        {/* 1. Hero responsive — desktop/tablet/mobile avec overlay éditorial */}
+        <section className="landing-stack landing-stack--hero landing-surface-hero landing-hero--bleed" aria-labelledby="hero-heading">
+          <div className="landing-hero__frame">
+            <picture className="landing-hero__picture">
+              <source media="(min-width: 1024px)" srcSet="/images/hero-desktop.png" />
+              <source media="(min-width: 640px)" srcSet="/images/hero-tablet.png" />
+              <img
+                className="landing-hero__image"
+                src="/images/hero-mobile.png"
+                alt="Illustration de trajectoire de transformation d'entreprise"
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
+            <div className="landing-hero__overlay">
+              <div className="landing-hero__copy">
+                <h1 id="hero-heading" className="landing-hero__title">
+                  <span className="landing-hero__title-line">
+                    Vous lancez <span className="landing-type-hero-accent">UNE</span> transformation.
+                  </span>
+                  <span className="landing-hero__title-line">Vos équipes en font déjà 10 différentes.</span>
+                </h1>
+                <p className="landing-hero__subtitle">
+                  Le CODIR a validé. Le terrain diverge.
+                  <br />À la fin, personne ne pilote vraiment la même chose.
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -228,9 +239,12 @@ export default function Home() {
                 <span className="mt-2 block">— ce qui bloque</span>
                 <span className="mt-2 block">— ce qui permettrait d&apos;aligner durablement</span>
               </p>
-              <a href={RDV_MAILTO} className="landing-cta-btn">
-                Prendre rendez-vous
-              </a>
+              <div className="landing-cta-actions">
+                <LandingSmartCta className="landing-cta-btn" />
+                <a href={RDV_MAILTO} className="landing-btn landing-btn--ghost landing-cta-secondary">
+                  Prendre rendez-vous
+                </a>
+              </div>
             </div>
           </div>
         </section>

@@ -1249,6 +1249,71 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.landing-cta-actions {
+  margin-top: var(--space-2xl);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.landing-cta-secondary {
+  min-height: 3.5rem;
+  padding-inline: var(--space-xl);
+}
+
+.landing-modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 170;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+}
+
+.landing-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  background: var(--overlay-backdrop);
+}
+
+.landing-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(38rem, 100%);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--theme-border) 28%, var(--theme-bg-page));
+  background: var(--theme-bg-card);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-xl);
+}
+
+.landing-modal-card h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 1.05rem + 0.3vw, 1.4rem);
+  color: var(--theme-text);
+}
+
+.landing-modal-card p {
+  margin: var(--space-md) 0 0;
+  line-height: 1.6;
+  color: var(--theme-text-muted);
+}
+
+.landing-modal-actions {
+  margin-top: var(--space-lg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
 .landing-list-loose {
   list-style: none;
   padding: 0;

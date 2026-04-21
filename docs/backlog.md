@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **21 avril 2026**, 11 h 55 (Europe/Paris)
+Dernière mise à jour : **21 avril 2026**, 12 h 08 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -250,8 +250,8 @@ Les tâches **59–72** (fondations Next.js + landing workspace SEO) sont **term
 | 71 | Tests sitemap dynamique (avec/sans workspaces publics) | 🔴 | ✅ | — |
 | 72 | Documentation déploiement (`web/README.md`) | 🟡 | ✅ | — |
 | 73 | Composant trajectoire publique (`LandingRoadmapTrajectoire` — route SVG + jalons + étapes) | 🟠 | ✅ | — |
-| 74 | Images hero responsive (desktop/tablet/mobile) | 🟡 | 🚧 | — |
-| 75 | CTA vers dashboard (deep link si auth, modal sinon) | 🟠 | ⬜ | — |
+| 74 | Images hero responsive (desktop/tablet/mobile) | 🟡 | ✅ | — |
+| 75 | CTA vers dashboard (deep link si auth, modal sinon) | 🟠 | ✅ | — |
 
 *Note (EPIC 14 · REF-73)* : le nom de composant retenu en code est `LandingRoadmapTrajectoire` (bloc « Une transformation visible » + assets `/public/images/SVG roadmap assets/`). Ancien libellé backlog : `LandingTimeline`.
 
@@ -394,7 +394,7 @@ Tant que l'EPIC 15 n'est pas finie, la section **Stack technique** plus bas rest
 
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
-- **Maintenant** : finaliser la conversion homepage publique (EPIC 14 · REF-74 / REF-75), finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), puis fermer le gap décideur transverse (EPIC 2 · REF-3).
+- **Maintenant** : finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), puis fermer le gap décideur transverse (EPIC 2 · REF-3).
 - **Après** : **poser les fondations de l'EPIC 15** (REF-76 tokens partagés + REF-77 Auth SSR) avant tout, renforcer gouvernance/sécurité (EPIC 11), arbitrer l'export PDF autonome (EPIC 13), puis lancer les évolutions roadmap avancées (versionnement, fenêtre glissante, paramètres).
 - **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) qui seront idéalement construits directement dans `/web`, et l'extension design premium complète.
 
@@ -404,9 +404,9 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-1. EPIC 14 · **REF-74 / REF-75** — finaliser la boucle acquisition SEO → conversion (images hero responsive, CTA intelligent vers le dashboard) ; **REF-73** (trajectoire visuelle publique) est **livré**.
-2. EPIC 3 · **REF-7** — activer les réactions/réponses sur jalons (différenciation métier "dialogue structuré").
-3. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
+1. EPIC 3 · **REF-7** — activer les réactions/réponses sur jalons (différenciation métier "dialogue structuré").
+2. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
+3. EPIC 11 · **REF-50 / REF-51** — enclencher gouvernance/sécurité opérationnelle (MFA super-admin + journal import CSV) si fenêtre disponible avant REF-76/77.
 
 ### Après
 
@@ -713,7 +713,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 #### En cours
 - Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue décideur consolidée, Ma Direction, états RUN/BUILD variés).
-- EPIC 14 · **REF-74** — jeux d’images hero par breakpoint ; **REF-75** — CTA « intelligent » (session dashboard / modal) au-delà du mailto et du lien `/acces-membres`.
+- EPIC 14 · **REF-74/75** : homepage finalisée avec hero responsive (`/images/hero-desktop.png`, `/images/hero-tablet.png`, `/images/hero-mobile.png`) et CTA intelligent “Accéder à mon espace” (deep-link vers dashboard si session détectée, modal de connexion sinon).
 
 #### À faire
 - Navigation historique navigateur: brancher la navigation interne sur l'URL/historique (retour arrière cohérent sans sortie du site).
