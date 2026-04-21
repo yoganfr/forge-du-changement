@@ -1656,6 +1656,18 @@
   padding: var(--space-md);
 }
 
+/**
+ * Wrapper transparent qui contient a la fois la popover PCI et la modale
+ * CreateDirectionDialog surimposee. display:contents rend le wrap invisible
+ * dans l'arbre de layout (la popover garde son centrage via .rcm-popover-backdrop)
+ * mais le wrap reste present dans le DOM : popoverRef.contains() englobe ainsi
+ * aussi la modale de creation de direction, ce qui empeche le click-outside du
+ * popover PCI de fermer intempestivement quand on interagit avec la modale.
+ */
+.rcm-popover-wrap {
+  display: contents;
+}
+
 .rcm-popover {
   width: min(480px, 100%);
   max-height: min(90vh, 720px);

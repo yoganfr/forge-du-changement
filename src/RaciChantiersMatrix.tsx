@@ -272,11 +272,17 @@ export default function RaciChantiersMatrix({
   useEffect(() => {
     if (popover.kind === 'closed') return
     function onMouseDown(e: MouseEvent) {
+      // Garde-fou : si une modale surimposee est ouverte (ex. CreateDirectionDialog),
+      // on n'intercepte pas les clics qui la concernent.
+      const stackedModal = document.querySelector('.mr-modal-overlay--stack')
+      if (stackedModal && stackedModal.contains(e.target as Node)) return
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
         closePopover()
       }
     }
     function onEsc(e: KeyboardEvent) {
+      // Si une modale surimposee gere deja Escape, on ne ferme pas la popin en cascade.
+      if (document.querySelector('.mr-modal-overlay--stack')) return
       if (e.key === 'Escape') closePopover()
     }
     document.addEventListener('mousedown', onMouseDown)
@@ -598,7 +604,8 @@ function RaciPopover({
 
   return (
     <div className="rcm-popover-backdrop">
-      <div ref={forwardedRef} className="rcm-popover" role="dialog" aria-label="Éditer partie prenante">
+      <div ref={forwardedRef} className="rcm-popover-wrap">
+        <div className="rcm-popover" role="dialog" aria-label="Éditer partie prenante">
         <header className="rcm-popover-header">
           <h4>{headerTitle}</h4>
           <button type="button" className="rcm-popover-close" onClick={onClose} aria-label="Fermer">
@@ -740,18 +747,19 @@ function RaciPopover({
             </button>
           </footer>
         </form>
+        </div>
+        <CreateDirectionDialog
+          open={createDirOpen}
+          workspaceId={workspaceId}
+          existingDirections={workspaceDirections}
+          onClose={() => setCreateDirOpen(false)}
+          onResolved={async (dir) => {
+            setDirectionId(dir.id)
+            setEntiteNom(dir.nom)
+            if (onDirectionCreated) await onDirectionCreated(dir)
+          }}
+        />
       </div>
-      <CreateDirectionDialog
-        open={createDirOpen}
-        workspaceId={workspaceId}
-        existingDirections={workspaceDirections}
-        onClose={() => setCreateDirOpen(false)}
-        onResolved={async (dir) => {
-          setDirectionId(dir.id)
-          setEntiteNom(dir.nom)
-          if (onDirectionCreated) await onDirectionCreated(dir)
-        }}
-      />
     </div>
   )
 }
