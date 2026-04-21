@@ -1,0 +1,78 @@
+-- EPIC 3 · REF-7a
+-- Snapshot roadmap versionnee (V1 figee) + items chantiers/jalons
+
+create table if not exists public.roadmap_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  projet_id uuid null references public.projets(id) on delete set null,
+  label text not null,
+  status text not null default 'draft' check (status in ('draft', 'in_review', 'closed')),
+  frozen_at timestamptz not null default now(),
+  closed_at timestamptz null,
+  created_by uuid null references public.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists roadmap_snapshots_workspace_created_idx
+  on public.roadmap_snapshots (workspace_id, created_at desc);
+
+create table if not exists public.roadmap_snapshot_items (
+  id uuid primary key default gen_random_uuid(),
+  snapshot_id uuid not null references public.roadmap_snapshots(id) on delete cascade,
+  kind text not null check (kind in ('chantier', 'jalon')),
+  source_id uuid not null,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists roadmap_snapshot_items_snapshot_idx
+  on public.roadmap_snapshot_items (snapshot_id, kind);
+
+alter table public.roadmap_snapshots enable row level security;
+alter table public.roadmap_snapshot_items enable row level security;
+
+drop policy if exists roadmap_snapshots_select on public.roadmap_snapshots;
+create policy roadmap_snapshots_select
+  on public.roadmap_snapshots
+  for select
+  using (workspace_id = public.current_member_workspace_id() or public.is_platform_superadmin());
+
+drop policy if exists roadmap_snapshots_insert on public.roadmap_snapshots;
+create policy roadmap_snapshots_insert
+  on public.roadmap_snapshots
+  for insert
+  with check (
+    public.is_platform_superadmin()
+    or public.is_workspace_org_admin(workspace_id)
+    or public.has_workspace_consultant_access(workspace_id)
+  );
+
+drop policy if exists roadmap_snapshot_items_select on public.roadmap_snapshot_items;
+create policy roadmap_snapshot_items_select
+  on public.roadmap_snapshot_items
+  for select
+  using (
+    exists (
+      select 1
+      from public.roadmap_snapshots rs
+      where rs.id = snapshot_id
+        and (rs.workspace_id = public.current_member_workspace_id() or public.is_platform_superadmin())
+    )
+  );
+
+drop policy if exists roadmap_snapshot_items_insert on public.roadmap_snapshot_items;
+create policy roadmap_snapshot_items_insert
+  on public.roadmap_snapshot_items
+  for insert
+  with check (
+    exists (
+      select 1
+      from public.roadmap_snapshots rs
+      where rs.id = snapshot_id
+        and (
+          public.is_platform_superadmin()
+          or public.is_workspace_org_admin(rs.workspace_id)
+          or public.has_workspace_consultant_access(rs.workspace_id)
+        )
+    )
+  );

@@ -62,3 +62,4 @@ export {
   getWorkspaceInvitations,
   markInvitationsAcceptedForWorkspaceEmail,
 } from './api/invitations'
+export { createRoadmapSnapshot, listRoadmapSnapshots } from './api/roadmapSnapshots'

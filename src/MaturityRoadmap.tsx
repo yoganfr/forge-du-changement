@@ -13,12 +13,14 @@ import {
   getRoadmapEligibleProjects,
   getRoadmapEligibleProjectsForDirection,
   getWorkspaceDirections,
+  listRoadmapSnapshots,
   monthToQuarter,
   recalculateOrdreSequentielForChantierAxe,
   removeRaci,
   setRaci,
   updateChantier,
   updateChantierAndReparentProject,
+  createRoadmapSnapshot,
   updateJalon,
 } from './lib/api'
 import { getCurrentUser } from './lib/auth'
@@ -125,6 +127,9 @@ export default function MaturityRoadmap({
     axe: Axe
   } | null>(null)
   const [quickAddSaving, setQuickAddSaving] = useState(false)
+  const [snapshotSaving, setSnapshotSaving] = useState(false)
+  const [snapshotFeedback, setSnapshotFeedback] = useState<string | null>(null)
+  const [snapshots, setSnapshots] = useState<Array<{ id: string; label: string; created_at: string; status: string }>>([])
   const [roadmapToast, setRoadmapToast] = useState<{
     message: string
     variant: 'error' | 'info' | 'warning'
@@ -210,6 +215,22 @@ export default function MaturityRoadmap({
   useEffect(() => {
     void loadAll()
   }, [loadAll])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const list = await listRoadmapSnapshots(workspaceId)
+        if (cancelled) return
+        setSnapshots(list)
+      } catch {
+        if (!cancelled) setSnapshots([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId])
 
   const projectsById = useMemo(
     () => new Map(roadmapProjects.map((p) => [p.id, p])),
@@ -452,6 +473,44 @@ export default function MaturityRoadmap({
     }
   }
 
+  async function handleCreateSnapshot() {
+    if (snapshotSaving) return
+    const label = window.prompt('Libellé du snapshot roadmap (ex. V1 avril 2026)')?.trim()
+    if (!label) return
+    try {
+      setSnapshotSaving(true)
+      const selectedProjectId = selectedProjectIds.length === 1 ? selectedProjectIds[0] : null
+      const items = chantiers.flatMap((chantier) => {
+        const chantierPayload = {
+          kind: 'chantier' as const,
+          source_id: chantier.id,
+          payload: chantier as unknown as Record<string, unknown>,
+        }
+        const jalonItems = (jalonsByChantier[chantier.id] ?? []).map((jalon) => ({
+          kind: 'jalon' as const,
+          source_id: jalon.id,
+          payload: jalon as unknown as Record<string, unknown>,
+        }))
+        return [chantierPayload, ...jalonItems]
+      })
+      await createRoadmapSnapshot({
+        workspaceId,
+        projetId: selectedProjectId,
+        label,
+        status: 'draft',
+        items,
+      })
+      const list = await listRoadmapSnapshots(workspaceId)
+      setSnapshots(list)
+      setSnapshotFeedback(`Snapshot créé : ${label}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Impossible de créer le snapshot roadmap'
+      setSnapshotFeedback(message)
+    } finally {
+      setSnapshotSaving(false)
+    }
+  }
+
   async function openDrawer(jalon: Jalon, chantierId: string) {
     setDrawerSeedJalon(null)
     setDrawerChantierId(chantierId)
@@ -494,6 +553,14 @@ export default function MaturityRoadmap({
         ← Retour aux projets
       </button>
       <h1 className="mr-title">Maturity Roadmap</h1>
+      {!readOnly && (
+        <div className="mr-snapshot-row">
+          <button type="button" className="mr-back" onClick={() => { void handleCreateSnapshot() }} disabled={snapshotSaving}>
+            {snapshotSaving ? 'Figement…' : 'Figer la V1 (snapshot)'}
+          </button>
+          {snapshotFeedback && <span className="mr-muted">{snapshotFeedback}</span>}
+        </div>
+      )}
       <p className="mr-sub">
         {memberDirectionLabel ? (
           <>
@@ -508,6 +575,11 @@ export default function MaturityRoadmap({
         <strong>glisser-déposer l’intitulé du chantier</strong> vers une autre ligne d’axe (Processus, Organisation ou
         Outils) pour déplacer tout le chantier ; l’axe KPI reste réservé aux jalons synchronisés automatiquement.
       </p>
+      {snapshots.length > 0 && (
+        <p className="mr-muted">
+          Snapshots récents : {snapshots.slice(0, 3).map((s) => `${s.label} (${new Date(s.created_at).toLocaleDateString('fr-FR')})`).join(' · ')}
+        </p>
+      )}
 
       <div className="mr-toolbar">
         <div className="mr-toolbar__field mr-toolbar__field--projects-legend">
