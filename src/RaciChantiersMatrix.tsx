@@ -285,6 +285,46 @@ export default function RaciChantiersMatrix({
   )
 
   /**
+   * REF-7b.1 — suppression d'une colonne entière (entête partie prenante).
+   * Supprime toutes les rows DB partageant la key canonique + purge le pending éphémère.
+   */
+  const handleBulkDeleteStakeholder = useCallback(
+    async (key: StakeholderKey) => {
+      const affected: RaciChantier[] = []
+      for (const list of Object.values(raciByChantier)) {
+        for (const row of list) {
+          if (stakeholderKey(row) === key) affected.push(row)
+        }
+      }
+      const pending = pendingStakeholders.find((p) => p.key === key)
+      const label = affected[0]?.entite_nom ?? pending?.entite_nom ?? 'cette colonne'
+      const personne = affected[0]?.personne_nom ?? pending?.personne_nom ?? null
+      const displayLabel = personne ? `${label} — ${personne}` : label
+      const count = affected.length
+      const msg =
+        count > 0
+          ? `Supprimer définitivement la colonne "${displayLabel}" ?\n\n${count} implication(s) sur des chantiers vont être effacées (rôles P/C/I, motivations).`
+          : `Supprimer la colonne "${displayLabel}" ?`
+      if (!window.confirm(msg)) return
+
+      setSaving(true)
+      try {
+        for (const row of affected) {
+          await deleteRaciChantier(row.id)
+        }
+        setPendingStakeholders((prev) => prev.filter((p) => p.key !== key))
+        await reload()
+        closePopover()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Erreur suppression de la colonne')
+      } finally {
+        setSaving(false)
+      }
+    },
+    [raciByChantier, pendingStakeholders, reload, closePopover],
+  )
+
+  /**
    * REF-7b.1 fix 3 — création d'une colonne partie prenante "éphémère" (pas de call DB).
    * La colonne apparaît dans la matrice ; la row DB ne sera créée que quand un rôle
    * sera coché dans une cellule de cette colonne.
@@ -494,6 +534,7 @@ export default function RaciChantiersMatrix({
           onDelete={handleDeleteRow}
           onAddEphemeral={handleAddEphemeralStakeholder}
           onBulkUpdateStakeholder={handleBulkUpdateStakeholder}
+          onBulkDeleteStakeholder={handleBulkDeleteStakeholder}
           onDirectionCreated={onDirectionCreated}
         />
       )}
@@ -541,6 +582,7 @@ type RaciPopoverProps = {
       personne_nom: string | null
     },
   ) => Promise<void>
+  onBulkDeleteStakeholder: (key: StakeholderKey) => Promise<void>
   onDirectionCreated?: (direction: Direction) => void | Promise<void>
 }
 
@@ -564,6 +606,7 @@ function RaciPopover({
   onDelete,
   onAddEphemeral,
   onBulkUpdateStakeholder,
+  onBulkDeleteStakeholder,
   onDirectionCreated,
   forwardedRef,
 }: RaciPopoverProps & { forwardedRef: React.RefObject<HTMLDivElement | null> }) {
@@ -621,12 +664,45 @@ function RaciPopover({
     return { nom: otherPilote.entite_nom, personne: otherPilote.personne_nom }
   }, [state, role, raciByChantier, existingRow])
 
+  /**
+   * Détection de doublon d'entité (bloquant) :
+   * - duplicate exact : une autre colonne avec même entite_type + même nom + même personne.
+   * - duplicate sans personne : l'entité existe deja mais la personne saisie est vide
+   *   → on force l'utilisateur a preciser une personne pour lever l'ambiguite.
+   * Applique uniquement en modes 'new-stakeholder' et 'stakeholder-edit' (en cell l'identite est verrouillee).
+   */
+  const duplicateDetected = useMemo<'exact' | 'same-entity-no-person' | null>(() => {
+    if (state.kind === 'cell') return null
+    const nom = entiteNom.trim().toLowerCase()
+    if (!nom) return null
+    const personne = personneNom.trim().toLowerCase()
+    const currentKey = [entiteType, nom, personne].join('|')
+    const selfKey = state.kind === 'stakeholder-edit' ? state.stakeholderKey : null
+
+    const sameEntityMatches = existingStakeholders.filter(
+      (s) =>
+        s.entite_type === entiteType &&
+        s.entite_nom.trim().toLowerCase() === nom &&
+        s.key !== selfKey,
+    )
+    if (sameEntityMatches.length === 0) return null
+
+    const exact = sameEntityMatches.some(
+      (s) => (s.personne_nom ?? '').trim().toLowerCase() === personne && s.key === currentKey,
+    )
+    if (exact) return 'exact'
+
+    if (personne === '') return 'same-entity-no-person'
+    return null
+  }, [state, entiteType, entiteNom, personneNom, existingStakeholders])
+
   const disabled = useMemo(() => {
     const nom = entiteNom.trim()
     if (!nom) return true
+    if (duplicateDetected) return true
     if (isRoleHidden) return false
     return role === null
-  }, [entiteNom, role, isRoleHidden])
+  }, [entiteNom, role, isRoleHidden, duplicateDetected])
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -774,6 +850,17 @@ function RaciPopover({
                 placeholder="Prénom NOM"
               />
             </label>
+
+            {duplicateDetected === 'exact' && (
+              <p className="rcm-warning-inline rcm-warning-inline--error" role="alert">
+                ⛔ Une colonne avec cette entité et cette personne existe déjà. Modifiez l'un des champs pour lever le doublon.
+              </p>
+            )}
+            {duplicateDetected === 'same-entity-no-person' && (
+              <p className="rcm-warning-inline" role="alert">
+                ⚠ L'entité <strong>{entiteNom.trim()}</strong> existe déjà en tant que colonne. Précisez une personne (Prénom NOM) pour distinguer cette partie prenante.
+              </p>
+            )}
           </fieldset>
 
           {!isRoleHidden && (
@@ -845,6 +932,17 @@ function RaciPopover({
                 disabled={saving}
               >
                 Retirer du chantier
+              </button>
+            )}
+            {isBulkEditMode && (
+              <button
+                type="button"
+                className="rcm-btn rcm-btn--danger"
+                onClick={() => onBulkDeleteStakeholder(state.stakeholderKey)}
+                disabled={saving}
+                title="Supprime la colonne et toutes les implications P/C/I associées"
+              >
+                Supprimer la colonne
               </button>
             )}
             <button type="button" className="rcm-btn" onClick={onClose} disabled={saving}>

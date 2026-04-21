@@ -1800,6 +1800,12 @@
   line-height: 1.4;
 }
 
+.rcm-warning-inline--error {
+  background: color-mix(in srgb, var(--ui-danger, #b91c1c) 10%, transparent);
+  color: var(--ui-danger, #b91c1c);
+  border-color: color-mix(in srgb, var(--ui-danger, #b91c1c) 30%, transparent);
+}
+
 .rcm-role-check {
   display: inline-flex;
   align-items: center;
