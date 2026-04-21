@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **20 avril 2026**, 04 h 25 (Europe/Paris)
+Dernière mise à jour : **21 avril 2026**, 03 h 45 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -225,11 +225,41 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 ---
 
+## EPIC 14 — Landing Pages SEO (Next.js) 🟠 PARTIEL
+
+Objectif : créer des landing pages publiques SEO pour les workspaces avec ISR, cache CDN Vercel et coût infra minimal ; étendre le site Next.js avec une **homepage commerciale** et une **preuve visuelle** (trajectoire / roadmap).
+
+Les tâches **59–72** (fondations Next.js + landing workspace SEO) sont **terminées**. Les tâches **73–75** portent sur la **conversion** et le **polish visuel** de la homepage publique.
+
+| REF | Titre | Priorité | Statut | GH |
+|---|-------|----------|--------|----|
+| 59 | Setup Next.js App Router (`web/`) séparé de Vite | 🔴 | ✅ | — |
+| 60 | Configuration base (colonnes `is_public`, `archived`, `current_step`, `updated_at`) | 🔴 | ✅ | — |
+| 61 | Page workspace dynamique `/workspace/[id]` avec ISR (`revalidate=3600`) | 🔴 | ✅ | — |
+| 62 | Metadata SEO complète (title, description, OG, Twitter, canonical) | 🔴 | ✅ | — |
+| 63 | JSON-LD structured data (Organization schema) | 🟠 | ✅ | — |
+| 64 | Sitemap dynamique (`is_public=true`, `archived=false`) | 🔴 | ✅ | — |
+| 65 | Robots.txt avec URL sitemap dynamique | 🔴 | ✅ | — |
+| 66 | Clients Supabase anon + admin server-only | 🔴 | ✅ | — |
+| 67 | React cache pour mutualiser les fetchs par requête | 🟠 | ✅ | — |
+| 68 | Variable d’environnement `NEXT_PUBLIC_SITE_URL` (fallback localhost) | 🟠 | ✅ | — |
+| 69 | Standardisation Supabase `SUPABASE_SERVICE_ROLE_KEY` | 🟠 | ✅ | — |
+| 70 | Tests 404 (workspace inexistant + privé) | 🔴 | ✅ | — |
+| 71 | Tests sitemap dynamique (avec/sans workspaces publics) | 🔴 | ✅ | — |
+| 72 | Documentation déploiement (`web/README.md`) | 🟡 | ✅ | — |
+| 73 | Composant trajectoire publique (`LandingRoadmapTrajectoire` — route SVG + jalons + étapes) | 🟠 | ✅ | — |
+| 74 | Images hero responsive (desktop/tablet/mobile) | 🟡 | 🚧 | — |
+| 75 | CTA vers dashboard (deep link si auth, modal sinon) | 🟠 | ⬜ | — |
+
+*Note (EPIC 14 · REF-73)* : le nom de composant retenu en code est `LandingRoadmapTrajectoire` (bloc « Une transformation visible » + assets `/public/images/SVG roadmap assets/`). Ancien libellé backlog : `LandingTimeline`.
+
+---
+
 ## Stack technique
 
-- **Frontend** : React + TypeScript (Vite)
+- **Frontend** : React + TypeScript (Vite) + Next.js App Router (`web/`) pour landing SEO
 - **Backend** : Supabase (PostgreSQL + Storage + RLS + Auth)
-- **Déploiement** : Vercel (main branch auto-deploy)
+- **Déploiement** : Vercel (2 projets : dashboard Vite + landing Next.js)
 - **Repo** : yoganfr/forge-du-changement
 - **URL prod** : https://forge-du-changement.vercel.app
 
@@ -279,12 +309,22 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - `src/lib/supabase.ts` — client Supabase (vars d'env)
 - `src/lib/types.ts` — types TypeScript
 
+**Landing Next.js (`web/`) — homepage publique et SEO**
+
+- `web/app/page.tsx` — homepage commerciale (sections éditoriales, CTA mailto, bloc trajectoire)
+- `web/components/LandingNav.tsx` — navigation (logo, RDV `#rdv`, lien membre, menu mobile, thème)
+- `web/components/LandingRoadmapTrajectoire.tsx` — trajectoire route + jalons + cartes d’étapes
+- `web/components/ThemeToggle.tsx` — bascule clair / sombre (landing)
+- `web/public/fonts/` — Satoshi + Clash Display (`fonts.css`)
+- `web/app/acces-membres/page.tsx` / `web/app/bientot-disponible/page.tsx` — pages de transition vers le parcours membre (à connecter au dashboard)
+
 ## Documentation projet
 
 - `docs/# Règles métier — Maturity Roadmap.md` — référence métier module roadmap
 - `docs/maturity-roadmap-synthese-evolutions-produit.md` — pistes versionnement, param workspace, etc.
 - `docs/supabase-chantiers-axe.sql` — migration `chantiers.axe` (typage par axe de création)
 - `docs/proposition-regles-matrice-permissions.md` — règles en langage métier
+- `docs/history/README.md` — index des historiques de sessions importantes
 - `docs/security-quick-wins.md` — MFA, rate limits, RLS, audit
 - `docs/supabase-evolution-permissions-alignement.sql` — script SQL principal
 - `docs/supabase-verify-permissions-setup.sql` — vérifs post-migration
@@ -305,19 +345,33 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 ## Trajectoire suggérée
 
-**Sprint prochain (CODIR-ready)** :
-1. EPIC 2 · **REF-3** — Gantt macro consolidé multi-directions (reste le gap principal de l’EPIC) — **GH-3**
-2. EPIC 3 · **REF-7** — Réactions / réponses sur jalons (valeur « dialogue structuré » des règles métier) — **GH-7**
-3. EPIC 12 — Top 3 polish design (**REF-52, REF-53, REF-58** — lot **GH-20**)
-4. EPIC 13 · **REF-36** — Finaliser si besoin livrable PDF autonome (au-delà de l’impression navigateur) — **GH-14**
+La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
-**Sprint d’après** :
-5. EPIC 3 — versionnement roadmap, param maille temporelle workspace (voir synthèse évolutions)
-6. EPIC 4 — PAE **REF-10–13** (**GH-10** structure, **GH-21** suite actions / validation / lien jalons)
+- **Maintenant** : finaliser la conversion homepage publique (EPIC 14 · REF-74 / REF-75), finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), puis fermer le gap décideur transverse (EPIC 2 · REF-3).
+- **Après** : renforcer gouvernance/sécurité (EPIC 11), arbitrer l'export PDF autonome (EPIC 13), puis lancer les évolutions roadmap avancées (versionnement, fenêtre glissante, paramètres).
+- **Plus tard** : déployer les modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète.
 
-**Plus tard** :
-7. EPIC 5 — Plan de charge (**GH-11** grille · **GH-22** suite)
-8. EPIC 6 — Module SENS (**GH-15** · **GH-23** suite)
+---
+
+## Priorisation produit — Maintenant / Après / Plus tard
+
+### Maintenant
+
+1. EPIC 14 · **REF-74 / REF-75** — finaliser la boucle acquisition SEO → conversion (images hero responsive, CTA intelligent vers le dashboard) ; **REF-73** (trajectoire visuelle publique) est **livré**.
+2. EPIC 3 · **REF-7** — activer les réactions/réponses sur jalons (différenciation métier "dialogue structuré").
+3. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
+
+### Après
+
+4. EPIC 11 · **REF-50 / REF-51** — MFA super-admin + journal des imports CSV (gouvernance/sécurité opérationnelle).
+5. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
+6. EPIC 3 (évolutions avancées) — lancer les phases de `maturity-roadmap-synthese-evolutions-produit.md` : paramètres d'échéances workspace, fenêtre glissante, versionnement major/minor.
+
+### Plus tard
+
+7. EPIC 4 · **REF-10–13** — PAE complet (structure, actions, validation N+1, lien jalons).
+8. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires (plan de charge, SENS, Fabrique, management terrain, pilotage projet).
+9. EPIC 12 (complet) — extension du design premium au-delà des quick wins ciblés.
 
 ---
 
@@ -603,9 +657,14 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - Sécurité backend: script de garde SQL sur `projets.dg_validated_transfo` pour bloquer `codir`/`contributeur`.
 - Cartes RUN: alignement visuel avec BUILD sur l'entête (placement mini-gantt et pastille criticité).
 - Gouvernance Git: règle projet enrichie avec trailer `Made-with: Cursor AI`, convention commit formalisée dans `docs/git-commit-conventions.md`.
+- Landing Next.js (EPIC 14): déploiement Vercel opérationnel sur `https://forge-du-changement-kgyg-xi.vercel.app`.
+- Landing Next.js (EPIC 14): validation confidentialité en production de test (workspaces privés -> 404 homogène, aucune fuite d'information).
+- Landing Next.js (EPIC 14): confirmation du modèle opt-in (`is_public = false` par défaut), publication explicite uniquement.
+- Landing Next.js (EPIC 14 · REF-73 + homepage) : homepage publique `web/app/page.tsx` (parcours éditorial hero → constat → preuve → CTA mailto), composant `LandingRoadmapTrajectoire` (route SVG, pins, étapes statut done/current/upcoming), `LandingNav` + `ThemeToggle`, polices Satoshi / Clash Display dans `web/public/fonts/`, assets PNG/SVG roadmap, pages transition `/acces-membres` et `/bientot-disponible`, ajustements `layout` / `globals.css` / `next.config.ts`. Commit `51c390e`.
 
 #### En cours
 - Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue décideur consolidée, Ma Direction, états RUN/BUILD variés).
+- EPIC 14 · **REF-74** — jeux d’images hero par breakpoint ; **REF-75** — CTA « intelligent » (session dashboard / modal) au-delà du mailto et du lien `/acces-membres`.
 
 #### À faire
 - Navigation historique navigateur: brancher la navigation interne sur l'URL/historique (retour arrière cohérent sans sortie du site).
