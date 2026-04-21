@@ -55,6 +55,7 @@ type PopoverState =
       existingRow: RaciChantier | null
     }
   | { kind: 'new-stakeholder'; chantierIdInitial: string | null }
+  | { kind: 'stakeholder-edit'; stakeholderKey: StakeholderKey }
 
 function stakeholderKey(row: Pick<RaciChantier, 'entite_type' | 'entite_nom' | 'personne_nom'>): StakeholderKey {
   return [row.entite_type, row.entite_nom.trim().toLowerCase(), (row.personne_nom ?? '').trim().toLowerCase()].join('|')
@@ -181,6 +182,14 @@ export default function RaciChantiersMatrix({
     [readOnly],
   )
 
+  const openEditStakeholder = useCallback(
+    (key: StakeholderKey) => {
+      if (readOnly) return
+      setPopover({ kind: 'stakeholder-edit', stakeholderKey: key })
+    },
+    [readOnly],
+  )
+
   const closePopover = useCallback(() => setPopover({ kind: 'closed' }), [])
 
   const handleSaveRow = useCallback(
@@ -214,6 +223,65 @@ export default function RaciChantiersMatrix({
       }
     },
     [reload, closePopover],
+  )
+
+  /**
+   * REF-7b.1 — mise à jour du header de colonne (entité / personne / type) qui se propage
+   * à toutes les rows DB partageant la key canonique actuelle + au pending local éventuel.
+   */
+  const handleBulkUpdateStakeholder = useCallback(
+    async (
+      oldKey: StakeholderKey,
+      input: {
+        entite_type: RaciChantierEntiteType
+        entite_nom: string
+        direction_id: string | null
+        personne_nom: string | null
+      },
+    ) => {
+      setSaving(true)
+      try {
+        const affected: RaciChantier[] = []
+        for (const list of Object.values(raciByChantier)) {
+          for (const row of list) {
+            if (stakeholderKey(row) === oldKey) affected.push(row)
+          }
+        }
+        for (const row of affected) {
+          await updateRaciChantier(row.id, {
+            entite_type: input.entite_type,
+            entite_nom: input.entite_nom,
+            direction_id: input.direction_id,
+            personne_nom: input.personne_nom,
+          })
+        }
+        setPendingStakeholders((prev) =>
+          prev.map((p) => {
+            if (p.key !== oldKey) return p
+            const newKey = stakeholderKey({
+              entite_type: input.entite_type,
+              entite_nom: input.entite_nom,
+              personne_nom: input.personne_nom,
+            })
+            return {
+              key: newKey,
+              entite_type: input.entite_type,
+              entite_nom: input.entite_nom,
+              direction_id: input.direction_id,
+              personne_nom: input.personne_nom,
+              user_id: p.user_id,
+            }
+          }),
+        )
+        await reload()
+        closePopover()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Erreur mise à jour de la partie prenante')
+      } finally {
+        setSaving(false)
+      }
+    },
+    [raciByChantier, reload, closePopover],
   )
 
   /**
@@ -312,7 +380,21 @@ export default function RaciChantiersMatrix({
             <tr>
               <th className="rcm-col-chantier">Chantier</th>
               {canonicalStakeholders.map((s) => (
-                <th key={s.key} className="rcm-col-stakeholder" title={s.personne_nom ?? undefined}>
+                <th
+                  key={s.key}
+                  className={`rcm-col-stakeholder ${readOnly ? '' : 'rcm-col-stakeholder--editable'}`}
+                  title={readOnly ? s.personne_nom ?? undefined : 'Cliquer pour modifier cette partie prenante'}
+                  onClick={readOnly ? undefined : () => openEditStakeholder(s.key)}
+                  role={readOnly ? undefined : 'button'}
+                  tabIndex={readOnly ? -1 : 0}
+                  onKeyDown={(e) => {
+                    if (readOnly) return
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      openEditStakeholder(s.key)
+                    }
+                  }}
+                >
                   <span className="rcm-stakeholder-nom">{s.entite_nom}</span>
                   {s.personne_nom && <span className="rcm-stakeholder-personne">{s.personne_nom}</span>}
                 </th>
@@ -411,6 +493,7 @@ export default function RaciChantiersMatrix({
           onSave={handleSaveRow}
           onDelete={handleDeleteRow}
           onAddEphemeral={handleAddEphemeralStakeholder}
+          onBulkUpdateStakeholder={handleBulkUpdateStakeholder}
           onDirectionCreated={onDirectionCreated}
         />
       )}
@@ -421,7 +504,7 @@ export default function RaciChantiersMatrix({
 type PciRole = 'pilote' | 'contributeur' | 'informe' | null
 
 type RaciPopoverProps = {
-  state: Extract<PopoverState, { kind: 'cell' | 'new-stakeholder' }>
+  state: Extract<PopoverState, { kind: 'cell' | 'new-stakeholder' | 'stakeholder-edit' }>
   workspaceDirections: Direction[]
   existingStakeholders: CanonicalStakeholder[]
   raciByChantier: Record<string, RaciChantier[]>
@@ -449,6 +532,15 @@ type RaciPopoverProps = {
     direction_id: string | null
     personne_nom: string | null
   }) => void
+  onBulkUpdateStakeholder: (
+    oldKey: StakeholderKey,
+    input: {
+      entite_type: RaciChantierEntiteType
+      entite_nom: string
+      direction_id: string | null
+      personne_nom: string | null
+    },
+  ) => Promise<void>
   onDirectionCreated?: (direction: Direction) => void | Promise<void>
 }
 
@@ -471,28 +563,36 @@ function RaciPopover({
   onSave,
   onDelete,
   onAddEphemeral,
+  onBulkUpdateStakeholder,
   onDirectionCreated,
   forwardedRef,
 }: RaciPopoverProps & { forwardedRef: React.RefObject<HTMLDivElement | null> }) {
   const existingRow = state.kind === 'cell' ? state.existingRow : null
-  const lockedStakeholder = useMemo<CanonicalStakeholder | null>(() => {
-    if (state.kind !== 'cell') return null
-    return existingStakeholders.find((s) => s.key === state.stakeholderKey) ?? null
+  const editedStakeholder = useMemo<CanonicalStakeholder | null>(() => {
+    if (state.kind === 'cell') return existingStakeholders.find((s) => s.key === state.stakeholderKey) ?? null
+    if (state.kind === 'stakeholder-edit')
+      return existingStakeholders.find((s) => s.key === state.stakeholderKey) ?? null
+    return null
   }, [state, existingStakeholders])
 
-  const isStakeholderOnlyMode = state.kind === 'new-stakeholder'
+  // Dans le mode cellule, on "verrouille" l'identité de la colonne pour éviter d'en créer une nouvelle par erreur —
+  // la modification de l'identité se fait volontairement via l'entête (mode stakeholder-edit).
+  const lockedStakeholder = state.kind === 'cell' ? editedStakeholder : null
+
+  const isRoleHidden = state.kind === 'new-stakeholder' || state.kind === 'stakeholder-edit'
+  const isBulkEditMode = state.kind === 'stakeholder-edit'
 
   const [entiteType, setEntiteType] = useState<RaciChantierEntiteType>(
-    existingRow?.entite_type ?? lockedStakeholder?.entite_type ?? 'direction',
+    existingRow?.entite_type ?? editedStakeholder?.entite_type ?? 'direction',
   )
   const [directionId, setDirectionId] = useState<string | null>(
-    existingRow?.direction_id ?? lockedStakeholder?.direction_id ?? null,
+    existingRow?.direction_id ?? editedStakeholder?.direction_id ?? null,
   )
   const [entiteNom, setEntiteNom] = useState<string>(
-    existingRow?.entite_nom ?? lockedStakeholder?.entite_nom ?? '',
+    existingRow?.entite_nom ?? editedStakeholder?.entite_nom ?? '',
   )
   const [personneNom, setPersonneNom] = useState<string>(
-    existingRow?.personne_nom ?? lockedStakeholder?.personne_nom ?? '',
+    existingRow?.personne_nom ?? editedStakeholder?.personne_nom ?? '',
   )
   const [role, setRole] = useState<PciRole>(initialRole(existingRow))
   const [motivation, setMotivation] = useState<string>(existingRow?.motivation ?? '')
@@ -524,9 +624,9 @@ function RaciPopover({
   const disabled = useMemo(() => {
     const nom = entiteNom.trim()
     if (!nom) return true
-    if (isStakeholderOnlyMode) return false
+    if (isRoleHidden) return false
     return role === null
-  }, [entiteNom, role, isStakeholderOnlyMode])
+  }, [entiteNom, role, isRoleHidden])
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -536,7 +636,7 @@ function RaciPopover({
       const personne = personneNom.trim() || null
       const effectiveDirectionId = entiteType === 'direction' ? directionId : null
 
-      if (isStakeholderOnlyMode) {
+      if (state.kind === 'new-stakeholder') {
         onAddEphemeral({
           entite_type: entiteType,
           entite_nom: nom,
@@ -546,7 +646,17 @@ function RaciPopover({
         return
       }
 
-      const chantierId = state.kind === 'cell' ? state.chantierId : ''
+      if (state.kind === 'stakeholder-edit') {
+        await onBulkUpdateStakeholder(state.stakeholderKey, {
+          entite_type: entiteType,
+          entite_nom: nom,
+          direction_id: effectiveDirectionId,
+          personne_nom: personne,
+        })
+        return
+      }
+
+      const chantierId = state.chantierId
       if (!chantierId) {
         alert('Aucun chantier cible pour créer la partie prenante.')
         return
@@ -565,8 +675,8 @@ function RaciPopover({
     },
     [
       disabled,
-      isStakeholderOnlyMode,
       onAddEphemeral,
+      onBulkUpdateStakeholder,
       state,
       entiteType,
       entiteNom,
@@ -594,13 +704,15 @@ function RaciPopover({
     [workspaceDirections],
   )
 
-  const headerTitle = existingRow
-    ? 'Modifier la partie prenante'
-    : isStakeholderOnlyMode
-      ? 'Ajouter une partie prenante'
-      : lockedStakeholder
-        ? 'Impliquer cette partie prenante'
-        : 'Ajouter une partie prenante'
+  const headerTitle = isBulkEditMode
+    ? 'Modifier la partie prenante (entête de colonne)'
+    : existingRow
+      ? 'Modifier la partie prenante'
+      : state.kind === 'new-stakeholder'
+        ? 'Ajouter une partie prenante'
+        : lockedStakeholder
+          ? 'Impliquer cette partie prenante'
+          : 'Ajouter une partie prenante'
 
   return (
     <div className="rcm-popover-backdrop">
@@ -664,7 +776,7 @@ function RaciPopover({
             </label>
           </fieldset>
 
-          {!isStakeholderOnlyMode && (
+          {!isRoleHidden && (
             <>
               <fieldset className="rcm-popover-fieldset">
                 <legend className="rcm-popover-legend">Rôle sur ce chantier</legend>
@@ -741,7 +853,7 @@ function RaciPopover({
             <button type="submit" className="rcm-btn rcm-btn--primary" disabled={disabled || saving}>
               {saving
                 ? 'Enregistrement…'
-                : isStakeholderOnlyMode
+                : state.kind === 'new-stakeholder'
                   ? 'Créer la colonne'
                   : 'Enregistrer'}
             </button>

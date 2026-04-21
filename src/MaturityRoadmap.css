@@ -1519,6 +1519,18 @@
   background: color-mix(in srgb, var(--theme-border) 12%, var(--theme-bg-card));
 }
 
+.rcm-col-stakeholder--editable {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rcm-col-stakeholder--editable:hover,
+.rcm-col-stakeholder--editable:focus-visible {
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 10%, var(--theme-bg-card));
+  outline: 1px solid color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 40%, transparent);
+  outline-offset: -1px;
+}
+
 .rcm-stakeholder-nom {
   display: block;
   font-weight: 700;
