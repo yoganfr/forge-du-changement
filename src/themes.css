@@ -68,6 +68,7 @@
   --fs-base: var(--text-base);
   --fs-title: var(--text-xl);
   --fs-small: var(--text-sm);
+  --space-2xs: 2px;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -84,6 +85,7 @@
   --ui-radius-badge: var(--radius-sm);
   --ui-focus-ring: 0 0 0 3px color-mix(in srgb, var(--theme-accent) 18%, transparent);
   --transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-fast: 160ms ease;
   --max-width: 1280px;
   --card-min: 240px;
 
@@ -152,10 +154,14 @@
   /* Accent secondaire (bordeaux / corail) — décoratif, moins “CTA” que --theme-accent */
   --theme-support: var(--coral-400);
   --theme-border: #8a8f85;
+  --theme-border-soft: color-mix(in srgb, var(--theme-border) 28%, var(--theme-bg-page));
+  --theme-border-strong: color-mix(in srgb, var(--theme-border) 68%, var(--theme-text));
   --theme-sidebar-text: #f3f6f0;
   --theme-sidebar-text-muted: #b4b9b1;
   --theme-bg-raised: #f7f9f5;
+  --theme-bg-premium: color-mix(in srgb, var(--theme-bg-raised) 82%, #ffffff 18%);
   --theme-image-placeholder: #dde2db;
+  --theme-route-ink: color-mix(in srgb, var(--theme-accent) 42%, var(--theme-border));
 
   --theme-neon-orange: #af526d;
   --theme-neon-green: #008a75;
@@ -265,10 +271,14 @@
   --theme-neon-green: #1c9781;
   --theme-support: var(--theme-neon-orange);
   --theme-border: #646862;
+  --theme-border-soft: color-mix(in srgb, var(--theme-border) 36%, var(--theme-bg-page));
+  --theme-border-strong: color-mix(in srgb, var(--theme-border) 72%, var(--theme-text));
   --theme-sidebar-text: #f3f6f0;
   --theme-sidebar-text-muted: #aeb3ac;
   --theme-bg-raised: #191b17;
+  --theme-bg-premium: color-mix(in srgb, var(--theme-bg-raised) 88%, #1b1f19 12%);
   --theme-image-placeholder: #1f221d;
+  --theme-route-ink: color-mix(in srgb, var(--theme-accent) 52%, var(--theme-border));
 
   --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.42);
   --shadow-md: 0 10px 32px rgba(0, 0, 0, 0.5);

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import './App.css'
 import type { StoredMemberProfile } from './ProfileSheet'
@@ -57,18 +57,91 @@ const Login = lazy(() => import('./pages/Login'))
 const SettingsPage = lazy(() => import('./pages/Settings'))
 const WorkspaceHome = lazy(() => import('./pages/WorkspaceHome'))
 const ProjectSelector = lazy(() => import('./ProjectSelector'))
-const MemberOnboarding = lazy(() => import('./MemberOnboarding'))
 const OnboardingFlow = lazy(() => import('./OnboardingFlow'))
 const CompanySheet = lazy(() => import('./CompanySheet'))
 const ProfileSheet = lazy(() => import('./ProfileSheet'))
 const DashboardDG = lazy(() => import('./pages/DashboardDG'))
 const MaturityRoadmap = lazy(() => import('./MaturityRoadmap'))
+const ReviewerSnapshotPage = lazy(() => import('./pages/ReviewerSnapshotPage'))
 
-const navItems = [
-  { id: 'fabrique', label: 'La Fabrique', group: null },
-  { id: 'dg', label: 'Vue décideur', group: null },
-  { id: 'workspace', label: 'Mon Espace', group: 'fabrique' },
-] as const
+type JourneyModuleId =
+  | 'projects'
+  | 'roadmap'
+  | 'review'
+  | 'feedbacks'
+  | 'pae_codir'
+  | 'kickoff'
+  | 'suivi_codir'
+  | 'pae_contrib'
+  | 'suivi_contrib'
+  | 'dg'
+
+type JourneyModule = {
+  id: JourneyModuleId
+  label: string
+  subtitle?: string
+  status: 'active' | 'soon'
+}
+
+const CODIR_JOURNEY_MODULES: readonly JourneyModule[] = [
+  {
+    id: 'projects',
+    label: 'Projets transformants',
+    subtitle: 'Je veux sélectionner et prioriser mes projets transformants',
+    status: 'active',
+  },
+  {
+    id: 'roadmap',
+    label: 'Roadmap',
+    subtitle: 'Je veux décliner mes projets transformants en Maturity Roadmaps',
+    status: 'active',
+  },
+  {
+    id: 'feedbacks',
+    label: 'Feedbacks Roadmap',
+    subtitle: 'Je veux répondre et arbitrer les feedbacks de mon équipe sur ma Maturity Roadmap V1',
+    status: 'soon',
+  },
+  {
+    id: 'pae_codir',
+    label: "Plans d'actions d'Equipe (PAE) & Plans de charge (version membre CODIR)",
+    subtitle: "J'affecte les jalons de ma Maturity Roadmaps V2 à des Managers pour réalisation de Plans d'actions d'Equipe (PAE) et plans de charge",
+    status: 'soon',
+  },
+  {
+    id: 'kickoff',
+    label: 'Kick-off',
+    subtitle: 'Je prépare ma présentation de ma Maturity Roadmaps V2 et des PAE',
+    status: 'soon',
+  },
+  {
+    id: 'suivi_codir',
+    label: 'Suivi PAE (vue membre CODIR)',
+    subtitle: "Je peux suivre la réalisation des plans d'action dans le temps (vers suivi PAE). Je mets à jour la Maturity Roadmap en fonction de la réalisation réelle",
+    status: 'soon',
+  },
+]
+
+const CONTRIBUTEUR_JOURNEY_MODULES: readonly JourneyModule[] = [
+  {
+    id: 'review',
+    label: 'Review Roadmap',
+    subtitle: "J'apporte mes feedbacks à la Maturity Roadmap de ma Direction",
+    status: 'active',
+  },
+  {
+    id: 'pae_contrib',
+    label: "Plans d'actions d'Equipe (PAE) & Plans de charge (version contributeur)",
+    subtitle: "Je souhaite créer mon plan de charge et mon plan d'action pour les Jalons de la Maturity Roadmap qui m'ont été affectés",
+    status: 'soon',
+  },
+  {
+    id: 'suivi_contrib',
+    label: 'Suivi PAE (vue contributeur)',
+    subtitle: "J'effectue le bon niveau de reporting lorsque je réalise mes PAE (vers Suivi PAE vue contributeur). Je décline de nouveaux jalons en PAE et plans de charge",
+    status: 'soon',
+  },
+]
 
 
 type OnboardingData = OnboardingFlowProps extends { onComplete: (data: infer T) => void } ? T : never
@@ -235,71 +308,193 @@ function canActOnDecideurValidation(role: AppUserRole, isPlatformSuperadmin: boo
   return canViewDecideurView(role, isPlatformSuperadmin)
 }
 
+function resolveJourneyVisibility(role: AppUserRole, isPlatformSuperadmin: boolean): {
+  showCodirSection: boolean
+  showContributeurSection: boolean
+} {
+  if (isPlatformSuperadmin) {
+    return { showCodirSection: true, showContributeurSection: true }
+  }
+  if (role === 'contributeur') {
+    return { showCodirSection: false, showContributeurSection: true }
+  }
+  if (role === 'consultant' || role === 'admin' || role === 'pilote') {
+    return { showCodirSection: true, showContributeurSection: true }
+  }
+  return { showCodirSection: true, showContributeurSection: false }
+}
+
 type DashboardMainNavProps = {
   activeNav: string
-  canViewDecideur: boolean
+  codirModules: readonly JourneyModule[]
+  contributeurModules: readonly JourneyModule[]
+  showCodirSection: boolean
+  showContributeurSection: boolean
+  showDecideurEntry: boolean
   onNavigate: (navId: string) => void
+  onOpenRoadmap: () => void
+  onGoHome: () => void
   className: string
+  mobileMode?: boolean
   id?: string
   onItemPick?: () => void
 }
 
 function DashboardMainNav({
   activeNav,
-  canViewDecideur,
+  codirModules,
+  contributeurModules,
+  showCodirSection,
+  showContributeurSection,
+  showDecideurEntry,
   onNavigate,
+  onOpenRoadmap,
+  onGoHome,
   className,
+  mobileMode = false,
   id,
   onItemPick,
 }: DashboardMainNavProps) {
-  function pick(navId: string) {
-    onNavigate(navId)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const closeTimerRef = useRef<number | null>(null)
+
+  function pick(module: JourneyModule) {
+    if (module.status === 'soon') return
+    if (module.id === 'roadmap') {
+      onOpenRoadmap()
+    } else {
+      onNavigate(module.id)
+    }
     onItemPick?.()
+    setMenuOpen(false)
+  }
+
+  const codirWithDecideur = showCodirSection
+    ? [...codirModules, ...(showDecideurEntry ? [{ id: 'dg', label: 'Vue décideur', status: 'active' as const }] : [])]
+    : []
+
+  function renderModuleItem(module: JourneyModule) {
+    const isActive = activeNav === module.id
+    const isSoon = module.status === 'soon'
+    return (
+      <button
+        key={module.id}
+        type="button"
+        className={[
+          'dashboard__nav-item',
+          isActive ? 'dashboard__nav-item--active' : '',
+          isSoon ? 'dashboard__nav-item--soon' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        onClick={() => pick(module)}
+        disabled={isSoon}
+        aria-disabled={isSoon}
+      >
+        <span className="dashboard__nav-item-main">
+          <span className="dashboard__nav-item-label">{module.label}</span>
+          {isSoon ? <span className="dashboard__nav-badge-soon">Bientôt</span> : null}
+        </span>
+        {module.subtitle ? (
+          <span className="dashboard__nav-item-subtitle">{module.subtitle}</span>
+        ) : null}
+      </button>
+    )
+  }
+
+  function openMenuWithDelay() {
+    if (mobileMode) return
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setMenuOpen(true)
+  }
+
+  function closeMenuWithDelay() {
+    if (mobileMode) return
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
+    closeTimerRef.current = window.setTimeout(() => {
+      setMenuOpen(false)
+      closeTimerRef.current = null
+    }, 180)
+  }
+
+  useEffect(() => () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
+  }, [])
+
+  function renderSection(title: string, modules: readonly JourneyModule[]) {
+    if (modules.length === 0) return null
+    return (
+      <section key={title} className="dashboard__journey-section">
+        <span className="dashboard__nav-section-label">{title}</span>
+        <div className="dashboard__journey-section-items">
+          {modules.map(renderModuleItem)}
+        </div>
+      </section>
+    )
   }
 
   return (
     <nav id={id} className={className} aria-label="Navigation principale">
-      {navItems
-        .filter((item) => item.group === null)
-        .filter((item) => (item.id === 'dg' ? canViewDecideur : true))
-        .map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={[
-              'dashboard__nav-item',
-              activeNav === item.id ? 'dashboard__nav-item--active' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onClick={() => pick(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      <span className="dashboard__nav-divider" aria-hidden="true" />
-      <span className="dashboard__nav-section-label">Espace</span>
-      {navItems.filter((item) => item.group === 'fabrique').map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          className={[
-            'dashboard__nav-item',
-            'dashboard__nav-item--sub',
-            activeNav === item.id ? 'dashboard__nav-item--active' : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          onClick={() => pick(item.id)}
+      {mobileMode ? (
+        <>
+          <span className="dashboard__nav-journey-title">Mon parcours de transformation</span>
+          {showCodirSection ? renderSection('Parcours membre CODIR', codirWithDecideur) : null}
+          {showContributeurSection ? renderSection('Parcours membre contributeur', contributeurModules) : null}
+        </>
+      ) : (
+        <div
+          className="dashboard__journey-menu"
+          onMouseEnter={openMenuWithDelay}
+          onMouseLeave={closeMenuWithDelay}
         >
-          {item.label}
-        </button>
-      ))}
+          <button
+            type="button"
+            className={`dashboard__nav-journey-trigger ${menuOpen ? 'dashboard__nav-journey-trigger--open' : ''}`}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            onClick={() => {
+              onGoHome()
+              setMenuOpen((v) => !v)
+            }}
+          >
+            Mon parcours de transformation
+          </button>
+          {menuOpen ? (
+            <div className="dashboard__journey-popover" role="menu">
+              {showCodirSection ? renderSection('Parcours membre CODIR', codirWithDecideur) : null}
+              {showContributeurSection ? renderSection('Parcours membre contributeur', contributeurModules) : null}
+            </div>
+          ) : null}
+        </div>
+      )}
     </nav>
   )
 }
 
+function ModulePlaceholder({
+  title,
+  message,
+}: {
+  title: string
+  message: string
+}) {
+  return (
+    <section className="dashboard__module-panel">
+      <h2>{title}</h2>
+      <p>{message}</p>
+    </section>
+  )
+}
+
 function App() {
+  const readReviewSnapshotFromUrl = useCallback((): string | null => {
+    const path = window.location.pathname
+    const m = path.match(/^\/review\/([0-9a-f-]{16,})$/i)
+    return m?.[1] ?? null
+  }, [])
   const [authLoading, setAuthLoading] = useState(true)
   const [authUser, setAuthUser] = useState<User | null>(null)
   const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
@@ -312,7 +507,20 @@ function App() {
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
   const [platformSuperadmin, setPlatformSuperadmin] = useState(false)
   const normalizedActiveNav = useMemo(() => {
-    const known = ['fabrique', 'workspace', 'sens', 'roles', 'company', 'settings', 'dg'] as const
+    const known = [
+      'home',
+      'settings',
+      'company',
+      'projects',
+      'review',
+      'feedbacks',
+      'pae_codir',
+      'kickoff',
+      'suivi_codir',
+      'pae_contrib',
+      'suivi_contrib',
+      'dg',
+    ] as const
     return known.includes(activeNav as (typeof known)[number]) ? activeNav : 'home'
   }, [activeNav])
 
@@ -326,6 +534,11 @@ function App() {
   const [serverAccess, setServerAccess] = useState<ServerAccess | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [mfaEnrollmentRequired, setMfaEnrollmentRequired] = useState(false)
+  const [reviewSnapshotId, setReviewSnapshotId] = useState<string | null>(() => {
+    const path = window.location.pathname
+    const m = path.match(/^\/review\/([0-9a-f-]{16,})$/i)
+    return m?.[1] ?? null
+  })
 
   const currentUserRole: AppUserRole =
     serverAccess?.source === 'superadmin'
@@ -390,6 +603,15 @@ function App() {
       document.body.style.overflow = prevOverflow
     }
   }, [mobileNavOpen])
+
+  useEffect(() => {
+    const onPop = () => setReviewSnapshotId(readReviewSnapshotFromUrl())
+    window.addEventListener('popstate', onPop)
+    // #region agent log
+    fetch('http://127.0.0.1:7271/ingest/4a825d9f-9e80-4d72-a03f-6e97efcd6511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fd04dc'},body:JSON.stringify({sessionId:'fd04dc',runId:'recette-1',hypothesisId:'H5',location:'src/App.tsx:popstate-hook',message:'review route listener attached',data:{initialReviewSnapshotId:readReviewSnapshotFromUrl()},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    return () => window.removeEventListener('popstate', onPop)
+  }, [readReviewSnapshotFromUrl])
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -527,14 +749,14 @@ function App() {
 
   const handleOpenRoadmapFromWorkspace = useCallback(async () => {
     if (!workspaceId) {
-      navigateToMainNav('fabrique')
+      navigateToMainNav('projects')
       return
     }
 
     const directions = await getWorkspaceDirections(workspaceId)
     if (directions.length === 0) {
-      navigateToMainNav('fabrique')
-      window.alert('Aucune direction disponible. Créez d’abord vos directions et projets dans La Fabrique.')
+      navigateToMainNav('projects')
+      window.alert('Aucune direction disponible. Créez d’abord vos directions et projets transformants.')
       return
     }
 
@@ -552,11 +774,11 @@ function App() {
           break
         }
       }
-      navigateToMainNav(pendingDg ? 'dg' : 'fabrique')
+      navigateToMainNav(pendingDg ? 'dg' : 'projects')
       window.alert(
         pendingDg
           ? 'Votre projet BUILD est soumis au décideur mais pas encore validé pour la roadmap. Ouvrez la Vue décideur et validez le projet (section « Projets BUILD soumis pour la roadmap »).'
-          : 'Aucun projet BUILD validé par le décideur pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le décideur, puis validez-le dans la Vue décideur.',
+          : 'Aucun projet BUILD validé par le décideur pour la roadmap. Créez un projet transformant BUILD, retenez-le pour le décideur, puis validez-le dans la Vue décideur.',
       )
       return
     }
@@ -801,9 +1023,16 @@ function App() {
     storedProfile?.lastName
     || familyName
     || (fullName && fullName.includes(' ') ? fullName.split(' ').slice(1).join(' ') : '')
+  const workspaceWelcomeName = [fallbackFirstName, fallbackLastName].filter(Boolean).join(' ').trim()
   const profileRoleLabel = platformSuperadmin ? 'Super admin plateforme' : normalizeRoleLabel(currentUserRole)
   const canViewDecideur = canViewDecideurView(currentUserRole, platformSuperadmin)
   const canActDecideur = canActOnDecideurValidation(currentUserRole, platformSuperadmin)
+  const { showCodirSection, showContributeurSection } = resolveJourneyVisibility(
+    currentUserRole,
+    platformSuperadmin,
+  )
+  const codirModules = CODIR_JOURNEY_MODULES
+  const contributeurModules = CONTRIBUTEUR_JOURNEY_MODULES
   const avatarFromDb =
     serverAccess?.source === 'users'
       ? serverAccess.dbUser.avatar_url?.trim() || null
@@ -901,8 +1130,14 @@ function App() {
 
           <DashboardMainNav
             activeNav={activeNav}
-            canViewDecideur={canViewDecideur}
+            codirModules={codirModules}
+            contributeurModules={contributeurModules}
+            showCodirSection={showCodirSection}
+            showContributeurSection={showContributeurSection}
+            showDecideurEntry={canViewDecideur}
             onNavigate={navigateToMainNav}
+            onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
+            onGoHome={() => navigateToMainNav('home')}
             className="dashboard__nav dashboard__nav--top dashboard__nav--desktop"
           />
 
@@ -1006,9 +1241,16 @@ function App() {
             <DashboardMainNav
               id="dashboard-mobile-nav"
               activeNav={activeNav}
-              canViewDecideur={canViewDecideur}
+              codirModules={codirModules}
+              contributeurModules={contributeurModules}
+              showCodirSection={showCodirSection}
+              showContributeurSection={showContributeurSection}
+              showDecideurEntry={canViewDecideur}
               onNavigate={navigateToMainNav}
+              onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
+              onGoHome={() => navigateToMainNav('home')}
               className="dashboard__nav dashboard__nav--drawer"
+              mobileMode
               onItemPick={closeMobileNav}
             />
 
@@ -1063,7 +1305,15 @@ function App() {
       <div className="dashboard__main">
         <main className="dashboard__content">
           <Suspense fallback={<p>Chargement du module…</p>}>
-            {maturityRoadmapOpen && workspaceId ? (
+            {reviewSnapshotId ? (
+              <ReviewerSnapshotPage
+                snapshotId={reviewSnapshotId}
+                onExit={() => {
+                  window.history.pushState({}, '', '/')
+                  setReviewSnapshotId(null)
+                }}
+              />
+            ) : maturityRoadmapOpen && workspaceId ? (
               <MaturityRoadmap
                 workspaceId={workspaceId}
                 focusProjetId={roadmapFocusProjetId}
@@ -1073,7 +1323,7 @@ function App() {
               <WorkspaceHome
                 currentStep={workspaceData?.workspace.current_step ?? null}
                 currentUserRole={currentUserRole}
-                workspaceName={workspaceName}
+                loggedInUserName={workspaceWelcomeName || fallbackFirstName || fullName || authUser.email || null}
                 navigateToMainNav={navigateToMainNav}
                 onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
               />
@@ -1088,7 +1338,7 @@ function App() {
                 onSelectWorkspace={handleSelectWorkspaceFromSettings}
                 onAddWorkspace={() => setShowWorkspaceOnboarding(true)}
               />
-            ) : normalizedActiveNav === 'fabrique' ? (
+            ) : normalizedActiveNav === 'projects' ? (
               <ProjectSelector
                 memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
                 memberProfileEmail={authUser?.email ?? null}
@@ -1102,6 +1352,41 @@ function App() {
               canViewDecideur ? (
                 <DashboardDG workspaceId={workspaceId} canActOnDecideurValidation={canActDecideur} />
               ) : <></>
+            ) : normalizedActiveNav === 'review' ? (
+              <ModulePlaceholder
+                title="Review Roadmap"
+                message="Cette page est dédiée à la revue roadmap. Vous pourrez y retrouver vos revues assignées et leur statut."
+              />
+            ) : normalizedActiveNav === 'feedbacks' ? (
+              <ModulePlaceholder
+                title="Feedbacks Roadmap"
+                message="Module dédié aux arbitrages des feedbacks roadmap (version membre CODIR)."
+              />
+            ) : normalizedActiveNav === 'pae_codir' ? (
+              <ModulePlaceholder
+                title="Plans d'actions d'Equipe (PAE) & Plans de charge (version membre CODIR)"
+                message="Module en préparation. Le menu est prêt et l'entrée est alignée sur la terminologie canonique."
+              />
+            ) : normalizedActiveNav === 'kickoff' ? (
+              <ModulePlaceholder
+                title="Kick-off"
+                message="Module en préparation. L'étape est référencée dans le parcours de transformation."
+              />
+            ) : normalizedActiveNav === 'suivi_codir' ? (
+              <ModulePlaceholder
+                title="Suivi PAE (vue membre CODIR)"
+                message="Module en préparation pour le suivi des plans d'action côté membre CODIR."
+              />
+            ) : normalizedActiveNav === 'pae_contrib' ? (
+              <ModulePlaceholder
+                title="Plans d'actions d'Equipe (PAE) & Plans de charge (version contributeur)"
+                message="Module en préparation pour la déclinaison opérationnelle côté contributeur."
+              />
+            ) : normalizedActiveNav === 'suivi_contrib' ? (
+              <ModulePlaceholder
+                title="Suivi PAE (vue contributeur)"
+                message="Module en préparation pour le reporting PAE côté contributeur."
+              />
             ) : normalizedActiveNav === 'company' ? (
               <CompanySheet
                 workspaceId={workspaceId}
@@ -1148,14 +1433,6 @@ function App() {
                     })
                   }
                 }}
-              />
-            ) : normalizedActiveNav === 'workspace' ? (
-              <MemberOnboarding
-                firstName={storedProfile?.firstName}
-                direction={storedProfile?.directionName || 'votre direction'}
-                role="codir"
-                onNavigate={navigateToMainNav}
-                onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
               />
             ) : (
               <></>
