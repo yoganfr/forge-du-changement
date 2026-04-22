@@ -46,6 +46,19 @@ type DirectionBundle = {
   projects: Projet[]
 }
 
+function projectMacroWindow(project: Projet): { start: string; end: string; span: number } | null {
+  const active = Object.entries(project.planning ?? {})
+    .filter(([, v]) => Boolean(v))
+    .map(([k]) => k)
+  if (active.length === 0) return null
+  active.sort((a, b) => a.localeCompare(b))
+  return {
+    start: active[0],
+    end: active[active.length - 1],
+    span: active.length,
+  }
+}
+
 type DecideurDecisionMode = 'validate' | 'revoke'
 
 type DecideurDecisionModal = {
@@ -277,6 +290,22 @@ export default function DashboardDG({
     })
   }, [auditEvents, userLabelById])
 
+  const macroGanttRows = useMemo(() => {
+    const rows: Array<{ directionId: string; directionName: string; projectId: string; projectName: string; window: { start: string; end: string; span: number } | null }> = []
+    for (const d of directions) {
+      for (const p of d.projects.filter((x) => x.type === 'BUILD' && x.dg_validated_transfo)) {
+        rows.push({
+          directionId: d.id,
+          directionName: d.name,
+          projectId: p.id,
+          projectName: p.nom,
+          window: projectMacroWindow(p),
+        })
+      }
+    }
+    return rows
+  }, [directions])
+
   return (
     <section className="dg" id="dg-print-scope">
       <div className="dg__header">
@@ -399,6 +428,31 @@ export default function DashboardDG({
               </div>
             </article>
           )}
+
+          <article className="dg__card dg__card--wide">
+            <h3>Gantt macro consolidé (multi-directions)</h3>
+            <p className="dg__hint">
+              Vue transverse read-only des fenêtres de planification des projets BUILD validés.
+            </p>
+            {macroGanttRows.length === 0 ? (
+              <p className="dg__empty">Aucun projet BUILD validé à afficher dans le Gantt macro.</p>
+            ) : (
+              <ul className="dg__ranking">
+                {macroGanttRows.map((row) => (
+                  <li key={row.projectId} className="dg__ranking-item">
+                    <span>
+                      <strong>{row.directionName}</strong> · {row.projectName}
+                    </span>
+                    <span>
+                      {row.window
+                        ? `${row.window.start} → ${row.window.end} (${row.window.span} mailles actives)`
+                        : 'Fenêtre non renseignée'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
 
           <article className="dg__card">
             <h3>Top 5 inter-directions (BUILD)</h3>

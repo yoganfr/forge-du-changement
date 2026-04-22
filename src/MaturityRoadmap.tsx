@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Axe, Direction, Jalon, JalonFacette, JalonStatut, Projet, RaciRole, User } from './lib/types'
 import {
+  arbitrateFeedback,
   createChantier,
   createJalon,
   deleteChantier,
@@ -12,9 +13,13 @@ import {
   getProjetChantiers,
   getRoadmapEligibleProjects,
   getRoadmapEligibleProjectsForDirection,
+  getWorkspaceUsers,
   getWorkspaceDirections,
+  listSnapshotFeedbacks,
+  listSnapshotReviewers,
   listRoadmapSnapshots,
   monthToQuarter,
+  openSnapshotReview,
   recalculateOrdreSequentielForChantierAxe,
   removeRaci,
   setRaci,
@@ -131,6 +136,11 @@ export default function MaturityRoadmap({
   const [snapshotSaving, setSnapshotSaving] = useState(false)
   const [snapshotFeedback, setSnapshotFeedback] = useState<string | null>(null)
   const [snapshots, setSnapshots] = useState<Array<{ id: string; label: string; created_at: string; status: string }>>([])
+  const [workspaceUsers, setWorkspaceUsers] = useState<User[]>([])
+  const [snapshotFeedbacks, setSnapshotFeedbacks] = useState<
+    Array<{ id: string; kind: string; codir_status: string | null; reviewer_user_id: string; comment: string | null; constat: string | null; proposition: string | null; benefice: string | null }>
+  >([])
+  const [reviewersBySnapshot, setReviewersBySnapshot] = useState<Record<string, number>>({})
   const [roadmapToast, setRoadmapToast] = useState<{
     message: string
     variant: 'error' | 'info' | 'warning'
@@ -149,6 +159,8 @@ export default function MaturityRoadmap({
         getWorkspaceDirections(workspaceId),
         getCurrentUser(),
       ])
+      const users = await getWorkspaceUsers(workspaceId)
+      setWorkspaceUsers(users)
       setDirections(dirs)
       const memberDirId = resolveMemberDirectionId(dirs, appUser)
       const dirLabel = memberDirId ? dirs.find((d) => d.id === memberDirId)?.nom ?? null : null
@@ -223,8 +235,28 @@ export default function MaturityRoadmap({
         const list = await listRoadmapSnapshots(workspaceId)
         if (cancelled) return
         setSnapshots(list)
+        const reviewerCounts: Record<string, number> = {}
+        for (const s of list.slice(0, 5)) {
+          try {
+            const reviewers = await listSnapshotReviewers(s.id)
+            reviewerCounts[s.id] = reviewers.length
+          } catch {
+            reviewerCounts[s.id] = 0
+          }
+        }
+        if (!cancelled) setReviewersBySnapshot(reviewerCounts)
+        const targetSnapshot = list.find((s) => s.status === 'in_review') ?? list[0]
+        if (targetSnapshot) {
+          const feedbacks = await listSnapshotFeedbacks(targetSnapshot.id)
+          if (!cancelled) setSnapshotFeedbacks(feedbacks)
+        } else {
+          setSnapshotFeedbacks([])
+        }
       } catch {
-        if (!cancelled) setSnapshots([])
+        if (!cancelled) {
+          setSnapshots([])
+          setSnapshotFeedbacks([])
+        }
       }
     })()
     return () => {
@@ -528,6 +560,78 @@ export default function MaturityRoadmap({
     }
   }
 
+  async function handleOpenReview(snapshotId: string) {
+    if (readOnly) return
+    if (workspaceUsers.length === 0) {
+      setSnapshotFeedback('Aucun membre disponible pour la revue.')
+      return
+    }
+    const emailsRaw = window.prompt(
+      'Emails reviewers (séparés par virgule)',
+      workspaceUsers.slice(0, 3).map((u) => u.email).join(', '),
+    )
+    if (!emailsRaw) return
+    const emails = emailsRaw
+      .split(',')
+      .map((x) => x.trim().toLowerCase())
+      .filter(Boolean)
+    if (emails.length === 0) return
+    const reviewerIds = workspaceUsers
+      .filter((u) => emails.includes(u.email.trim().toLowerCase()))
+      .map((u) => u.id)
+    if (reviewerIds.length === 0) {
+      setSnapshotFeedback('Aucun reviewer valide trouvé pour ces emails.')
+      return
+    }
+    const deadlineRaw = window.prompt('Deadline revue (ISO datetime ou vide)', '')
+    try {
+      const me = await getCurrentUser()
+      await openSnapshotReview({
+        snapshotId,
+        reviewerUserIds: reviewerIds,
+        invitedBy: me?.id ?? null,
+        invitedByEmail: me?.email ?? null,
+        reviewDeadline: deadlineRaw?.trim() ? deadlineRaw.trim() : null,
+      })
+      const reviewerUrl = `${window.location.origin}/review/${snapshotId}`
+      void navigator.clipboard?.writeText(reviewerUrl)
+      setSnapshotFeedback(
+        `Revue ouverte (${reviewerIds.length} reviewer${reviewerIds.length > 1 ? 's' : ''}). Lien copié: ${reviewerUrl}`,
+      )
+      const list = await listRoadmapSnapshots(workspaceId)
+      setSnapshots(list)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Impossible d’ouvrir la revue'
+      setSnapshotFeedback(msg)
+    }
+  }
+
+  async function handleArbitrateFeedback(feedbackId: string) {
+    if (readOnly) return
+    const status = window.prompt('Décision CODIR: noted | ok | nok | sous_condition', 'ok')?.trim()
+    if (!status) return
+    const allowed = new Set(['noted', 'ok', 'nok', 'sous_condition'])
+    if (!allowed.has(status)) {
+      window.alert('Statut invalide.')
+      return
+    }
+    const motivation = window.prompt('Motivation CODIR (obligatoire)', '')?.trim()
+    if (!motivation) return
+    try {
+      const me = await getCurrentUser()
+      await arbitrateFeedback(feedbackId, status as 'noted' | 'ok' | 'nok' | 'sous_condition', motivation, me?.id ?? null)
+      if (snapshots.length > 0) {
+        const targetSnapshot = snapshots.find((s) => s.status === 'in_review') ?? snapshots[0]
+        const feedbacks = await listSnapshotFeedbacks(targetSnapshot.id)
+        setSnapshotFeedbacks(feedbacks)
+      }
+      setSnapshotFeedback('Arbitrage enregistré.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur arbitrage'
+      setSnapshotFeedback(msg)
+    }
+  }
+
   async function openDrawer(jalon: Jalon, chantierId: string) {
     setDrawerSeedJalon(null)
     setDrawerChantierId(chantierId)
@@ -575,6 +679,16 @@ export default function MaturityRoadmap({
           <button type="button" className="mr-back" onClick={() => { void handleCreateSnapshot() }} disabled={snapshotSaving}>
             {snapshotSaving ? 'Figement…' : 'Figer la V1 (snapshot)'}
           </button>
+          {snapshots[0] ? (
+            <button
+              type="button"
+              className="mr-back"
+              onClick={() => { void handleOpenReview(snapshots[0].id) }}
+              disabled={snapshotSaving}
+            >
+              Ouvrir la revue
+            </button>
+          ) : null}
           {snapshotFeedback && <span className="mr-muted">{snapshotFeedback}</span>}
         </div>
       )}
@@ -594,8 +708,30 @@ export default function MaturityRoadmap({
       </p>
       {snapshots.length > 0 && (
         <p className="mr-muted">
-          Snapshots récents : {snapshots.slice(0, 3).map((s) => `${s.label} (${new Date(s.created_at).toLocaleDateString('fr-FR')})`).join(' · ')}
+          Snapshots récents : {snapshots.slice(0, 3).map((s) => `${s.label} (${new Date(s.created_at).toLocaleDateString('fr-FR')}) · ${s.status} · ${reviewersBySnapshot[s.id] ?? 0} reviewers`).join(' · ')}
         </p>
+      )}
+      {!readOnly && snapshotFeedbacks.length > 0 && (
+        <div className="mr-panel" style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: '0 0 8px' }}>Arbitrage CODIR (feedbacks en revue)</h3>
+          <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 8 }}>
+            {snapshotFeedbacks.slice(0, 8).map((f) => (
+              <li key={f.id}>
+                <strong>{f.kind}</strong> · statut: {f.codir_status ?? 'pending'} · {f.comment ?? f.constat ?? f.proposition ?? '—'}
+                {f.codir_status ? null : (
+                  <button
+                    type="button"
+                    className="mr-toolbar__link"
+                    style={{ marginLeft: 8 }}
+                    onClick={() => { void handleArbitrateFeedback(f.id) }}
+                  >
+                    Arbitrer
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="mr-toolbar">

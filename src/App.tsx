@@ -369,8 +369,19 @@ function DashboardMainNav({
     setMenuOpen(false)
   }
 
-  const codirWithDecideur = showCodirSection
-    ? [...codirModules, ...(showDecideurEntry ? [{ id: 'dg', label: 'Vue décideur', status: 'active' as const }] : [])]
+  const codirWithDecideur: readonly JourneyModule[] = showCodirSection
+    ? [
+        ...codirModules,
+        ...(showDecideurEntry
+          ? [
+              {
+                id: 'dg',
+                label: 'Vue décideur',
+                status: 'active',
+              } satisfies JourneyModule,
+            ]
+          : []),
+      ]
     : []
 
   function renderModuleItem(module: JourneyModule) {
@@ -607,9 +618,6 @@ function App() {
   useEffect(() => {
     const onPop = () => setReviewSnapshotId(readReviewSnapshotFromUrl())
     window.addEventListener('popstate', onPop)
-    // #region agent log
-    fetch('http://127.0.0.1:7271/ingest/4a825d9f-9e80-4d72-a03f-6e97efcd6511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fd04dc'},body:JSON.stringify({sessionId:'fd04dc',runId:'recette-1',hypothesisId:'H5',location:'src/App.tsx:popstate-hook',message:'review route listener attached',data:{initialReviewSnapshotId:readReviewSnapshotFromUrl()},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return () => window.removeEventListener('popstate', onPop)
   }, [readReviewSnapshotFromUrl])
 
@@ -1092,41 +1100,43 @@ function App() {
     <div className="dashboard">
       <header className="dashboard__topbar">
         <div className="dashboard__topbar-inner">
-          <button
-            type="button"
-            className="dashboard__brand"
-            onClick={() => navigateToMainNav('home')}
-            aria-label="Retour à l'accueil"
-          >
-            <div className="dashboard__brand-mark">
-              {companyLogo
-                ? <img src={companyLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
-                  {workspaceName.slice(0, 2).toUpperCase()}
-                </span>
-              }
-            </div>
-            <span className="dashboard__brand-stack">
-              <span className="dashboard__brand-product">La Forge du Changement</span>
-              <span className="dashboard__brand-text">{workspaceName}</span>
-            </span>
-          </button>
+          <div className="dashboard__topbar-leading">
+            <button
+              type="button"
+              className="dashboard__brand"
+              onClick={() => navigateToMainNav('home')}
+              aria-label="Retour à l'accueil"
+            >
+              <div className="dashboard__brand-mark">
+                {companyLogo
+                  ? <img src={companyLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                  : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
+                    {workspaceName.slice(0, 2).toUpperCase()}
+                  </span>
+                }
+              </div>
+              <span className="dashboard__brand-stack">
+                <span className="dashboard__brand-product">La Forge du Changement</span>
+                <span className="dashboard__brand-text">{workspaceName}</span>
+              </span>
+            </button>
 
-          <button
-            type="button"
-            className="dashboard__menu-btn"
-            aria-label={mobileNavOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
-            aria-expanded={mobileNavOpen}
-            aria-haspopup="dialog"
-            aria-controls={mobileNavOpen ? 'dashboard-mobile-nav' : undefined}
-            onClick={() => setMobileNavOpen((o) => !o)}
-          >
-            <span className="dashboard__menu-bars" aria-hidden>
-              <span />
-              <span />
-              <span />
-            </span>
-          </button>
+            <button
+              type="button"
+              className="dashboard__menu-btn"
+              aria-label={mobileNavOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={mobileNavOpen}
+              aria-haspopup="dialog"
+              aria-controls={mobileNavOpen ? 'dashboard-mobile-nav' : undefined}
+              onClick={() => setMobileNavOpen((o) => !o)}
+            >
+              <span className="dashboard__menu-bars" aria-hidden>
+                <span />
+                <span />
+                <span />
+              </span>
+            </button>
+          </div>
 
           <DashboardMainNav
             activeNav={activeNav}
