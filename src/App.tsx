@@ -753,6 +753,7 @@ function App() {
               logo_url: snap.logo_url,
               created_at: prev?.workspace?.created_at ?? '',
               trigram_convention: 'prenom_nom_3',
+              current_step: prev?.workspace?.current_step ?? null,
             },
             companyName: snap.company_name,
             sector: snap.sector ?? 'Non renseigné',
