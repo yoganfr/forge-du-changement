@@ -744,8 +744,8 @@ function App() {
             normalizeWorkspaceLogoUrl(snap.logo_url) || readWorkspaceLogoUrl(workspaceId)
           setCompanyLogo(fallback)
           if (fallback) writeWorkspaceLogoUrl(workspaceId, fallback)
-          setWorkspaceData((prev) => ({
-            workspace: prev?.workspace ?? {
+          setWorkspaceData((prev) => {
+            const workspaceFallback: Workspace = {
               id: snap.id,
               company_name: snap.company_name,
               sector: snap.sector,
@@ -754,13 +754,16 @@ function App() {
               created_at: prev?.workspace?.created_at ?? '',
               trigram_convention: 'prenom_nom_3',
               current_step: prev?.workspace?.current_step ?? null,
-            },
-            companyName: snap.company_name,
-            sector: snap.sector ?? 'Non renseigné',
-            size: snap.size ?? 'Non renseigné',
-            companyLogo: snap.logo_url,
-            members: prev?.members ?? [],
-          }))
+            }
+            return {
+              workspace: prev?.workspace ?? workspaceFallback,
+              companyName: snap.company_name,
+              sector: snap.sector ?? 'Non renseigné',
+              size: snap.size ?? 'Non renseigné',
+              companyLogo: snap.logo_url,
+              members: prev?.members ?? [],
+            }
+          })
         } else {
           localStorage.removeItem('workspaceId')
           clearWorkspaceSnapshot()
