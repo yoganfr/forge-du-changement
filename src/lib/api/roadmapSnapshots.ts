@@ -26,8 +26,18 @@ export type RoadmapSnapshot = {
   status: RoadmapSnapshotStatus
   frozen_at: string
   closed_at: string | null
+  review_deadline: string | null
   created_by: string | null
   created_by_email: string | null
+  created_at: string
+}
+
+export type RoadmapSnapshotItem = {
+  id: string
+  snapshot_id: string
+  kind: 'chantier' | 'jalon'
+  source_id: string
+  payload: Record<string, unknown>
   created_at: string
 }
 
@@ -46,6 +56,22 @@ export async function listRoadmapSnapshots(workspaceId: string, projetId?: strin
   const { data, error } = await query
   if (error) throw error
   return (data ?? []) as RoadmapSnapshot[]
+}
+
+export async function getRoadmapSnapshotById(snapshotId: string): Promise<RoadmapSnapshot | null> {
+  const { data, error } = await supabase.from('roadmap_snapshots').select('*').eq('id', snapshotId).maybeSingle()
+  if (error) throw error
+  return (data ?? null) as RoadmapSnapshot | null
+}
+
+export async function listRoadmapSnapshotItems(snapshotId: string): Promise<RoadmapSnapshotItem[]> {
+  const { data, error } = await supabase
+    .from('roadmap_snapshot_items')
+    .select('*')
+    .eq('snapshot_id', snapshotId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as RoadmapSnapshotItem[]
 }
 
 export async function createRoadmapSnapshot(params: {

@@ -62,7 +62,29 @@ export {
   getWorkspaceInvitations,
   markInvitationsAcceptedForWorkspaceEmail,
 } from './api/invitations'
-export { createRoadmapSnapshot, listRoadmapSnapshots } from './api/roadmapSnapshots'
+export {
+  createRoadmapSnapshot,
+  getRoadmapSnapshotById,
+  listRoadmapSnapshotItems,
+  listRoadmapSnapshots,
+} from './api/roadmapSnapshots'
+export {
+  arbitrateFeedback,
+  createReviewFeedback,
+  listReviewerFeedbacks,
+  listSnapshotFeedbacks,
+  listSnapshotReviewers,
+  openSnapshotReview,
+  submitReviewerReview,
+} from './api/roadmapReviews'
+export type {
+  CodirDecisionStatus,
+  ReviewKind,
+  ReviewTargetType,
+  ReviewerStatus,
+  RoadmapReviewFeedback,
+  RoadmapSnapshotReviewer,
+} from './api/roadmapReviews'
 export type { CreateRaciChantierInput, UpdateRaciChantierInput } from './api/raci-chantiers'
 export {
   createRaciChantier,
