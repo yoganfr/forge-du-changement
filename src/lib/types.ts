@@ -5,6 +5,7 @@ export type Workspace = {
   size: 'PME' | 'ETI' | 'Grand groupe' | null
   logo_url: string | null
   trigram_convention: 'prenom_nom_3' | 'nom_prenom_3' | 'custom' | null
+  current_step: number | null
   created_at: string
 }
 

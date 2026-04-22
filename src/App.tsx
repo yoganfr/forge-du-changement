@@ -55,6 +55,7 @@ import {
 
 const Login = lazy(() => import('./pages/Login'))
 const SettingsPage = lazy(() => import('./pages/Settings'))
+const WorkspaceHome = lazy(() => import('./pages/WorkspaceHome'))
 const ProjectSelector = lazy(() => import('./ProjectSelector'))
 const MemberOnboarding = lazy(() => import('./MemberOnboarding'))
 const OnboardingFlow = lazy(() => import('./OnboardingFlow'))
@@ -69,36 +70,6 @@ const navItems = [
   { id: 'workspace', label: 'Mon Espace', group: 'fabrique' },
 ] as const
 
-const cards = [
-  {
-    id: 'fabrique',
-    title: 'La Fabrique',
-    description:
-      'Prototyper, itérer et industrialiser les leviers de transformation directement dans le produit.',
-    icon: '⚙',
-  },
-  {
-    id: 'sens',
-    title: 'Sens',
-    description:
-      'Aligner vision, enjeux et trajectoire pour que chaque équipe comprenne le « pourquoi » du changement.',
-    icon: '◇',
-  },
-  {
-    id: 'roles',
-    title: 'Rôles & Rythmes',
-    description:
-      'Clarifier qui fait quoi, à quel rythme, et comment synchroniser les décisions sans friction.',
-    icon: '◎',
-  },
-  {
-    id: 'dg',
-    title: 'Vue décideur',
-    description:
-      'Consolider la lecture inter-directions avec KPI, top BUILD et trajectoire macro pour les arbitrages décideur.',
-    icon: '◈',
-  },
-] as const
 
 type OnboardingData = OnboardingFlowProps extends { onComplete: (data: infer T) => void } ? T : never
 
@@ -1095,41 +1066,13 @@ function App() {
                 onBack={exitRoadmap}
               />
             ) : normalizedActiveNav === 'home' ? (
-            <div className="dashboard__module-panel">
-              <div className="dashboard__module-panel-deco" aria-hidden="true" />
-              <div
-                className="dashboard__module-panel-blob dashboard__module-panel-blob--green"
-                aria-hidden="true"
+              <WorkspaceHome
+                currentStep={workspaceData?.workspace.current_step ?? null}
+                currentUserRole={currentUserRole}
+                workspaceName={workspaceName}
+                navigateToMainNav={navigateToMainNav}
+                onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
               />
-              <div
-                className="dashboard__module-panel-blob dashboard__module-panel-blob--caramel"
-                aria-hidden="true"
-              />
-              <div className="dashboard__module-panel-inner">
-                <p className="dashboard__intro">
-                  Choisissez un module pour poursuivre votre parcours de transformation.
-                </p>
-                <div className="dashboard__cards" role="list">
-                  {cards
-                    .filter((card) => (card.id === 'dg' ? canViewDecideur : true))
-                    .map((card) => (
-                    <button
-                      key={card.id}
-                      type="button"
-                      className={`dashboard__card dashboard__card--${card.id}`}
-                      role="listitem"
-                      onClick={() => navigateToMainNav(card.id)}
-                    >
-                      <span className="dashboard__card-icon" aria-hidden="true">
-                        {card.icon}
-                      </span>
-                      <span className="dashboard__card-title">{card.title}</span>
-                      <span className="dashboard__card-desc">{card.description}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
             ) : normalizedActiveNav === 'settings' ? (
               <SettingsPage
                 workspaceId={workspaceId}

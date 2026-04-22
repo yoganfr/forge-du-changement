@@ -91,8 +91,6 @@ export function LandingRoadmapTrajectoire({
         <img
           src={ROADMAP_SVG.road}
           alt=""
-          width={566}
-          height={5293}
           className="landing-roadmap-road-svg"
           decoding="async"
           fetchPriority="low"
