@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **21 avril 2026**, 21 h 18 (Europe/Paris)
+Dernière mise à jour : **22 avril 2026**, 11 h 20 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -126,8 +126,12 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 7a | Snapshot roadmap figée (V1) + label + created_by + created_by_email + back-fill | 🟠 | ✅ |
 | 7b | Invitation et périmètre reviewers (cycle de revue V1 complet) — **voir spec détaillée ci-dessous** | 🟠 | 🚧 |
 | 7b.0 | Fondations utilisateur (users.direction_id + users.trigram + workspaces.trigram_convention + héritage direction à l'invitation + extension CSV REF-51 + propagation invitation → ProfileSheet + édition manuelle trigramme + UI convention CompanySheet) | 🔴 | ✅ |
-| 7b.1 | Matrice **PCI** par chantier (table `raci_chantiers` stakeholder-centric + matrice globale unifiée cochable dans MaturityRoadmap + popover unifié création/édition partie prenante avec motivation) — indispensable avant ReviewerPage | 🔴 | 🚧 |
-| 7b.1bis | Affichage côte à côte "Macro PCI chantier hérité" + "PCI fine jalon" dans le panneau latéral jalon (lot complémentaire de 7b.1) | 🟠 | ⬜ |
+| 7b.1 | Macro **PCI** chantier intégrée à la roadmap principale (`usePciMatrix` + colonnes « Parties prenantes » dans `RoadmapTimelineGrid` + édition cellule / entête / création / suppression / motivation) — brique cœur désormais livrée dans la grille principale ; `RaciChantiersMatrix` subsiste comme vue autonome secondaire si besoin | 🔴 | ✅ |
+| 7b.1a | Réalignement documentaire de l’architecture PCI (backlog/docs : `RoadmapTimelineGrid` = vue principale, `RaciChantiersMatrix` = vue autonome secondaire) | 🟡 | ✅ |
+| 7b.1bis | Affichage côte à côte « Macro PCI chantier hérité » + « PCI fine jalon » dans le panneau latéral jalon (lot complémentaire de 7b.1) | 🟠 | ⬜ |
+| 7b.1c | Harmonisation sémantique PCI / RACI entre chantier et jalon (labels, aide, docs, backlog) | 🟠 | ⬜ |
+| 7b.1d | Polish UX final du module PCI (remplacement `alert`/`confirm`, feedbacks homogènes, confirmations destructives cohérentes) | 🟡 | ⬜ |
+| 7b.1e | Durcissement technique / performance PCI (bulk updates batch, robustesse gros volumes, recette accessibilité clavier) | 🟡 | ⬜ |
 | 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS) | 🔴 | ⬜ |
 | 7b.3 | Modal "Ouvrir la revue" côté CODIR (multi-sélect reviewers + deadline + magic link + transition draft→in_review + audit) | 🔴 | ⬜ |
 | 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers) | 🟠 | ⬜ |
@@ -150,6 +154,11 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 - Scroll horizontal **interne** à la carte grille (P0). Fonds d’axe Processus / Organisation **opaques** au scroll (P1). Scrollbar plus lisible, **dégradé droit** discret si contenu à droite, texte d’aide (échéances + parties prenantes), **flèches** latérales en **3 repères** (haut / centre / bas) calés sur la **hauteur visible** (viewport), pas sur la hauteur totale du tableau.  
 - **Refactor PCI** : `pciMatrixTypes.ts`, `usePciMatrix.tsx`, `RaciChantiersPopover.tsx` ; allègement `RaciChantiersMatrix.tsx` et `MaturityRoadmap.tsx`.  
 - Bilan détaillé : [`docs/backlog_update_roadmap_grille_pci_21avril2026.md`](backlog_update_roadmap_grille_pci_21avril2026.md).
+
+**22 avril 2026 — réalignement backlog / architecture PCI**  
+- Le backlog est réaligné sur l’architecture réellement livrée : la **vue principale** du PCI chantier est désormais la grille `RoadmapTimelineGrid` (colonnes « Parties prenantes » dans la roadmap), alimentée par `usePciMatrix`, et non plus seulement la vue autonome `RaciChantiersMatrix`.  
+- `RaciChantiersMatrix.tsx` est reclassé comme **vue autonome secondaire / détachée si besoin**.  
+- De nouveaux sous-lots sont explicités : **7b.1c** (harmonisation PCI/RACI), **7b.1d** (polish UX final), **7b.1e** (durcissement technique/perf).
 
 **Drag & drop — grille matrice (compléments avril 2026)**  
 - **Vague 1** : déplacement d’une **ligne chantier** entre axes (Processus / Organisation / Outils ; pas KPI), refetch ciblé — **sans rechargement complet de page**.  
@@ -286,36 +295,32 @@ create table public.roadmap_review_feedbacks (
   reviewer_user_id uuid not null references public.users(id) on delete cascade,
   kind text not null check (kind in ('reaction', 'decision', 'proposition_chantier')),
   target_type text not null check (target_type in ('projet', 'chantier', 'jalon', 'proposition')),
-  target_id uuid null,                       -- nullable si kind='proposition_chantier'
-  comment text null,                          -- si kind='reaction'
-  constat text null,                          -- si kind='decision' ou 'proposition_chantier'
+  target_id uuid null,
+  comment text null,
+  constat text null,
   proposition text null,
   benefice text null,
-  projet_pere_id uuid null,                   -- si kind='proposition_chantier'
+  projet_pere_id uuid null,
   axe text null check (axe in ('PROCESSUS','ORGANISATION','OUTILS','KPI')),
   titre_chantier text null,
   codir_status text null check (codir_status in ('pending','noted','ok','nok','sous_condition')),
   codir_motivation text null,
   codir_user_id uuid null references public.users(id) on delete set null,
   codir_at timestamptz null,
-  parent_id uuid null references public.roadmap_review_feedbacks(id) on delete cascade,  -- threads
+  parent_id uuid null references public.roadmap_review_feedbacks(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
--- Table PCI chantiers (REF-7b.1) — modele stakeholder-centric + simplification PCI
--- Schema livre au 21 avril 2026 (voir docs/supabase-raci-chantiers.sql)
+-- Table PCI chantiers (REF-7b.1) — modèle stakeholder-centric + simplification PCI
 create table public.raci_chantiers (
   id uuid primary key default gen_random_uuid(),
   chantier_id uuid not null references public.chantiers(id) on delete cascade,
-  -- Entite (obligatoire)
   entite_type text not null check (entite_type in ('direction','autre')),
   entite_nom text not null,
   direction_id uuid null references public.directions(id) on delete set null,
-  -- Personne (optionnelle)
   personne_nom text null,
   user_id uuid null references public.users(id) on delete set null,
-  -- Roles PCI (multi-roles autorises)
   is_pilote boolean not null default false,
   is_contributeur boolean not null default false,
   is_informe boolean not null default false,
@@ -343,21 +348,25 @@ alter table public.workspaces add column if not exists trigram_convention text n
 
 - `users.direction_id` : rattachement opérationnel du contributeur à une direction. Hérite **automatiquement** de la direction du CODIR qui l'invite (règle métier). Si l'inviteur est Super Admin ou Consultant, la direction doit être précisée (drawer invite : sélecteur ; CSV batch : colonne `direction`).
 - `users.trigram` : stocké en dur (3 chars). Dérivé à l'invitation selon `workspaces.trigram_convention` si non fourni, éditable ensuite.
-- `workspaces.trigram_convention` : valeurs `prenom_nom_3` (ex: `MAD` = **MA**rie **D**upont), `nom_prenom_3` (ex: `DUM` = **DU**pont **M**arie), `custom` (édition manuelle obligatoire sur chaque user).
+- `workspaces.trigram_convention` : valeurs `prenom_nom_3`, `nom_prenom_3`, `custom`.
 
 ### Hors scope REF-7b.0 → REF-7b.7
 
-- **REF-7c** est **intégré** à REF-7b.5 (propositions de chantier Partie 3 couvertes par le modèle unifié feedbacks).
-- **REF-7d** (écran d'arbitrage CODIR) reste un item distinct : il traite tous les `target_type` et tous les `kind` (pas seulement les propositions). Actions : Accusé réception sur réactions, OK/NOK/Sous condition + motivation obligatoire sur demandes de décision et propositions. Émet la notif cumulative reviewer quand 0 feedback pending restant.
-- **REF-7e** (relances automatiques) : workflow email avant/après deadline. Pas bloquant pour le cycle de base.
-- **REF-51b** (extension CSV) : nécessaire à REF-7b.0 pour permettre au Super Admin / Consultant d'importer des reviewers en batch avec leur direction et leur trigramme.
+- **REF-7c** est **intégré** à REF-7b.5.
+- **REF-7d** reste un item distinct.
+- **REF-7e** : workflow email avant/après deadline.
+- **REF-51b** : nécessaire à REF-7b.0.
 
 ### Ordre d'exécution recommandé
 
 ```
 REF-7b.0 (users.direction_id + trigrammes + héritage invite + CSV)
     ↓
-REF-7b.1 (RACI chantier : matrice cochable dans MaturityRoadmap)
+REF-7b.1 (macro PCI chantier intégrée à la roadmap principale)
+    ↓
+REF-7b.1bis (macro PCI chantier ↔ granularité jalon)
+    ↓
+REF-7b.1c (harmonisation PCI / RACI)
     ↓
 REF-7b.2 (schéma revue : tables reviewers + feedbacks + deadline)
     ↓
@@ -371,10 +380,11 @@ REF-7d (écran arbitrage CODIR)  ← peut démarrer en parallèle après 7b.2
     ↓
 REF-7b.6 (migration vers panneau flottant déplaçable react-rnd)
 REF-7b.7 (récap arbitrages côté reviewer + notif cumulative)
+REF-7b.1d / REF-7b.1e (polish final + durcissement technique) — en parallèle opportuniste
 REF-7e (relances automatiques) — itération ultérieure
 ```
 
-Chaque lot est livré en commit atomique, avec recette utilisateur dédiée avant de passer au suivant (respect strict de `docs/refactor_rules.md` §2).
+Chaque lot est livré en commit atomique, avec recette utilisateur dédiée avant de passer au suivant.
 
 ---
 
@@ -464,7 +474,7 @@ Chaque lot est livré en commit atomique, avec recette utilisateur dédiée avan
 | 36 | Export PDF — Vue Synthèse Direction | 🟠 | 🚧 |
 | 37 | Export PDF — PAE Manager | 🟡 | ⬜ |
 
-*Note (EPIC 13 · REF-36)* : v1 **impression navigateur** sur la Vue décideur (`window.print` + styles `dg-print`). Export PDF dédié (génération fichier, branding contrôlé, hors navigateur) encore à traiter si besoin CODIR. Suivi GitHub : **GH-14**.
+*Note (EPIC 13 · REF-36)* : v1 **impression navigateur** sur la Vue décideur (`window.print` + styles `dg-print`). Export PDF dédié encore à traiter si besoin CODIR. Suivi GitHub : **GH-14**.
 
 ---
 
@@ -494,7 +504,7 @@ Les tâches **59–72** (fondations Next.js + landing workspace SEO) sont **term
 | 74 | ~~Images hero responsive (desktop/tablet/mobile)~~ — annulée (pivot produit RDV-only, 21 avril 2026) | 🟡 | ❌ | Revert commit — hero revenu au bloc éditorial texte |
 | 75 | ~~CTA vers dashboard (deep link si auth, modal sinon)~~ — annulée (pivot produit RDV-only, 21 avril 2026) | 🟠 | ❌ | Revert commit — CTA unique = mailto RDV ; `LandingSmartCta.tsx` supprimé |
 
-*Note (EPIC 14 · REF-73)* : le nom de composant retenu en code est `LandingRoadmapTrajectoire` (bloc « Une transformation visible » + assets `/public/images/SVG roadmap assets/`). Ancien libellé backlog : `LandingTimeline`.
+*Note (EPIC 14 · REF-73)* : le nom de composant retenu en code est `LandingRoadmapTrajectoire`.
 
 ---
 
@@ -502,44 +512,21 @@ Les tâches **59–72** (fondations Next.js + landing workspace SEO) sont **term
 
 Objectif : unifier progressivement l'application sur **Next.js 16 App Router** pour réduire la surface de maintenance (1 stack, 1 design system, 1 projet Vercel cible), **sans freeze fonctionnel** et sans régression visible pour l'utilisateur.
 
-Principe : chaque vague migre un périmètre isolé, **conserve la parité comportementale** (cf. [`docs/refactor_rules.md`](refactor_rules.md) §2) et doit être validée en production avant la vague suivante.
-
-Contexte de déclenchement : incident du 21 avril 2026 — la PR #28 a mergé la branche `feat/nextjs-landing-pages` dans `main` avant que tous les commits landing ne soient poussés distant, provoquant un état prod Vercel qui affichait le template `create-next-app` par défaut. Résolu par un merge complémentaire (commit `e62a98a`). Point d'attention durable intégré à la règle Cursor consolidée : branche de travail par défaut = `main`.
+Principe : chaque vague migre un périmètre isolé, **conserve la parité comportementale** et doit être validée en production avant la vague suivante.
 
 | REF | Titre | Priorité | Statut |
 |---|-------|----------|--------|
-| 76 | **Vague 0 · Fondations partagées** — extraire les tokens CSS (`themes.css`, `design-system.css`) en dossier partagé ou les synchroniser explicitement entre `/src` et `/web` ; aligner `eslint` / `tsconfig` ; supprimer le couplage `turbopack.root = ..` dans [web/next.config.ts](web/next.config.ts) | 🔴 | ⬜ |
-| 77 | **Vague 1 · Auth SSR Supabase** — introduire `@supabase/ssr` dans `/web` (cookies, middleware de session), migrer [src/pages/Login.tsx](src/pages/Login.tsx) et [src/pages/AuthCallback.tsx](src/pages/AuthCallback.tsx) vers `web/app/(auth)/login` et `web/app/auth/callback` | 🔴 | ⬜ |
-| 78 | **Vague 2 · Routage et layout applicatif** — créer `web/app/(app)/layout.tsx` (navbar dashboard, thème, garde d'auth), brancher `acces-membres` et `bientot-disponible` déjà présents, router `/workspace/[id]/home` (landing authentifiée distincte de la landing SEO publique `/workspace/[id]`) | 🟠 | ⬜ |
-| 79 | **Vague 3 · Écrans simples** — migrer [src/pages/Settings.tsx](src/pages/Settings.tsx), [src/ProfileSheet.tsx](src/ProfileSheet.tsx), [src/CompanySheet.tsx](src/CompanySheet.tsx) (écrans à faible logique temps-réel) | 🟠 | ⬜ |
-| 80 | **Vague 4 · Vue décideur** — migrer [src/pages/DashboardDG.tsx](src/pages/DashboardDG.tsx) + [src/DgProjectAccordion.tsx](src/DgProjectAccordion.tsx) + frises partagées ; garder la parité impression navigateur (EPIC 13 · REF-36 v1) | 🟠 | ⬜ |
-| 81 | **Vague 5 · Selector projets** — migrer [src/ProjectSelector.tsx](src/ProjectSelector.tsx) (CRUD + scoring, dépend de `src/lib/api/projets.ts`) | 🟠 | ⬜ |
-| 82 | **Vague 6 · Maturity Roadmap (cœur métier)** — migrer [src/MaturityRoadmap.tsx](src/MaturityRoadmap.tsx), [src/RoadmapTimelineGrid.tsx](src/RoadmapTimelineGrid.tsx), [src/ChantierLineModal.tsx](src/ChantierLineModal.tsx), [src/JalonQuickAddModal.tsx](src/JalonQuickAddModal.tsx), [src/GanttRangeMarkers.tsx](src/GanttRangeMarkers.tsx) ; drag & drop + `ordre_sequentiel` + KPI miroir à valider en Server/Client Components | 🔴 | ⬜ |
-| 83 | **Vague 7 · API layer** — rapatrier `src/lib/api/*` sous `web/lib/api/*`, maintenir les signatures ; `src/lib/api.ts` devient un reexport deprecated. Tests Vitest migrés vers la config Next.js | 🟠 | ⬜ |
-| 84 | **Vague 8 · Modales et flows secondaires** — [src/OnboardingFlow.tsx](src/OnboardingFlow.tsx), [src/WorkspaceCreation.tsx](src/WorkspaceCreation.tsx), [src/MemberOnboarding.tsx](src/MemberOnboarding.tsx), [src/CreateDirectionDialog.tsx](src/CreateDirectionDialog.tsx) | 🟡 | ⬜ |
-| 85 | **Vague 9 · Bascule routage prod** — une fois toutes les routes couvertes côté Next.js, basculer le domaine principal (`forge-du-changement.vercel.app`) sur le projet Next.js ; l'ancien projet Vite reste en miroir temporaire | 🔴 | ⬜ |
-| 86 | **Vague 10 · Décommissionnement `/src`** — supprimer `/src`, [vite.config.ts](../vite.config.ts), [tsconfig.app.json](../tsconfig.app.json), `eslint.config.js` Vite, [vitest.config.ts](../vitest.config.ts), [index.html](../index.html) racine ; archiver le `package.json` Vite ; un seul projet Next.js reste | 🟠 | ⬜ |
-
-### Critères de bascule (DoD de chaque vague)
-
-1. **Parité fonctionnelle** validée (même scénario utilisateur, mêmes données Supabase, mêmes messages d'erreur).
-2. **Aucun hardcoding** couleur / typo / espacement / radius introduit (cf. [`visual-coherence-theme-rules.md`](visual-coherence-theme-rules.md)).
-3. **RLS et rôles** respectés (cf. [`proposition-regles-matrice-permissions.md`](proposition-regles-matrice-permissions.md)).
-4. Tests **Vitest / unitaires** correspondants passés.
-5. Commit `feat(migration)` poussé sur `main`, **déploiement Vercel vert** sur les deux projets tant qu'ils coexistent.
-6. Vague suivante **seulement après retour utilisateur réel** sur la vague précédente (respect strict de `refactor_rules.md` §2 — aucune régression même subtile).
-
-### Risques majeurs à anticiper
-
-- **Auth SSR** : le dashboard actuel est client-only (`persistSession` Supabase) ; basculer vers cookies SSR change tout le flux d'hydratation. REF-77 est le jalon bloquant de toute la migration.
-- **Design tokens** : `themes.css` (13 k) + `design-system.css` (16 k) sont volumineux. Arbitrer en REF-76 entre duplication synchronisée et package partagé.
-- **Drag & drop roadmap** : [src/RoadmapTimelineGrid.tsx](../src/RoadmapTimelineGrid.tsx) et [src/MaturityRoadmap.tsx](../src/MaturityRoadmap.tsx) utilisent des hooks bas-niveau ; migration à préparer avec soin pour HMR Turbopack (voir [web/AGENTS.md](../web/AGENTS.md) — Next.js 16 a des breaking changes).
-- **Tests** : ré-outillage Vitest côté Next.js (ou Jest). Prévu en REF-83.
-- **Deux déploiements Vercel** : tant que la migration n'est pas finie, maintenir `forge-du-changement.vercel.app` (Vite) et `forge-du-changement-kgyg-xi.vercel.app` (Next.js). Documenter qui pointe où dans le README racine.
-
-### Impact sur la stack technique du repo
-
-Tant que l'EPIC 15 n'est pas finie, la section **Stack technique** plus bas reste valable (double projet). À la fin de REF-86, elle devra être simplifiée (Next.js seul).
+| 76 | **Vague 0 · Fondations partagées** | 🔴 | ⬜ |
+| 77 | **Vague 1 · Auth SSR Supabase** | 🔴 | ⬜ |
+| 78 | **Vague 2 · Routage et layout applicatif** | 🟠 | ⬜ |
+| 79 | **Vague 3 · Écrans simples** | 🟠 | ⬜ |
+| 80 | **Vague 4 · Vue décideur** | 🟠 | ⬜ |
+| 81 | **Vague 5 · Selector projets** | 🟠 | ⬜ |
+| 82 | **Vague 6 · Maturity Roadmap (cœur métier)** | 🔴 | ⬜ |
+| 83 | **Vague 7 · API layer** | 🟠 | ⬜ |
+| 84 | **Vague 8 · Modales et flows secondaires** | 🟡 | ⬜ |
+| 85 | **Vague 9 · Bascule routage prod** | 🔴 | ⬜ |
+| 86 | **Vague 10 · Décommissionnement `/src`** | 🟠 | ⬜ |
 
 ---
 
@@ -560,21 +547,12 @@ Tant que l'EPIC 15 n'est pas finie, la section **Stack technique** plus bas rest
 - `audit_events` — traçabilité actions sensibles
 - `directions` — directions/périmètres
 - `projets` — projets RUN/BUILD avec scoring (`dg_validated_transfo`, etc.)
-- `chantiers` — lignes thématiques sous projet BUILD ; colonne `axe` (voir `docs/supabase-chantiers-axe.sql`)
-- `jalons` — jalons roadmap (dates cible, statut, facette, `jalon_dependance_id`, `kpi_source_jalon_id` — voir `docs/supabase-jalons-kpi-source.sql`)
+- `chantiers` — lignes thématiques sous projet BUILD ; colonne `axe`
+- `jalons` — jalons roadmap
 - `raci_jalons` — macro RACI par jalon (pilote / impliqué / informé par direction)
-- `raci_projets` — relations RACI projet (héritage / autres usages)
+- `raci_chantiers` — macro PCI par chantier (stakeholder-centric : entité/personne + rôles P/C/I + motivation)
+- `raci_projets` — relations RACI projet
 - `plan_de_charge` — charges mensuelles
-
-## Fonctions SQL helper
-
-- `jwt_email()` — email du JWT courant
-- `current_app_user_id()` — UUID user métier courant
-- `is_platform_superadmin()` — check super admin plateforme
-- `current_member_workspace_id()` — workspace du membre courant
-- `is_workspace_org_admin(p_workspace_id)` — admin du workspace ?
-- `has_workspace_consultant_access(p_workspace_id)` — consultant accès ?
-- `is_workspace_consultant_owner(p_workspace_id)` — owner du dossier ?
 
 ## Composants principaux
 
@@ -584,60 +562,39 @@ Tant que l'EPIC 15 n'est pas finie, la section **Stack technique** plus bas rest
 - `CompanySheet.tsx` — fiche entreprise + invitations unitaires/CSV
 - `ProfileSheet.tsx` — drawer profil utilisateur
 - `MemberOnboarding.tsx` — espace membre
-- `pages/DashboardDG.tsx` — synthèse décideur (KPI, validation BUILD, top 5, impression, historique)
+- `pages/DashboardDG.tsx` — synthèse décideur
 - `pages/Login.tsx` — écran connexion premium
 - `pages/AuthCallback.tsx` — retour OAuth/Magic Link
-- `MaturityRoadmap.tsx` — roadmap maturité (chantiers, jalons, RACI, dépendances)
-- `RoadmapTimelineGrid.tsx` — grille 4 axes × échéances (drag chantier entre axes, drag jalon sur la ligne pour ajuster l’échéance)
+- `MaturityRoadmap.tsx` — orchestration roadmap (projets, snapshots, tiroirs, intégration PCI)
+- `RoadmapTimelineGrid.tsx` — grille 4 axes × échéances **+ colonnes Parties prenantes PCI**
+- `RaciChantiersMatrix.tsx` — vue autonome secondaire / détachée de la matrice PCI si besoin
+- `usePciMatrix.tsx` — hook cœur du module PCI (chargement, canonicalisation, édition, popover)
+- `RaciChantiersPopover.tsx` — popover PCI (cellule / création / édition entête)
 - `DgProjectAccordion.tsx` — détail projet dans la Vue décideur
 - `ChantierLineModal.tsx` / `JalonQuickAddModal.tsx` — édition chantiers et jalons
 - `src/lib/api.ts` — façade CRUD + réexport roadmap
 - `src/lib/api/roadmap.ts` — chantiers, jalons, RACI jalons
+- `src/lib/api/raci-chantiers.ts` — CRUD PCI chantier
 - `src/lib/auth.ts` — Auth helpers + rate limit client
-- `src/lib/supabase.ts` — client Supabase (vars d'env)
+- `src/lib/supabase.ts` — client Supabase
 - `src/lib/types.ts` — types TypeScript
 
 **Landing Next.js (`web/`) — homepage publique et SEO**
 
 - `web/app/page.tsx` — homepage commerciale (sections éditoriales, CTA mailto, bloc trajectoire)
-- `web/components/LandingNav.tsx` — navigation (logo, RDV `#rdv`, lien membre, menu mobile, thème)
+- `web/components/LandingNav.tsx` — navigation
 - `web/components/LandingRoadmapTrajectoire.tsx` — trajectoire route + jalons + cartes d’étapes
-- `web/components/ThemeToggle.tsx` — bascule clair / sombre (landing)
+- `web/components/ThemeToggle.tsx` — bascule clair / sombre
 - `web/public/fonts/` — Satoshi + Clash Display (`fonts.css`)
-- `web/app/acces-membres/page.tsx` / `web/app/bientot-disponible/page.tsx` — pages de transition vers le parcours membre (à connecter au dashboard)
-
-## Documentation projet
-
-- `docs/# Règles métier — Maturity Roadmap.md` — référence métier module roadmap
-- `docs/maturity-roadmap-synthese-evolutions-produit.md` — pistes versionnement, param workspace, etc.
-- `docs/supabase-chantiers-axe.sql` — migration `chantiers.axe` (typage par axe de création)
-- `docs/proposition-regles-matrice-permissions.md` — règles en langage métier
-- `docs/history/README.md` — index des historiques de sessions importantes
-- `docs/security-quick-wins.md` — MFA, rate limits, RLS, audit
-- `docs/supabase-evolution-permissions-alignement.sql` — script SQL principal
-- `docs/supabase-verify-permissions-setup.sql` — vérifs post-migration
-- `docs/supabase-verify-rls-all-public-tables.sql` — audit RLS global
-- `docs/supabase-storage-assets-hardening.sql` — durcissement Storage
-
-## Design system
-
-- Couleur accent : `#8E3B46` (bordeaux / caramel-candy-600)
-- Palettes : `caramel-candy` (chaud bordeaux), `orecchiette` (doré paille), `muted-yellow-green` (validation)
-- Aliases compat : `--dark-red-500`, `--coral-400`, `--straw-400`, `--steel-blue-400`
-- Typo titres : Playfair Display
-- Typo corps : Inter
-- Thème : dark/light (toggle en haut à droite)
-- Variables CSS : `themes.css` + `design-system.css`
-
----
+- `web/app/acces-membres/page.tsx` / `web/app/bientot-disponible/page.tsx` — pages de transition vers le parcours membre
 
 ## Trajectoire suggérée
 
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
-- **Maintenant** : finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), puis fermer le gap décideur transverse (EPIC 2 · REF-3).
-- **Après** : **poser les fondations de l'EPIC 15** (REF-76 tokens partagés + REF-77 Auth SSR) avant tout, renforcer gouvernance/sécurité (EPIC 11), arbitrer l'export PDF autonome (EPIC 13), puis lancer les évolutions roadmap avancées (versionnement, fenêtre glissante, paramètres).
-- **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) qui seront idéalement construits directement dans `/web`, et l'extension design premium complète.
+- **Maintenant** : finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), puis fermer le gap décideur transverse (EPIC 2 · REF-3). Le prochain lot roadmap le plus naturel après la base déjà livrée est **REF-7b.1bis**.
+- **Après** : poser les fondations de l'EPIC 15 (REF-76 + REF-77), renforcer gouvernance/sécurité (EPIC 11), arbitrer l'export PDF autonome (EPIC 13), puis lancer l’harmonisation **PCI / RACI** et le polish final du module PCI (REF-7b.1c → 7b.1e).
+- **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète.
 
 ---
 
@@ -646,288 +603,22 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ### Maintenant
 
 1. EPIC 3 · **REF-7a → REF-7d** — figer une roadmap V1, ouvrir un cycle reviewers, collecter des propositions typées, puis arbitrer/clôturer.
-2. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
-3. EPIC 11 · **REF-50 / REF-51** — enclencher gouvernance/sécurité opérationnelle (MFA super-admin + journal import CSV) si fenêtre disponible avant REF-76/77.
+2. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier déjà intégrée à la granularité jalon.
+3. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
 
 ### Après
 
-4. EPIC 15 · **REF-76 / REF-77** — fondations partagées + Auth SSR Supabase dans `/web` : **prérequis bloquant** avant toute grosse feature dashboard dans Next.js (migration progressive `/src` → `/web`).
-5. EPIC 11 · **REF-50 / REF-51** — MFA super-admin + journal des imports CSV (gouvernance/sécurité opérationnelle).
-6. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
-7. EPIC 3 (évolutions avancées) — lancer les phases de `maturity-roadmap-synthese-evolutions-produit.md` : paramètres d'échéances workspace, fenêtre glissante, versionnement major/minor.
+4. EPIC 3 · **REF-7b.1c / REF-7b.1d / REF-7b.1e** — harmonisation PCI/RACI, polish UX final et durcissement technique du module PCI.
+5. EPIC 15 · **REF-76 / REF-77** — fondations partagées + Auth SSR Supabase dans `/web`.
+6. EPIC 11 · **REF-50 / REF-51** — MFA super-admin + journal des imports CSV.
+7. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
 
 ### Plus tard
 
-8. EPIC 15 · **REF-78 à REF-86** — suite migration `/src` → `/web` par vagues (routage applicatif, écrans simples, Vue décideur, Selector, Maturity Roadmap, API layer, flows secondaires, bascule prod, décommissionnement Vite).
-9. EPIC 4 · **REF-10–13** — PAE complet (structure, actions, validation N+1, lien jalons). Livrer de préférence **directement dans `/web`** si l'EPIC 15 est avancée.
-10. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires (plan de charge, SENS, Fabrique, management terrain, pilotage projet). Idem : construire dans `/web` si possible.
+8. EPIC 15 · **REF-78 à REF-86** — suite migration `/src` → `/web` par vagues.
+9. EPIC 4 · **REF-10–13** — PAE complet.
+10. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires.
 11. EPIC 12 (complet) — extension du design premium au-delà des quick wins ciblés.
-
----
-
-## Plan d'implémentation détaillé (tâches prêtes dev)
-
-### Sprint 1 — CODIR-ready (2 semaines)
-
-*État code (19/04/2026)* : **T1–T3 et T4** sont largement couverts par `DashboardDG` + agrégations locales (KPI, tableaux validation BUILD, top 5). **T5** (Gantt macro consolidé) et **T7** (PDF autonome) restent les gros morceaux ouverts ; **T6** (design) inchangé.
-
-#### T1 — Cadrage KPI DG consolidé (GH-1 · EPIC 2 · REF-1)
-- **Objectif** : figer les indicateurs de la Vue DG pour éviter les allers-retours de définition en cours de dev.
-- **Scope** :
-  - définir les KPI: volume RUN/BUILD, score moyen BUILD, nb directions actives, nb projets en alerte.
-  - définir filtres: workspace, période.
-  - définir règles de calcul (source tables, arrondis, valeurs nulles).
-- **Critères d'acceptation** :
-  - doc validée (1 page max) avec formule de chaque KPI.
-  - liste des endpoints/queries nécessaires validée.
-- **Dépendances** : aucune.
-- **Estimation** : 0.5 jour.
-
-#### T2 — Couche agrégations backend/API Vue DG (GH-1 · EPIC 2 · REF-1)
-- **Objectif** : fournir des données consolidées fiables et rapides pour le dashboard DG.
-- **Scope** :
-  - créer fonctions d'agrégation dans `src/lib/api.ts` (ou RPC Supabase si plus pertinent).
-  - ajouter types TS dédiés (`DashboardDgMetrics`, `DirectionRankingItem`, etc.).
-  - gérer pagination/limite si dataset volumineux.
-- **Critères d'acceptation** :
-  - temps de réponse cible < 500ms sur dataset nominal.
-  - fallback propre si aucune donnée.
-  - requêtes compatibles RLS actuelle.
-- **Dépendances** : T1.
-- **Estimation** : 1.5 jours.
-
-#### T3 — UI Dashboard consolidé DG (GH-1 · EPIC 2 · REF-1)
-- **Objectif** : rendre visible la synthèse DG multi-directions dans l'app.
-- **Scope** :
-  - nouvelle vue/module dans `App.tsx` + composant dédié.
-  - cartes KPI + tableau synthèse directions.
-  - états loading/empty/error.
-- **Critères d'acceptation** :
-  - navigation fonctionnelle depuis le menu.
-  - rendu correct desktop (et lisible tablette).
-  - aucun blocage si données partielles.
-- **Dépendances** : T2.
-- **Estimation** : 2 jours.
-
-#### T4 — Classement inter-directions top 5 BUILD (GH-2 · EPIC 2 · REF-2)
-- **Objectif** : mettre en évidence les directions les plus avancées en BUILD.
-- **Scope** :
-  - calcul top 5 côté data.
-  - composant UI classement + indicateur variation (optionnel v1).
-  - tri stable en cas d'égalité.
-- **Critères d'acceptation** :
-  - top 5 exact et déterministe.
-  - comportement défini si < 5 directions.
-- **Dépendances** : T2, T3.
-- **Estimation** : 1 jour.
-
-#### T5 — Gantt macro consolidé (GH-3 · EPIC 2 · REF-3)
-- **Objectif** : donner une lecture transverse des jalons/projets.
-- **Scope** :
-  - vue macro en lecture seule (v1).
-  - regroupement par direction.
-  - fenêtres temporelles (M-1, trimestre, semestre).
-- **Critères d'acceptation** :
-  - affichage stable sur datasets volumineux.
-  - lisibilité des jalons critiques.
-- **Dépendances** : T2, T3.
-- **Estimation** : 2 jours.
-
-#### T6 — Design premium quick wins (EPIC 12 · REF-52, REF-53, REF-58 — GH-20)
-- **Objectif** : élever la perception premium sans refonte lourde.
-- **Scope** :
-  - score monochromatique caramel.
-  - identité clair/sombre cohérente autour du bordeaux.
-  - harmonisation header (suppression bleus/rouges non palette).
-- **Critères d'acceptation** :
-  - conformité visuelle validée sur 3 écrans clés (Login, Dashboard, CompanySheet).
-  - aucun contraste critique régressif.
-- **Dépendances** : T3.
-- **Estimation** : 1 jour.
-
-#### T7 — Export PDF Vue Synthèse Direction (GH-14 · EPIC 13 · REF-36)
-- **Objectif** : générer un livrable partageable pour CODIR/clients.
-- **Scope** :
-  - aujourd’hui : **impression navigateur** sur la Vue DG (bouton + styles dédiés) — acceptable en v0.
-  - cible : export PDF d'une vue synthèse (KPI + tableau + date + workspace), génération fichier si besoin.
-  - gestion des cas sans données.
-  - cohérence branding.
-- **Critères d'acceptation** :
-  - PDF ou PDF équivalent imprimable en temps raisonnable (< 5 s côté utilisateur pour une génération dédiée si implémentée).
-  - rendu lisible A4 (portrait ou paysage défini).
-  - contenu fidèle à la vue écran.
-- **Dépendances** : T3, T4, T6.
-- **Estimation** : 1.5 jours.
-
-#### T8 — Recette, perf et mise en prod Sprint 1
-- **Objectif** : sécuriser la mise en production.
-- **Scope** :
-  - tests manuels multi-rôles (consultant/admin/codir).
-  - vérification Vercel (build/runtime logs).
-  - smoke tests navigation + auth + workspace switch.
-- **Critères d'acceptation** :
-  - aucune erreur bloquante.
-  - pas de régression majeure sur modules existants.
-  - checklist de déploiement validée.
-- **Dépendances** : T1 à T7.
-- **Estimation** : 1 jour.
-
-### Sprint 2 — Cœur métier roadmap (EPIC 3)
-
-*État 20/04/2026* : **T9 à T11, T13 et T14** sont couverts par l’app (axes, CRUD jalons, RACI, grille, dépendance). Complément **grille matrice** : drag chantier entre axes + drag jalon sur la ligne (échéance), sans reload page. **T12** (réactions / réponses) et **T15** (recette ciblée + perf) restent pertinents ; ajouter au besoin versionnement / param workspace depuis `docs/maturity-roadmap-synthese-evolutions-produit.md`.
-
-#### T9 — Structure 4 axes BUILD (GH-4 · EPIC 3 · REF-4)
-- **Estimation** : 1 jour.
-
-#### T10 — CRUD jalons (GH-5 · EPIC 3 · REF-5)
-- **Estimation** : 1.5 jours.
-
-#### T11 — Macro RACI par jalon (GH-6 · EPIC 3 · REF-6)
-- **Estimation** : 1 jour.
-
-#### T12 — Dialogue structuré roadmap versionnée (GH-7 · EPIC 3 · REF-7a→7d)
-- **Scope** :
-  - figer une version roadmap V1 (snapshot),
-  - ouvrir une fenêtre de review sur périmètre invité,
-  - collecter des propositions structurées (ajout/suppression/évolution chantier/jalon, justification obligatoire),
-  - arbitrer (OK/NOK/conditionnel) puis clôturer le cycle.
-- **Estimation** : 6 à 8 jours (découpage en 4 sous-vagues).
-
-#### T13 — Vue matrice complète (GH-8 · EPIC 3 · REF-8)
-- **Estimation** : 1.5 jours.
-
-#### T14 — Dépendances inter-jalons (GH-9 · EPIC 3 · REF-9)
-- **Estimation** : 1 jour.
-
-#### T15 — Recette EPIC 3 + optimisation perf
-- **Estimation** : 1 jour.
-
-### Sprint 3 — Plan d'Action d'Équipe (EPIC 4)
-
-#### T16 — Structure PAE manager (GH-10 · EPIC 4 · REF-10)
-- **Estimation** : 1 jour.
-
-#### T17 — Actions / Ressources / Abandons (EPIC 4 · REF-11 — lot **GH-21** ; ne pas confondre avec **GH-11**)
-- **Estimation** : 1 jour.
-
-#### T18 — Validation N+1 (EPIC 4 · REF-12 — lot **GH-21** ; ne pas confondre avec **GH-12** auth)
-- **Estimation** : 1 jour.
-
-#### T19 — Lien PAE ↔ jalon (EPIC 4 · REF-13 — lot **GH-21** ; ne pas confondre avec **GH-13** Vercel)
-- **Estimation** : 1 jour.
-
-#### T20 — Recette PAE + préparation export PAE (GH-27 · EPIC 13 · REF-37)
-- **Estimation** : 1 jour.
-
-### Récap dépendances critiques
-- T2 dépend de T1
-- T3 dépend de T2
-- T4 dépend de T2/T3
-- T5 dépend de T2/T3
-- T6 dépend de T3
-- T7 dépend de T3/T4/T6
-- T8 dépend de T1→T7
-
-### Capacity planning (indicatif)
-- **Sprint 1** : ~10.5 jours
-- **Sprint 2** : ~8 jours
-- **Sprint 3** : ~5 jours
-- **Total** : ~23.5 jours ouvrés (hors aléas)
-
----
-
-## Pilotage hebdo (ordre d'exécution recommandé)
-
-### Rôles projet (proposition)
-- **Lead Produit / Métier** : arbitrage KPI, validation UX métier, priorisation
-- **Lead Tech** : architecture, qualité code, intégration finale
-- **Dev Front** : UI/UX, composants, états de chargement/erreur
-- **Dev Data/Supabase** : agrégations, requêtes, RLS, perf SQL
-- **QA** : scénarios de recette, non-régression, validation pré-prod
-
-### Semaine 1 — Cadrage + fondations data (Sprint 1)
-
-#### Jour 1 (lundi)
-- T1 cadrage KPI DG consolidé (atelier 60-90 min)
-- sortie: mini-spec validée + définition done de T2/T3
-- **Jalon** : go/no-go scope Sprint 1 figé
-
-#### Jour 2 (mardi)
-- démarrage T2 (agrégations backend/API)
-- création types TS et contrats de données
-- **Contrôle** : revue technique rapide (15 min) sur modèle de données
-
-#### Jour 3 (mercredi)
-- fin T2 + tests unitaires/validation manuelle API
-- début T3 (squelette UI Dashboard DG)
-- **Jalon** : démo interne “data branchée à la vue”
-
-#### Jour 4 (jeudi)
-- continuation T3 (cards KPI, tableau synthèse, états loading/error)
-- démarrage T4 (top 5 BUILD)
-- **Contrôle** : revue UX métier des libellés et priorités visuelles
-
-#### Jour 5 (vendredi)
-- fin T4
-- initialisation T5 (Gantt macro v1 read-only)
-- **Jalon hebdo** : démo CODIR interne (v0 Dashboard + Top5 + Gantt embryon)
-
-### Semaine 2 — Finalisation Sprint 1 + mise en prod
-
-#### Jour 6 (lundi)
-- finalisation T5 (Gantt macro consolidé)
-- démarrage T6 (polish design REF-52 / REF-53 / REF-58)
-- **Contrôle** : point accessibilité contraste + cohérence palette
-
-#### Jour 7 (mardi)
-- fin T6
-- démarrage T7 (export PDF vue synthèse)
-- **Jalon** : première génération PDF exploitable
-
-#### Jour 8 (mercredi)
-- finalisation T7 (robustesse “pas de données”, branding)
-- début T8 (recette multi-rôles)
-- **Contrôle** : test perf et logs Vercel
-
-#### Jour 9 (jeudi)
-- continuation T8: correction bugs et régressions
-- gel fonctionnel sprint (feature freeze)
-- **Jalon** : décision release candidate
-
-#### Jour 10 (vendredi)
-- T8 final: smoke tests, validation métier finale, déploiement prod
-- rétrospective courte + préparation Sprint 2
-- **Jalon** : Sprint 1 livré en production
-
-### Semaine 3-4 — Sprint 2 (EPIC 3)
-- S3: T9/T10/T11 (structure axes + CRUD jalons + macro RACI)
-- S4: T12/T13/T14/T15 (interactions, matrice, dépendances, recette)
-- **Jalon fin Sprint 2** : roadmap maturité exploitable de bout en bout
-
-### Semaine 5 — Sprint 3 (EPIC 4 PAE)
-- T16/T17/T18/T19/T20 en flux continu
-- démo intermédiaire milieu de semaine + finalisation fin de semaine
-- **Jalon fin Sprint 3** : PAE opérationnel + lien jalons
-
-## Cadence de gouvernance
-
-### Rituels
-- **Daily** 15 min (blocages + plan du jour)
-- **Revue hebdo** 45 min (démo + décisions)
-- **Comité produit** 30 min (priorisation backlog)
-
-### Indicateurs de pilotage
-- avancement tâches sprint (% done)
-- bugs bloquants ouverts
-- temps moyen de chargement vue DG
-- taux de réussite export PDF
-
-### Définition de Done (DoD) commune
-- code mergé + build vert
-- lints sans erreur
-- logs Vercel sans erreur bloquante
-- scénario métier clé testé (consultant/admin/codir)
-- documentation backlog mise à jour
 
 ---
 
@@ -937,45 +628,25 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 #### Fait
 - Titres des issues GitHub **GH-1–GH-27** : préfixe **`[REF-…]`** harmonisé avec les tableaux de ce fichier.
-- Convention **REF-** (tâche dans ce document) vs **GH-** (issue GitHub), colonnes de tableaux renommées en *REF*, traçabilité et plan d’implémentation alignés (correction des confusions PAE REF-11–13 vs GH-11–13).
-- Création des issues GitHub **GH-16–GH-27** (jalons livrés + lots ouverts par epic) et tableau d’extension en tête de `docs/backlog.md`.
-- Synchronisation issues **GH-1–GH-15** avec ce backlog (fermeture des issues livrées, tableau de traçabilité en tête de document).
-- Maturity Roadmap: amélioration UX drawer/popins (fermeture backdrop robuste), uniformisation RACI (grilles 2 colonnes, pilote unique), échéance alignée sur la timeline.
-- Maturity Roadmap: simplification dépendances (masquées en UI, `jalon_dependance_id` conservée en base).
-- Maturity Roadmap: création de direction inline avec anti-doublon (normalisation + proximité de libellé).
-- KPI roadmap: mise en place du jalon KPI miroir synchronisé (création/mise à jour/suppression), verrouillage nom + échéance côté miroir.
-- Maturity Roadmap — **grille matrice** : drag & drop **chantier** entre axes (Vague 1), puis drag & drop **jalon** sur la même ligne pour l’échéance (Vague 2) — collision par cellule, renumérotation `ordre_sequentiel`, pas de reload page.
-- Maturity Roadmap — **polish design grille** : alignement tokens thème (couleurs axes), harmonisation typographique en-têtes/axes, centrages verticaux/horizontaux (`Axe`, `Chantiers`, labels d’axes) et séparateurs visuels adoucis.
-- Documentation métier/technique mise à jour (règles roadmap, synthèse évolutions, backlog, script SQL `supabase-jalons-kpi-source.sql`).
-- Vue décideur / sélection projets: harmonisation itérative des frises et mini-frises (édition + décideur), puis composant partagé pour marqueurs début/fin.
-- Vue décideur: renommage UX, garde d'accès rôle (`consultant/admin/pilote/superadmin`), validation/retrait avec revue obligatoire, historique des décisions via `audit_events`.
-- Sécurité backend: script de garde SQL sur `projets.dg_validated_transfo` pour bloquer `codir`/`contributeur`.
-- Cartes RUN: alignement visuel avec BUILD sur l'entête (placement mini-gantt et pastille criticité).
-- Gouvernance Git: règle projet enrichie avec trailer `Made-with: Cursor AI`, convention commit formalisée dans `docs/git-commit-conventions.md`.
-- Landing Next.js (EPIC 14): déploiement Vercel opérationnel sur `https://forge-du-changement-kgyg-xi.vercel.app`.
-- Landing Next.js (EPIC 14): validation confidentialité en production de test (workspaces privés -> 404 homogène, aucune fuite d'information).
-- Landing Next.js (EPIC 14): confirmation du modèle opt-in (`is_public = false` par défaut), publication explicite uniquement.
-- Landing Next.js (EPIC 14 · REF-73 + homepage) : homepage publique `web/app/page.tsx` (parcours éditorial hero → constat → preuve → CTA mailto), composant `LandingRoadmapTrajectoire` (route SVG, pins, étapes statut done/current/upcoming), `LandingNav` + `ThemeToggle`, polices Satoshi / Clash Display dans `web/public/fonts/`, assets PNG/SVG roadmap, pages transition `/acces-membres` et `/bientot-disponible`, ajustements `layout` / `globals.css` / `next.config.ts`. Commit `51c390e`.
-- **Pivot produit landing (21 avril 2026)** : décision "RDV-only" pour la landing publique. Revert de REF-74 (hero responsive image) et REF-75 (CTA intelligent vers dashboard) — la landing revient à un hero éditorial texte et un unique lien `mailto:` RDV. Suppression de `web/components/LandingSmartCta.tsx`, des assets `web/public/images/hero-{desktop,tablet,mobile}.png` et du CSS associé (`.landing-hero__*` responsive, `.landing-cta-actions`, `.landing-cta-secondary`, `.landing-modal-*`, `.landing-hero--bleed`).
-- **Fix lint `react-hooks/set-state-in-effect` — `web/components/ThemeToggle.tsx`** (21 avril 2026) : migration du composant vers `useSyncExternalStore` (source de vérité = `document.documentElement.dataset.theme`) + script inline dans `<head>` de `web/app/layout.tsx` qui applique le thème **avant** hydration React. Élimine à la fois la cascade setState-in-effect (4 rendus pré-fix → 2 rendus post-fix, 0 event `effect-*`) et le FOUC (flash of unstyled theme). Preuve runtime capturée en debug mode (voir logs session `82b244`). Reste 3 warnings ESLint pré-existants hors périmètre (`@next/next/no-css-tags` x1, `@next/next/no-img-element` x2).
-- **Fix dev local SPA Vite — Supabase placeholder** (21 avril 2026) : création de `.env.local` à la racine avec `VITE_SUPABASE_URL` / `VITE_SUPABASE_KEY` du projet `kpgkxeilddeyfwiiqaha` (mêmes valeurs que `web/.env.local`, mais variables préfixées `VITE_*`). Fichier ignoré par git via le pattern `*.local`. Cause initiale : `src/lib/supabase.ts` retombait sur un fallback dev `https://example.supabase.co` → `ERR_NAME_NOT_RESOLVED` au clic "Se connecter". Preuve runtime : redirection OAuth complète jusqu'à `/auth/callback?code=...`.
-- **Convention dev local formalisée** (21 avril 2026) : deux terminaux désormais nécessaires en dev → racine `Le produit SaaS` = SPA Vite (port 5173), `web/` = landing Next.js (port 3000). À reporter dans `web/AGENTS.md` et `web/README.md` (tâche suivante).
-- **REF-50 MFA super-admin livré et validé en recette** (21 avril 2026) : helpers `enrollMfaTotp`, `verifyMfaTotp`, `unenrollMfaFactor`, `listMfaFactors`, `isMfaEnrollmentRequiredForSuperadmin`, `auditMfaEvent` dans `src/lib/auth.ts`. Section "Sécurité super-admin" dans `ProfileSheet.tsx` (QR + champ code 6 chiffres + bouton désactiver). Garde bloquante dans `App.tsx` qui empêche l'usage de l'app tant que le MFA n'est pas activé pour un super-admin. Audit `mfa_totp_enrolled` / `mfa_totp_disabled` dans `audit_events`.
-- **Fix runtime popin MFA vs drawer profil** (21 avril 2026) : le backdrop plein écran de la guard MFA (z-index 3000, inset 0) interceptait les clics destinés au drawer profil. Correctif 1 ligne dans `App.tsx` : conditionner le rendu de la guard à `!showProfile`. Dès que l'utilisateur ouvre son profil, la guard se démonte → drawer pleinement interactif. Si le drawer se referme sans MFA activé, la guard réapparaît automatiquement. Preuve runtime : capture montrant le drawer ouvert derrière la guard + validation post-fix utilisateur.
-- **Fix RLS super-admin sur `workspaces`** (21 avril 2026) : la seule policy SELECT (`authenticated_read_own_workspace`) filtrait par appartenance membre ; les policies INSERT/UPDATE/DELETE appelaient `is_platform_superadmin()` mais pas la SELECT. Un super-admin plateforme ne voyait qu'un seul workspace (celui dont il était membre). Ajout de la policy `workspaces_superadmin_select` → permet à un super-admin de lister tous les workspaces de la plateforme. Migration appliquée sur `kpgkxeilddeyfwiiqaha` + sauvegardée dans `docs/supabase-workspaces-superadmin-select.sql`. Ajout d'un `invalidateCache(['workspaces:list'])` dans `refreshWorkspacesCatalog` (`App.tsx`) pour fiabiliser le bouton "Actualiser la liste".
-- **REF-51 Journal des imports CSV livré et validé en recette** (21 avril 2026) : `CompanySheet.tsx` insère un event `invitation_batch_import` dans `audit_events` à chaque import batch (payload : `count_ok`, `count_mail_fail`, `count_errors`, `sample_errors`, `csv_hash` SHA-256, `default_role`). Section "Historique des imports CSV" dans le drawer "Mon entreprise" qui liste les 20 derniers imports via `listWorkspaceAuditEvents` (date, auteur, compteurs). Fix timing : `await insertAuditEvent` avant `setMembersRefreshKey(+1)` pour que la relecture voie la nouvelle ligne immédiatement.
-- **REF-7a — schéma roadmap_snapshots** (21 avril 2026) : migration appliquée sur `kpgkxeilddeyfwiiqaha` → tables `roadmap_snapshots` (workspace_id, projet_id, label, status draft/in_review/closed, frozen_at, closed_at, created_by) et `roadmap_snapshot_items` (snapshot_id, kind chantier/jalon, source_id, payload jsonb). RLS SELECT/INSERT avec `is_platform_superadmin()` + `is_workspace_org_admin()` + `has_workspace_consultant_access()`. API `createRoadmapSnapshot` / `listRoadmapSnapshots` dans `src/lib/api/roadmapSnapshots.ts`. Bouton "Figer la V1 (snapshot)" dans `MaturityRoadmap.tsx` + affichage des snapshots récents. Recette à dérouler dans la foulée (REF-7b/c/d viennent ensuite).
-- **REF-7a — fixes gouvernance snapshots** (21 avril 2026, commit `aa720e2`) : `createRoadmapSnapshot` exploite désormais la session auth pour renseigner `created_by` (UUID utilisateur) et `created_by_email` (dénormalisation pour lisibilité humaine). Migration SQL `alter table roadmap_snapshots add column if not exists created_by_email text` + back-fill via jointure `users`. `window.prompt` dans `MaturityRoadmap.tsx` enrichi d'un `defaultValue` type `V1 avril 2026` pour éviter les labels incorrects. `.gitignore` étendu avec `recette/` pour les exports CSV Supabase locaux.
-- **REF-7b — session de cadrage produit "ReviewerPage & cycle de revue"** (21 avril 2026) : cadrage complet en 6 blocs (A Header & pastille / B Accordéon projets / C Roadmap visuelle & commentaires / D Proposer un chantier / E Visibilité & notifications / F Workflow Soumettre ma review) entre Yogan et l'agent. Éclatement de REF-7b en **8 sous-lots** (7b.0 → 7b.7) et spec détaillée consolidée dans une section dédiée de `docs/backlog.md`. Apprentissages structurants : (1) les reviewers sont des contributeurs N-1 des CODIR, invités via le flux magic link standard mais avec UI resserrée à la page de revue ; (2) les 4 axes `PROCESSUS / ORGANISATION / OUTILS / KPI` sont fixes dans la démarche FdC (déjà en enum code) ; (3) modèle unifié feedbacks avec 3 kinds (reaction / decision / proposition_chantier) et toggle Réaction vs Demande de décision dans chaque commentaire ; (4) demandes de décision structurées en 3 champs obligatoires `constat / proposition / bénéfice` ; (5) visibilité "scénario 3" toujours privé entre reviewers, la synthèse se fait en présentiel ; (6) affichage par trigramme avec convention configurable par workspace ; (7) notification reviewer cumulative envoyée **une fois** quand 0 feedback pending restant ; (8) soumission unique par reviewer, ré-ouverture possible par le CODIR en 1 clic. Nouveaux items backlog identifiés : REF-7b.0 fondations utilisateur (users.direction_id + trigrammes), REF-7b.1 RACI chantier (matrice cochable), REF-7b.6 panneau flottant déplaçable (react-rnd), REF-7e relances automatiques, REF-51b extension CSV avec colonnes `direction` + `trigram`. Prochain lot à démarrer : **REF-7b.0** (fondations utilisateur) après validation de ce cadrage.
-- **REF-7b.0 — fondations utilisateur livrées** (21 avril 2026) : migration SQL appliquée sur `kpgkxeilddeyfwiiqaha` (`docs/supabase-users-direction-trigram.sql`) pour `users.direction_id` + `users.trigram`, `workspaces.trigram_convention` (check `prenom_nom_3` / `nom_prenom_3` / `custom`, default `prenom_nom_3`), `invitations.direction_id` + `invitations.trigram`, indexes FK. Types TS enrichis (`User`, `Workspace`, `Invitation`). `createInvitation` dans `src/lib/api/invitations.ts` hérite automatiquement de `direction_id` lorsque l'inviteur est `codir`, dérive le trigramme via `deriveTrigramFromEmail` en lisant `workspaces.trigram_convention`, et enrichit l'audit `invitation_created` avec les deux champs. `CompanySheet.tsx` : sélecteur "Direction" visible en invitation unitaire pour consultant/admin, parser CSV étendu avec colonnes optionnelles `direction` (résolue via `workspaceDirections`) + `trigram` (normalisé), et select "Convention trigramme" en mode édition fiche entreprise (persistance via `updateWorkspace`). `ProfileSheet.tsx` : lors du premier onboarding via magic link, `getAcceptedInvitationAwaitingUserRow` est appelé pour hériter de `direction_id` + `trigram` dans le `createUser`, et un champ inline "Trigramme (3 lettres)" permet l'édition manuelle (normalisation upper-case + regex). `listWorkspaces` / `updateWorkspace` étendus pour `trigram_convention`. Permet les prérequis RLS reviewer scope direction + affichage par trigramme côté revue (REF-7b.4, 7b.5). **REF-51b également clôturé** (extension CSV). **Recette Supabase déroulée** (étapes 1/5 à 4/5) : convention trigramme persistée (`nom_prenom_3` sur World Company), invitation unitaire consultant→DRH avec `trigram = RET` dérivé conforme, batch CSV (3 lignes) avec cas `direction+trigram explicites` / `direction seule → trigram dérivé` / `trigram seul → direction null` tous validés en base + audit `invitation_batch_import` complet. Étape 5 (onboarding magic link end-to-end) reportée faute d'email de test.
-- **REF-7b.0 polish UX drawer entreprise** (21 avril 2026) : (1) bandeau **orange** `cs-invite-msg--warning` (`#B45309`) pour succès partiel — invitation enregistrée mais email rejeté par Supabase (ex. domaine `.test`) — au lieu du vert trompeur, même logique appliquée au `batchSummary` via `batchSummaryTone`. (2) Section "Membres de l'espace" refondue en **accordéons groupés par rôle** (super admin / admin / consultant / CODIR / pilote / contributeur / autre) avec `normalizeMemberGroup`, ordre hiérarchique, compteur par groupe et groupes vides masqués ; suppression de la pagination globale 100/page. (3) Toolbar avec bouton "Tout déplier / Tout replier" (libellé adaptatif) et case à cocher "Afficher uniquement les invitations en attente" (filtre `pillVariant ≠ active/inactive`). (4) Préférences persistées par workspace dans `localStorage` (clé `cs-members-prefs:<workspaceId>`, payload `{groups, onlyPending}`) : par défaut tout replié sauf le groupe de l'utilisateur courant ; restauration automatique à la réouverture du drawer. Préparation à l'arrivée massive des reviewers (REF-7b.2+). **Validation en condition réelle** : invitation sur `snowie94@live.fr` (workspace World Company, rôle codir, direction DRH) persistée en base avec `trigram=SNS` hérité (convention `nom_prenom_3`) + bandeau orange affiché avec message `email rate limit exceeded` — conforme au comportement attendu pour un succès partiel.
-- **REF-7b.1 — fondations PCI par chantier livrées** (21 avril 2026) : **session de cadrage** complète (5 questions fermées + 3 confirmations) avant code, actée dans le journal — simplifie le RACI classique en **PCI** (Pilote = R+A, Contributeur = C, Informé = I) plus lisible pour reviewers N-1. **Migration SQL** `docs/supabase-raci-chantiers.sql` appliquée sur `kpgkxeilddeyfwiiqaha` : table `public.raci_chantiers` stakeholder-centric (1 ligne = 1 partie prenante avec 3 booléens + motivation texte libre + ordre_affichage), entité obligatoire `direction|autre` avec lien optionnel `public.directions`, personne optionnelle en texte libre avec lien optionnel `public.users`, contrainte `raci_chantier_at_least_one_role`, 4 indexes (chantier_id / direction_id / user_id / order), RLS cohérente avec `raci_jalons` (accès conditionné à l'accès au chantier parent). **Types TS** `RaciChantier` + `RaciChantierEntiteType` ajoutés dans `src/lib/types.ts`. **Module API** `src/lib/api/raci-chantiers.ts` (nouveau) : `listRaciChantiersForChantier`, `getRaciChantiersByChantierIds` (batch anti N+1), `getRaciChantiersForProjet`, `createRaciChantier`, `updateRaciChantier`, `toggleRaciChantierRole`, `deleteRaciChantier`, `reorderRaciChantiersForChantier` + cache `dedupedFetch` (`raci-chantiers:<chantier_id>` / `raci-chantiers-projet:<projet_id>`) + audit `raci_chantier_created/updated/deleted`. **UI V1 matrice** `src/RaciChantiersMatrix.tsx` (nouveau, 380 lignes) : composant autonome rendu **matrice globale unifiée** (option B validée) — colonnes = union canonique des parties prenantes de tous les chantiers du projet (regroupement client par `{entite_type, entite_nom, personne_nom}`), tri alphabétique par `entite_nom`/`personne_nom`, cellules cliquables avec pills P/C/I coloriées (caramel / muted-yellow-green / grey), **popover unifié** pour création + édition + suppression (champs partie prenante + cases P/C/I + motivation), cellule vide sur colonne existante propose uniquement P/C/I (champs partie prenante en lecture seule), cellule `+` en fin de ligne ou bouton `+ Ajouter` en header ouvre le popover avec tous les champs édisables. **Intégration MaturityRoadmap** : une matrice par projet sélectionné (titre de projet affiché uniquement si multi-sélection), rendue sous la timeline en bloc séparé. **V2 à faire dans le lot suivant** : fusion horizontale avec la timeline + poignée globale expand/collapse synchro (validée option A en cadrage). **Scope direction CODIR** : enforce côté UI (pas RLS — cohérent avec les autres tables roadmap), à câbler dans le lot V2. **Nouveaux items backlog** : REF-7b.1bis (écho PCI macro chantier dans panneau latéral jalon côte à côte avec la RACI fine du jalon) et REF-7f (vue consolidée cross-direction CODIR V1/V2 + option reviewer cross-direction). Commits `e0dbf76` (SQL + API) et `0f6cb2c` (UI V1) poussés sur `main`.
-- **REF-7b.0 étape 5/5 recette — reportée** (21 avril 2026) : onboarding magic link end-to-end (clic mail → `/auth/callback` → session Supabase → création `public.users` avec `direction_id` + `trigram` hérités → `invitation.status = accepted`) non déroulable immédiatement à cause du **rate limit SMTP built-in Supabase** (3-4 emails/h, saturé par les tests précédents). Même l'endpoint `Send magic link` depuis le Dashboard est soumis au même quota. Utilitaire `scripts/generate-magic-link.mjs` committé pour contourner via l'admin API (`supabase.auth.admin.generateLink`) dès que la recette sera reprise — il génère l'URL sans envoyer d'email (nécessite la service_role en env temporaire). **Deux déclencheurs possibles pour la reprise** : (a) rate limit réinitialisé après quelques heures, ou (b) configuration d'un SMTP custom (Resend / Brevo / SendGrid — 100 mails/jour gratuits, production-ready). L'invitation `snowie94@live.fr` reste en `status=en_attente` sur World Company, prête à être consommée.
+- Convention **REF-** (tâche dans ce document) vs **GH-** (issue GitHub), colonnes de tableaux renommées en *REF*, traçabilité et plan d’implémentation alignés.
+- Création des issues GitHub **GH-16–GH-27** et tableau d’extension en tête de `docs/backlog.md`.
+- Synchronisation issues **GH-1–GH-15** avec ce backlog.
+- Maturity Roadmap : amélioration UX drawer/popins, simplification dépendances, création de direction inline avec anti-doublon, KPI miroir synchronisé, drag & drop chantier/jalon, polish visuel de la grille.
+- Documentation métier/technique mise à jour.
+- Vue décideur / sélection projets : harmonisation itérative des frises et mini-frises.
+- Vue décideur : garde d'accès rôle, validation/retrait avec revue obligatoire, historique des décisions via `audit_events`.
+- Landing Next.js : homepage publique, composant `LandingRoadmapTrajectoire`, pivot produit RDV-only et correctifs thème / dev local.
+- **REF-7a** livré : schéma `roadmap_snapshots`, API, bouton “Figer la V1”, puis correctifs de gouvernance (`created_by`, `created_by_email`, label par défaut).
+- **REF-7b** cadré : cycle reviewers détaillé, éclatement en sous-lots 7b.0 → 7b.7.
+- **REF-7b.0** livré : fondations utilisateur (`direction_id`, `trigram`, convention workspace, extension CSV, héritage invitation → profil) + polish UX du drawer entreprise.
+- **REF-7b.1** livré au-delà de la V1 initialement documentée : la macro **PCI** chantier n’est plus seulement une matrice autonome sous la timeline ; elle est désormais **intégrée à la grille principale** via `RoadmapTimelineGrid` + `usePciMatrix`, avec colonnes Parties prenantes, édition cellule, édition entête, création/suppression de colonne, motivation, read-only, sticky columns et scroll horizontal assisté. `RaciChantiersMatrix.tsx` reste une vue autonome secondaire si besoin.
+- **Backlog réaligné** (22 avril 2026) : REF-7b.1 passe en ✅, ajout des sous-lots **7b.1c** (harmonisation PCI/RACI), **7b.1d** (polish UX final) et **7b.1e** (durcissement technique/perf), plus clarification explicite du rôle de `RaciChantiersMatrix`.
+- **REF-7b.0 étape 5/5 recette** reportée : onboarding magic link end-to-end bloqué par le rate limit SMTP built-in Supabase ; utilitaire `scripts/generate-magic-link.mjs` préparé pour reprise.
 
 #### En cours
-- Validation visuelle fine des frises sur tous les contextes d'affichage (édition, Vue décideur consolidée, Ma Direction, états RUN/BUILD variés).
+- Validation visuelle fine des frises sur tous les contextes d'affichage.
 
 #### À faire
-- Navigation historique navigateur: brancher la navigation interne sur l'URL/historique (retour arrière cohérent sans sortie du site).
+- Navigation historique navigateur : brancher la navigation interne sur l'URL/historique.
 - Export PDF DG final (si attendu hors impression navigateur).
-- Phase G roadmap (future): intégration managers contributeurs dans le champ Responsable (actuellement texte libre).
+- Phase G roadmap (future) : intégration managers contributeurs dans le champ Responsable.
