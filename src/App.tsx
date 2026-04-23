@@ -61,6 +61,7 @@ const OnboardingFlow = lazy(() => import('./OnboardingFlow'))
 const CompanySheet = lazy(() => import('./CompanySheet'))
 const ProfileSheet = lazy(() => import('./ProfileSheet'))
 const DashboardDG = lazy(() => import('./pages/DashboardDG'))
+const DiscoursTransformationPage = lazy(() => import('./pages/DiscoursTransformation'))
 const MaturityRoadmap = lazy(() => import('./MaturityRoadmap'))
 const ReviewerSnapshotPage = lazy(() => import('./pages/ReviewerSnapshotPage'))
 
@@ -316,13 +317,38 @@ function normalizeRoleLabel(role: AppUserRole): string {
   return 'Membre CODIR'
 }
 
-function canViewDecideurView(role: AppUserRole, isPlatformSuperadmin: boolean): boolean {
+/**
+ * Qui peut **voir** la vue décideur (menu + pages).
+ * - Superadmin plateforme : oui
+ * - Consultant owner, admin du workspace : oui
+ * - Pilote projet : oui (en lecture seule)
+ * - Membre CODIR **tagué dirigeant** du workspace : oui
+ * - Membre CODIR non dirigeant, contributeur : non (menu invisible)
+ */
+function canViewDecideurView(
+  role: AppUserRole,
+  isPlatformSuperadmin: boolean,
+  isWorkspaceDirigeant: boolean,
+): boolean {
   if (isPlatformSuperadmin) return true
-  return role === 'consultant' || role === 'admin' || role === 'pilote'
+  if (role === 'consultant' || role === 'admin' || role === 'pilote') return true
+  return isWorkspaceDirigeant
 }
 
-function canActOnDecideurValidation(role: AppUserRole, isPlatformSuperadmin: boolean): boolean {
-  return canViewDecideurView(role, isPlatformSuperadmin)
+/**
+ * Qui peut **agir** dans la vue décideur (valider / révoquer / éditer le discours).
+ * - Superadmin, consultant owner, admin du workspace : oui
+ * - Dirigeant tagué : oui
+ * - Pilote projet : non (lecture seule)
+ */
+function canActOnDecideurValidation(
+  role: AppUserRole,
+  isPlatformSuperadmin: boolean,
+  isWorkspaceDirigeant: boolean,
+): boolean {
+  if (isPlatformSuperadmin) return true
+  if (role === 'consultant' || role === 'admin') return true
+  return isWorkspaceDirigeant
 }
 
 function resolveJourneyVisibility(role: AppUserRole, isPlatformSuperadmin: boolean): {
@@ -697,6 +723,20 @@ function App() {
           ? appRoleFromDbUser(serverAccess.dbUser)
           : 'consultant'
 
+  /** Identifiant public.users.id de l'utilisateur courant (utile pour les ACLs côté UI). */
+  const currentAppUserId: string | null =
+    serverAccess?.source === 'users'
+      ? serverAccess.dbUser.id
+      : serverAccess?.source === 'superadmin'
+        ? serverAccess.dbProfile?.id ?? null
+        : null
+
+  /** L'utilisateur courant est-il le membre CODIR « dirigeant » désigné pour ce workspace ? */
+  const isWorkspaceDirigeant: boolean =
+    currentAppUserId != null &&
+    workspaceData?.workspace?.dirigeant_user_id != null &&
+    workspaceData.workspace.dirigeant_user_id === currentAppUserId
+
   /** Paramètres globaux : rôle issu du serveur ou super-admin (RPC). */
   const canAccessSettings =
     platformSuperadmin ||
@@ -876,11 +916,11 @@ function App() {
   useEffect(() => {
     if (
       (activeNav === 'dg' || activeNav === 'discours_transfo') &&
-      !canViewDecideurView(currentUserRole, platformSuperadmin)
+      !canViewDecideurView(currentUserRole, platformSuperadmin, isWorkspaceDirigeant)
     ) {
       navigateToMainNav('home')
     }
-  }, [activeNav, currentUserRole, platformSuperadmin, navigateToMainNav])
+  }, [activeNav, currentUserRole, platformSuperadmin, isWorkspaceDirigeant, navigateToMainNav])
 
   const refreshWorkspacesCatalog = useCallback(async () => {
     if (!canAccessSettings) return
@@ -1218,6 +1258,7 @@ function App() {
               created_at: prev?.workspace?.created_at ?? '',
               trigram_convention: 'prenom_nom_3',
               current_step: prev?.workspace?.current_step ?? null,
+              dirigeant_user_id: prev?.workspace?.dirigeant_user_id ?? null,
             }
             return {
               workspace: prev?.workspace ?? workspaceFallback,
@@ -1267,8 +1308,8 @@ function App() {
     || (fullName && fullName.includes(' ') ? fullName.split(' ').slice(1).join(' ') : '')
   const workspaceWelcomeName = [fallbackFirstName, fallbackLastName].filter(Boolean).join(' ').trim()
   const profileRoleLabel = platformSuperadmin ? 'Super admin plateforme' : normalizeRoleLabel(currentUserRole)
-  const canViewDecideur = canViewDecideurView(currentUserRole, platformSuperadmin)
-  const canActDecideur = canActOnDecideurValidation(currentUserRole, platformSuperadmin)
+  const canViewDecideur = canViewDecideurView(currentUserRole, platformSuperadmin, isWorkspaceDirigeant)
+  const canActDecideur = canActOnDecideurValidation(currentUserRole, platformSuperadmin, isWorkspaceDirigeant)
   const { showCodirSection, showContributeurSection } = resolveJourneyVisibility(
     currentUserRole,
     platformSuperadmin,
@@ -1629,10 +1670,14 @@ function App() {
                 <DashboardDG workspaceId={workspaceId} canActOnDecideurValidation={canActDecideur} />
               ) : <></>
             ) : normalizedActiveNav === 'discours_transfo' ? (
-              <ModulePlaceholder
-                title="Discours de transformation"
-                message="Module en préparation. Le discours de transformation consolidé pour le CODIR sera accessible ici."
-              />
+              canViewDecideur ? (
+                <DiscoursTransformationPage
+                  workspaceId={workspaceId}
+                  currentAppUserId={currentAppUserId}
+                  currentUserRole={currentUserRole}
+                  platformSuperadmin={platformSuperadmin}
+                />
+              ) : <></>
             ) : normalizedActiveNav === 'review' ? (
               <ModulePlaceholder
                 title="Review Roadmap"
@@ -1677,6 +1722,19 @@ function App() {
                 members={workspaceData?.members ?? []}
                 currentUserRole={currentUserRole}
                 companyLogo={companyLogo}
+                dirigeantUserId={workspaceData?.workspace?.dirigeant_user_id ?? null}
+                onDirigeantChange={(userId) => {
+                  setWorkspaceData((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          workspace: prev.workspace
+                            ? { ...prev.workspace, dirigeant_user_id: userId }
+                            : prev.workspace,
+                        }
+                      : prev,
+                  )
+                }}
                 onCompanyUpdate={(data) => {
                   setCompanyLogo(data.logo)
                   setWorkspaceName(data.companyName)

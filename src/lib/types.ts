@@ -6,6 +6,8 @@ export type Workspace = {
   logo_url: string | null
   trigram_convention: 'prenom_nom_3' | 'nom_prenom_3' | 'custom' | null
   current_step: number | null
+  /** Membre CODIR taggé « dirigeant » du workspace (auteur du discours de transformation). */
+  dirigeant_user_id: string | null
   created_at: string
 }
 
@@ -206,4 +208,56 @@ export type RaciChantier = {
   created_at: string
   updated_at: string
   created_by: string | null
+}
+
+// ─── Discours de transformation (V1) ──────────────────────────────────────────
+// Un discours par workspace (cloisonné par `workspace_id` + RLS), écrit par le
+// dirigeant du workspace (ou superadmin / consultant / admin / pilote).
+
+/** Valeur d'un champ du discours : texte libre, liste de puces, ou liste de cartouches structurés. */
+export type DiscoursFieldValue = string | string[] | Array<Record<string, string>> | null
+
+/** Payload structuré des 8 blocs performatifs (§2.3 du doc de référence). */
+export type DiscoursBlocsPayload = Record<string, Record<string, DiscoursFieldValue>>
+
+/** Résultat d'un scoring (rule-based et/ou IA). */
+export type DiscoursScoreSnapshot = {
+  /** Score global /100 agrégé à partir des 5 dimensions. */
+  total: number
+  /** 5 dimensions § 3.1.1 — chacune /20. */
+  dimensions: {
+    clarte_strategique: number
+    force_narrative: number
+    credibilite_manageriale: number
+    pouvoir_mobilisateur: number
+    performativite_collective: number
+  }
+  /** Niveau synthétique § 3.3 : 1 = à retravailler, 2 = solide, 3 = transformant. */
+  niveau: 1 | 2 | 3
+  forces: string[]
+  vigilances: string[]
+  recommandations: string[]
+  /** Source du scoring : `rules` (local, déterministe) ou `ai` (LLM via Edge function). */
+  source: 'rules' | 'ai'
+  /** Horodatage du calcul. */
+  computed_at: string
+}
+
+export type TransformationDiscourse = {
+  id: string
+  workspace_id: string
+  current_version_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TransformationDiscourseVersion = {
+  id: string
+  discourse_id: string
+  version_label: string
+  blocs: DiscoursBlocsPayload
+  score_snapshot: DiscoursScoreSnapshot | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
 }

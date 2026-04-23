@@ -85,6 +85,16 @@ export type {
   RoadmapReviewFeedback,
   RoadmapSnapshotReviewer,
 } from './api/roadmapReviews'
+export {
+  freezeNewVersion,
+  getLatestVersionForDiscourse,
+  getOrCreateDiscoursForWorkspace,
+  getVersionById,
+  listVersionsForDiscourse,
+  setWorkspaceDirigeant,
+  updateVersionBlocs,
+  updateVersionScore,
+} from './api/discoursTransformation'
 export type { CreateRaciChantierInput, UpdateRaciChantierInput } from './api/raci-chantiers'
 export {
   createRaciChantier,

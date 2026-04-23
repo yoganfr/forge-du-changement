@@ -1507,6 +1507,462 @@
   }
 }
 
+/* ── Discours de transformation — harmonisé avec ProjectSelector ──────────── */
+.discours-grid {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.discours-status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md) var(--space-xl);
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--ui-radius-control);
+  background: var(--glass-bg-chip);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  font-size: var(--fs-small);
+  color: var(--theme-text);
+}
+
+.discours-status-strip strong {
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.discours-status-strip > span {
+  color: var(--theme-text-muted);
+}
+
+.discours-status-strip .discours-status-strip__warn {
+  color: color-mix(in srgb, var(--brand-bordeaux) 80%, var(--theme-text));
+  font-weight: 600;
+}
+
+.discours-error-banner {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--ui-radius-control);
+  background: color-mix(in srgb, var(--caramel-candy-600) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--caramel-candy-600) 45%, transparent);
+  color: var(--theme-text);
+}
+
+/* ── Manifeste d'intro — cadre l'intention performative du module ────────── */
+.discours-manifest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-xl);
+  border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--brand-bordeaux);
+  border-radius: var(--ui-radius-control);
+  background: color-mix(in srgb, var(--glass-bg-chip) 55%, var(--theme-bg-page));
+  box-shadow: var(--glass-highlight);
+  max-width: 880px;
+}
+
+.discours-manifest p {
+  margin: 0;
+  color: var(--theme-text);
+  line-height: 1.6;
+  font-size: var(--fs-body);
+}
+
+.discours-manifest strong {
+  color: var(--theme-text);
+  font-weight: 700;
+}
+
+.discours-manifest__outro {
+  margin-top: var(--space-xs) !important;
+  padding-top: var(--space-sm);
+  border-top: 1px dashed color-mix(in srgb, var(--glass-border) 70%, transparent);
+  color: var(--theme-text-muted) !important;
+  font-style: italic;
+}
+
+.discours-save-badge {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-chip);
+  color: var(--theme-text-muted);
+  white-space: nowrap;
+  box-shadow: var(--glass-highlight);
+}
+
+.discours-save-badge--dirty { color: var(--caramel-candy-700); }
+.discours-save-badge--saving { color: var(--theme-text-muted); }
+.discours-save-badge--saved { color: var(--muted-yellow-green-700); }
+.discours-save-badge--error {
+  color: var(--brand-bordeaux);
+  border-color: color-mix(in srgb, var(--brand-bordeaux) 40%, var(--glass-border));
+}
+
+/* ── Carte de bloc — reprend le traitement glass de .project-card ── */
+.discours-card {
+  position: relative;
+  background: var(--glass-bg-card);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow), var(--shadow-sm);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  padding: var(--space-xl);
+}
+
+.discours-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-lg);
+}
+
+.discours-card__title-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.discours-card__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--caramel-candy-600) 18%, transparent);
+  color: var(--theme-text);
+  font-weight: 700;
+  font-size: var(--fs-small);
+}
+
+.discours-card__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.discours-card__subtitle {
+  color: var(--theme-text-muted);
+  font-style: italic;
+}
+
+.discours-card__meta {
+  margin: 0;
+  color: var(--theme-text-muted);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+
+.discours-card__meta strong {
+  color: var(--theme-text);
+  font-weight: 700;
+}
+
+/* ── Grille de champs (2 colonnes desktop, 1 sur mobile) ── */
+.discours-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg) var(--space-2xl);
+}
+
+.discours-fields--single {
+  grid-template-columns: 1fr;
+}
+
+/* En mode 1-colonne, on limite la largeur des champs « long / text / list »
+   pour une ligne confortable à relire (≈ 65-70 caractères max).
+   Exception : le champ `cards` qui contient déjà sa propre grille de 3 sous-cartouches
+   doit conserver la pleine largeur. */
+.discours-fields--single > .discours-field {
+  width: 100%;
+  max-width: clamp(320px, 50%, 640px);
+}
+
+.discours-fields--single > .discours-field:has(.discours-subcards) {
+  max-width: none;
+}
+
+/* Préserver les retours à la ligne saisis au clavier (touche Entrée)
+   dans les textareas — c'est le comportement par défaut mais on le fige. */
+.discours-field textarea,
+.discours-subcard textarea {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* ── Champ texte / long / liste — identique à .project-field ── */
+.discours-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.discours-field__label {
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.discours-field__optional {
+  color: var(--theme-text-muted);
+  font-weight: 400;
+  font-style: italic;
+  font-size: 0.78rem;
+  margin-left: 4px;
+}
+
+.discours-field__aide {
+  font-size: 0.78rem;
+  color: var(--theme-text-muted);
+  line-height: 1.45;
+}
+
+.discours-field input,
+.discours-field textarea {
+  width: 100%;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--ui-radius-control);
+  height: 48px;
+  padding: 0 16px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  background: var(--glass-bg-chip);
+  color: var(--theme-text);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.discours-field textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 14px 16px;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+.discours-field input:focus,
+.discours-field textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand-bordeaux) 55%, var(--glass-border));
+  box-shadow: var(--glass-highlight), var(--ui-focus-ring);
+}
+
+.discours-field input:read-only,
+.discours-field textarea:read-only {
+  background: color-mix(in srgb, var(--glass-bg-chip) 75%, transparent);
+  color: var(--theme-text-muted);
+  cursor: default;
+}
+
+/* ── Liste (ex : 3 acquis majeurs) ── */
+.discours-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.discours-list__item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.discours-list__btn {
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-chip);
+  color: var(--theme-text);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.discours-list__btn:hover {
+  border-color: color-mix(in srgb, var(--brand-bordeaux) 55%, var(--glass-border));
+}
+
+.discours-list__add {
+  width: auto;
+  padding: 0 14px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px dashed var(--glass-border);
+  background: transparent;
+  color: var(--theme-text-muted);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.discours-list__add:hover {
+  border-style: solid;
+  color: var(--theme-text);
+}
+
+/* ── Sous-cartouches (cards imbriquées : changements §2, principes §4) ── */
+.discours-subcards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-lg);
+  align-items: stretch;
+}
+
+.discours-subcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-md) var(--space-lg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--ui-radius-control);
+  background: color-mix(in srgb, var(--glass-bg-chip) 70%, var(--theme-bg-page));
+  box-shadow: var(--glass-highlight);
+}
+
+.discours-subcard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid color-mix(in srgb, var(--glass-border) 70%, transparent);
+}
+
+.discours-subcard__title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
+.discours-subcard__remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.discours-subcard__remove:hover {
+  color: var(--brand-bordeaux);
+  border-color: color-mix(in srgb, var(--brand-bordeaux) 55%, var(--glass-border));
+}
+
+.discours-subcards--add-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-sm);
+}
+
+.discours-subcards__add {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px dashed var(--glass-border);
+  background: transparent;
+  color: var(--theme-text-muted);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.discours-subcards__add:hover {
+  border-style: solid;
+  color: var(--theme-text);
+  background: var(--glass-bg-chip);
+}
+
+@media (max-width: 900px) {
+  .discours-subcards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Question séminaire en bas de bloc — accent visuel ── */
+.discours-card__question {
+  margin-top: var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--muted-yellow-green-600);
+  background: color-mix(in srgb, var(--muted-yellow-green-600) 10%, transparent);
+  border-radius: 0 var(--ui-radius-control) var(--ui-radius-control) 0;
+  font-size: var(--fs-small);
+  color: var(--theme-text);
+  line-height: 1.5;
+}
+
+.discours-card__question strong {
+  font-weight: 700;
+}
+
+/* ── Intro / en-tête de page ── */
+.discours-intro {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.discours-intro__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.discours-intro__title {
+  margin: 0;
+  font-family: var(--font-title, var(--font-body));
+}
+
+.discours-intro__subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--theme-text-muted);
+  max-width: 760px;
+  line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .discours-card {
+    padding: var(--space-lg);
+  }
+  .discours-fields {
+    grid-template-columns: 1fr;
+  }
+  .discours-fields--single > .discours-field {
+    max-width: none;
+  }
+}
+
 @media (max-width: 768px) {
   .dashboard__topbar-inner {
     padding: var(--space-sm) var(--space-md);

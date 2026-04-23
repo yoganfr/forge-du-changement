@@ -9,6 +9,7 @@ import {
   insertAuditEvent,
   listWorkspaceAuditEvents,
   listWorkspaces,
+  setWorkspaceDirigeant,
   updateWorkspace,
   uploadImageToStorage,
 } from './lib/api'
@@ -187,12 +188,16 @@ export interface CompanySheetProps {
   members: CompanyMember[]
   currentUserRole: 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
   companyLogo?: string | null
+  /** Membre CODIR désigné comme « dirigeant » porteur du Discours de transformation. */
+  dirigeantUserId?: string | null
   onCompanyUpdate?: (data: {
     companyName: string
     sector: string
     size: string
     logo: string | null
   }) => void
+  /** Remonté à App.tsx après une affectation/retrait pour rafraîchir le workspace. */
+  onDirigeantChange?: (userId: string | null) => void
 }
 
 function getRoleLabel(role: CompanySheetProps['currentUserRole']) {
@@ -210,6 +215,11 @@ function getInitials(companyName: string) {
 
 function getEmailLocal(email: string) {
   return email.split('@')[0] ?? email
+}
+
+function formatUserDisplayName(u: User): string {
+  const full = `${u.prenom ?? ''} ${u.nom ?? ''}`.trim()
+  return full || u.email
 }
 
 function memberAvatarColor(role: string) {
@@ -359,7 +369,9 @@ export default function CompanySheet({
   members,
   currentUserRole,
   companyLogo: companyLogoProp = null,
+  dirigeantUserId = null,
   onCompanyUpdate,
+  onDirigeantChange,
 }: CompanySheetProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState(false)
@@ -371,8 +383,11 @@ export default function CompanySheet({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [remoteMembers, setRemoteMembers] = useState<CompanyMember[] | null>(null)
+  const [remoteUsers, setRemoteUsers] = useState<User[]>([])
   const [remoteMembersLoading, setRemoteMembersLoading] = useState(false)
   const [membersRefreshKey, setMembersRefreshKey] = useState(0)
+  const [dirigeantSaving, setDirigeantSaving] = useState(false)
+  const [dirigeantError, setDirigeantError] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<InviteFormRole>('Contributeur')
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
@@ -415,6 +430,24 @@ export default function CompanySheet({
   const canEdit = canEditCompany(currentUserRole)
   const canInvite = canInviteMembers(currentUserRole)
   const mergedMembers = remoteMembers ?? members
+
+  /** Membres CODIR actifs, éligibles au rôle de « dirigeant » porteur du discours. */
+  const codirCandidates = useMemo(() => {
+    return remoteUsers
+      .filter((u) => u.role?.toLowerCase() === 'codir' && u.status === 'actif')
+      .slice()
+      .sort((a, b) => {
+        const an = `${a.nom ?? ''} ${a.prenom ?? ''}`.trim().toLowerCase()
+        const bn = `${b.nom ?? ''} ${b.prenom ?? ''}`.trim().toLowerCase()
+        if (an && bn) return an.localeCompare(bn, 'fr')
+        return a.email.localeCompare(b.email, 'fr')
+      })
+  }, [remoteUsers])
+
+  const currentDirigeant = useMemo(
+    () => (dirigeantUserId ? remoteUsers.find((u) => u.id === dirigeantUserId) ?? null : null),
+    [dirigeantUserId, remoteUsers],
+  )
 
   // REF-7b.0 : preferences UI (expand par groupe + filtre en attente) persistees par workspace dans localStorage.
   const localStorageKey = workspaceId ? `cs-members-prefs:${workspaceId}` : null
@@ -553,6 +586,7 @@ export default function CompanySheet({
           fetchAllInvitations(workspaceId),
         ])
         if (cancelled) return
+        setRemoteUsers(users)
         setUserEmailById(
           users.reduce<Record<string, string>>((acc, user) => {
             acc[user.id] = user.email
@@ -562,6 +596,7 @@ export default function CompanySheet({
         setRemoteMembers(mergeUsersAndInvitations(users, invitations))
       } catch {
         if (cancelled) return
+        setRemoteUsers([])
         setRemoteMembers(null)
       } finally {
         if (!cancelled) setRemoteMembersLoading(false)
@@ -762,6 +797,25 @@ export default function CompanySheet({
     }
   }
 
+  async function submitDirigeantChange(nextUserId: string | null) {
+    if (!workspaceId) return
+    if ((dirigeantUserId ?? null) === nextUserId) return
+    setDirigeantError(null)
+    setDirigeantSaving(true)
+    try {
+      const updated = await setWorkspaceDirigeant(workspaceId, nextUserId)
+      onDirigeantChange?.(updated.dirigeant_user_id ?? null)
+    } catch (err) {
+      const message =
+        typeof err === 'object' && err && 'message' in err
+          ? String((err as { message?: unknown }).message ?? '')
+          : ''
+      setDirigeantError(message || 'Impossible de mettre à jour le dirigeant désigné.')
+    } finally {
+      setDirigeantSaving(false)
+    }
+  }
+
   async function persist() {
     setSaveError(null)
     setSaving(true)
@@ -914,6 +968,105 @@ export default function CompanySheet({
             </div>
           </div>
         </div>
+
+        {workspaceId && (
+          <div className="cs-section cs-section--dirigeant">
+            <h3>Dirigeant porteur du Discours de transformation</h3>
+            <p className="cs-dirigeant-lead">
+              Ce membre <strong>CODIR</strong> est désigné « dirigeant » du workspace. Il porte la V1
+              du Discours de transformation et peut le rédiger / modifier depuis la Vue décideur,
+              en plus des consultants et des administrateurs. Les autres membres ont un accès en
+              lecture seule (pilotes) ou n’y accèdent pas (codir non désigné, contributeurs).
+            </p>
+
+            <div className="cs-dirigeant-current">
+              <span className="cs-label">Dirigeant actuel</span>
+              {currentDirigeant ? (
+                <div className="cs-dirigeant-chip">
+                  <div
+                    className="cs-member-avatar"
+                    style={{ background: memberAvatarColor('codir') }}
+                  >
+                    {getInitials(
+                      `${currentDirigeant.prenom ?? ''} ${currentDirigeant.nom ?? ''}`.trim() ||
+                        getEmailLocal(currentDirigeant.email),
+                    )}
+                  </div>
+                  <div className="cs-dirigeant-chip-main">
+                    <strong>{formatUserDisplayName(currentDirigeant)}</strong>
+                    <span>{currentDirigeant.email}</span>
+                    {currentDirigeant.direction_nom && (
+                      <span className="cs-dirigeant-chip-detail">
+                        {currentDirigeant.direction_nom}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : dirigeantUserId ? (
+                <p className="cs-dirigeant-empty">
+                  Un dirigeant est désigné (id : {dirigeantUserId}) mais son profil n’est pas
+                  visible dans la liste des membres de cet espace.
+                </p>
+              ) : (
+                <p className="cs-dirigeant-empty">Aucun dirigeant désigné pour le moment.</p>
+              )}
+            </div>
+
+            {canEdit ? (
+              <div className="cs-dirigeant-editor">
+                <label className="cs-invite-field">
+                  <span className="cs-label">
+                    Désigner un membre CODIR ({codirCandidates.length} éligible
+                    {codirCandidates.length > 1 ? 's' : ''})
+                  </span>
+                  <select
+                    className="cs-edit-input cs-edit-input--select"
+                    value={dirigeantUserId ?? ''}
+                    disabled={dirigeantSaving || codirCandidates.length === 0}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      void submitDirigeantChange(v === '' ? null : v)
+                    }}
+                  >
+                    <option value="">— Aucun dirigeant désigné —</option>
+                    {codirCandidates.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {formatUserDisplayName(u)} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {currentDirigeant && (
+                  <button
+                    type="button"
+                    className="cs-dirigeant-clear"
+                    onClick={() => { void submitDirigeantChange(null) }}
+                    disabled={dirigeantSaving}
+                  >
+                    Retirer la désignation
+                  </button>
+                )}
+                {codirCandidates.length === 0 && (
+                  <p className="cs-invite-batch-hint">
+                    Aucun membre CODIR actif dans cet espace. Invitez d’abord un membre CODIR
+                    (ou attendez qu’il ait activé son compte) avant de le désigner.
+                  </p>
+                )}
+                {dirigeantSaving && (
+                  <p className="cs-invite-batch-hint">Enregistrement…</p>
+                )}
+                {dirigeantError && (
+                  <p className="cs-invite-msg cs-invite-msg--error">{dirigeantError}</p>
+                )}
+              </div>
+            ) : (
+              <p className="cs-invite-batch-hint">
+                Seuls le consultant owner et l’administrateur peuvent désigner ou retirer le
+                dirigeant porteur du discours.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="cs-section">
           <h3>Membres de l&apos;espace</h3>
@@ -1539,6 +1692,99 @@ const CSS = `
 
 .cs-section--invite {
   margin-top: 8px;
+}
+
+.cs-section--dirigeant h3 {
+  color: #8E3B46;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cs-dirigeant-lead {
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--theme-text-muted);
+}
+
+.cs-dirigeant-lead strong {
+  color: var(--theme-text);
+  font-weight: 700;
+}
+
+.cs-dirigeant-current {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.cs-dirigeant-chip {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-border);
+  border-left: 3px solid #8E3B46;
+  border-radius: 10px;
+  background: var(--theme-bg-page);
+}
+
+.cs-dirigeant-chip-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cs-dirigeant-chip-main strong {
+  font-size: 14px;
+  color: var(--theme-text);
+  font-weight: 700;
+}
+
+.cs-dirigeant-chip-main span {
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.cs-dirigeant-chip-detail {
+  font-style: italic;
+}
+
+.cs-dirigeant-empty {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--theme-text-muted);
+}
+
+.cs-dirigeant-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cs-dirigeant-clear {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #B91C1C;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.cs-dirigeant-clear:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  text-decoration: none;
 }
 
 .cs-invite-lead {
