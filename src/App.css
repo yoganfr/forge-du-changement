@@ -677,9 +677,9 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-accent) 28%, transparent);
 }
 
-.dashboard__mobile-nav-action--readonly,
-.dashboard__mobile-nav-action--readonly:hover {
-  cursor: default;
+.dashboard__mobile-nav-action.dashboard__mobile-nav-action--readonly,
+.dashboard__mobile-nav-action.dashboard__mobile-nav-action--readonly:hover {
+  cursor: default !important;
   border-color: var(--theme-border);
   background: var(--theme-bg-page);
 }
@@ -832,9 +832,9 @@
   box-shadow: var(--glass-highlight), 0 4px 24px color-mix(in srgb, var(--theme-accent) 12%, transparent);
 }
 
-.company-badge--readonly,
-.company-badge--readonly:hover {
-  cursor: default;
+.company-badge.company-badge--readonly,
+.company-badge.company-badge--readonly:hover {
+  cursor: default !important;
   border-color: var(--glass-border);
   box-shadow: var(--glass-highlight);
 }
