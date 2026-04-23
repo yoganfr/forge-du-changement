@@ -124,6 +124,20 @@ const CODIR_JOURNEY_MODULES: readonly JourneyModule[] = [
   },
 ]
 
+/** Mappe l'index `current_step` (1..N) du workspace vers l'id du module de parcours correspondant. */
+const CODIR_STEP_TO_MODULE_ID = ['projects', 'roadmap', 'feedbacks', 'pae_codir', 'kickoff', 'suivi_codir'] as const
+const CONTRIBUTEUR_STEP_TO_MODULE_ID = ['review', 'pae_contrib', 'suivi_contrib'] as const
+
+function resolveCurrentJourneyModuleId(
+  role: AppUserRole,
+  currentStep: number | null | undefined,
+): string | null {
+  if (currentStep == null) return null
+  const table = role === 'contributeur' ? CONTRIBUTEUR_STEP_TO_MODULE_ID : CODIR_STEP_TO_MODULE_ID
+  const idx = Math.max(1, Math.min(currentStep, table.length)) - 1
+  return table[idx] ?? null
+}
+
 const CONTRIBUTEUR_JOURNEY_MODULES: readonly JourneyModule[] = [
   {
     id: 'review',
@@ -381,6 +395,7 @@ type DashboardMainNavProps = {
   id?: string
   onItemPick?: () => void
   userDisplayName?: string | null
+  currentJourneyModuleId?: string | null
 }
 
 function DashboardMainNav({
@@ -397,6 +412,7 @@ function DashboardMainNav({
   id,
   onItemPick,
   userDisplayName,
+  currentJourneyModuleId,
 }: DashboardMainNavProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const closeTimerRef = useRef<number | null>(null)
@@ -415,6 +431,7 @@ function DashboardMainNav({
   function renderModuleItem(module: JourneyModule) {
     const isActive = activeNav === module.id
     const isSoon = module.status === 'soon'
+    const isCurrentStep = currentJourneyModuleId === module.id
     return (
       <button
         key={module.id}
@@ -433,7 +450,7 @@ function DashboardMainNav({
         <span className="dashboard__nav-item-main">
           <span className="dashboard__nav-item-label">{module.label}</span>
           {isSoon ? <span className="dashboard__nav-badge-soon">Bientôt</span> : null}
-          {isActive && !isSoon ? (
+          {isCurrentStep && !isSoon ? (
             <span className="dashboard__nav-badge-current" aria-label="Étape en cours">
               Étape en cours
             </span>
@@ -576,11 +593,6 @@ function DashboardDecideurNav({
         <span className="dashboard__nav-item-main">
           <span className="dashboard__nav-item-label">{module.label}</span>
           {isSoon ? <span className="dashboard__nav-badge-soon">Bientôt</span> : null}
-          {isActive && !isSoon ? (
-            <span className="dashboard__nav-badge-current" aria-label="Étape en cours">
-              Étape en cours
-            </span>
-          ) : null}
         </span>
         {module.subtitle ? (
           <span className="dashboard__nav-item-subtitle">{module.subtitle}</span>
@@ -1353,6 +1365,10 @@ function App() {
   )
   const codirModules = CODIR_JOURNEY_MODULES
   const contributeurModules = CONTRIBUTEUR_JOURNEY_MODULES
+  const currentJourneyModuleId = resolveCurrentJourneyModuleId(
+    currentUserRole,
+    workspaceData?.workspace.current_step ?? null,
+  )
   const avatarFromDb =
     serverAccess?.source === 'users'
       ? serverAccess.dbUser.avatar_url?.trim() || null
@@ -1476,6 +1492,7 @@ function App() {
               onGoHome={() => navigateToMainNav('home')}
               className="dashboard__nav"
               userDisplayName={workspaceWelcomeName}
+              currentJourneyModuleId={currentJourneyModuleId}
             />
             {canViewDecideur ? (
               <DashboardDecideurNav
@@ -1601,6 +1618,7 @@ function App() {
               className="dashboard__nav dashboard__nav--drawer"
               mobileMode
               userDisplayName={workspaceWelcomeName}
+              currentJourneyModuleId={currentJourneyModuleId}
               onItemPick={closeMobileNav}
             />
             {canViewDecideur ? (
