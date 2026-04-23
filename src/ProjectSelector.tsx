@@ -1257,9 +1257,31 @@ function CoefPanel({
           <h3>Coefficients de scoring</h3>
           <button type="button" className="close-btn" onClick={onClose}>✕</button>
         </div>
-        <p className="coef-panel-hint">
-          Adaptez les poids selon le contexte client. La dimension « Criticité » est pondérée ×3 par défaut car c&apos;est le critère stratégique central.
-        </p>
+        <div className="coef-panel-intro">
+          <p>Ajustez les pondérations selon le contexte du client.</p>
+          <p>Ces coefficients permettent de faire varier l&apos;importance relative de chaque critère dans le calcul du score.</p>
+          <p>
+            Le score obtenu mesure avant tout le niveau de criticité / d&apos;importance du sujet, et non à lui seul la valeur stratégique ou le caractère transformant du projet.
+          </p>
+        </div>
+        <div className="coef-panel-help">
+          <p className="coef-panel-help-title">Texte d&apos;aide</p>
+          <p className="coef-panel-help-subtitle">Réglage par défaut recommandé :</p>
+          <ul className="coef-panel-help-list">
+            <li>Criticité : ×3</li>
+            <li>Urgence : ×2</li>
+            <li>Récurrence : ×2</li>
+            <li>Temps : ×1</li>
+            <li>ETP : ×1</li>
+            <li>Investissement : ×1</li>
+          </ul>
+          <p className="coef-panel-help-subtitle">Logique du réglage par défaut :</p>
+          <p className="coef-panel-help-logic">
+            La criticité est surpondérée car elle constitue le critère central.
+            L&apos;urgence et la récurrence viennent ensuite renforcer la lecture de la pression opérationnelle.
+            Le temps, les ETP et l&apos;investissement permettent de qualifier l&apos;effort demandé, sans prendre le pas sur l&apos;importance du sujet.
+          </p>
+        </div>
         {(Object.keys(coefs) as Array<keyof Coefficients>).map((k) => (
           <div key={k} className="coef-row">
             <span className="coef-key">{CRITERIA_META[k].label}</span>
@@ -1277,6 +1299,12 @@ function CoefPanel({
             </div>
           </div>
         ))}
+        <div className="coef-panel-alert" role="note">
+          <p className="coef-panel-alert-title">Point de vigilance</p>
+          <p>
+            Modifier les coefficients change la logique de lecture du score. Il est recommandé de conserver un paramétrage stable pour comparer les projets entre eux.
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -3419,6 +3447,8 @@ const CSS = `
   padding: var(--space-2xl);
   width: 420px;
   max-width: 95vw;
+  max-height: min(85vh, 900px);
+  overflow-y: auto;
   box-shadow: var(--glass-highlight), var(--glass-shadow), var(--shadow-lg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
@@ -3454,13 +3484,80 @@ const CSS = `
   border-radius: var(--radius-sm);
 }
 
-.coef-panel-hint {
+.coef-panel-intro {
   font-size: 0.82rem;
   color: var(--theme-text-muted);
+  line-height: 1.55;
   margin: 0 0 var(--space-lg);
-  line-height: 1.5;
   padding-bottom: var(--space-lg);
   border-bottom: 1px solid var(--theme-border);
+}
+
+.coef-panel-intro p {
+  margin: 0 0 0.65em;
+}
+
+.coef-panel-intro p:last-child {
+  margin-bottom: 0;
+}
+
+.coef-panel-help {
+  font-size: 0.82rem;
+  color: var(--theme-text-muted);
+  line-height: 1.55;
+  margin: 0 0 var(--space-lg);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.coef-panel-help-title {
+  margin: 0 0 0.5em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-text);
+}
+
+.coef-panel-help-subtitle {
+  margin: 0.85em 0 0.35em;
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.coef-panel-help-list {
+  margin: 0 0 0.85em;
+  padding-left: 1.15em;
+}
+
+.coef-panel-help-list li {
+  margin: 0.15em 0;
+}
+
+.coef-panel-help-logic {
+  margin: 0;
+}
+
+.coef-panel-alert {
+  margin-top: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--ui-radius-control);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 28%, var(--theme-border));
+  background: color-mix(in srgb, var(--theme-accent) 8%, var(--theme-bg-page));
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--theme-text);
+}
+
+.coef-panel-alert-title {
+  margin: 0 0 0.35em;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.coef-panel-alert p:last-child {
+  margin: 0;
 }
 
 .coef-row {
