@@ -628,8 +628,17 @@
 }
 
 .dashboard__nav--drawer .dashboard__journey-section {
-  border-radius: var(--radius-md);
-  padding: 10px;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  gap: 10px;
+}
+
+.dashboard__nav--drawer .dashboard__journey-section-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .dashboard__mobile-nav-account {

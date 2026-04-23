@@ -380,6 +380,7 @@ type DashboardMainNavProps = {
   mobileMode?: boolean
   id?: string
   onItemPick?: () => void
+  userDisplayName?: string | null
 }
 
 function DashboardMainNav({
@@ -395,6 +396,7 @@ function DashboardMainNav({
   mobileMode = false,
   id,
   onItemPick,
+  userDisplayName,
 }: DashboardMainNavProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const closeTimerRef = useRef<number | null>(null)
@@ -476,11 +478,19 @@ function DashboardMainNav({
   return (
     <nav id={id} className={className} aria-label="Navigation principale">
       {mobileMode ? (
-        <>
-          <span className="dashboard__nav-journey-title">Mon parcours de transformation</span>
-          {showCodirSection ? renderSection('Parcours membre CODIR', codirModules) : null}
-          {showContributeurSection ? renderSection('Parcours membre contributeur', contributeurModules) : null}
-        </>
+        (() => {
+          const bothSections = showCodirSection && showContributeurSection
+          const cleanName = userDisplayName?.trim()
+          const singleLabel = cleanName ? `Parcours de ${cleanName}` : 'Mon parcours de transformation'
+          const codirLabel = bothSections ? 'Parcours membre CODIR' : singleLabel
+          const contributeurLabel = bothSections ? 'Parcours membre contributeur' : singleLabel
+          return (
+            <>
+              {showCodirSection ? renderSection(codirLabel, codirModules) : null}
+              {showContributeurSection ? renderSection(contributeurLabel, contributeurModules) : null}
+            </>
+          )
+        })()
       ) : (
         <div
           className="dashboard__journey-menu"
@@ -1455,6 +1465,7 @@ function App() {
               onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
               onGoHome={() => navigateToMainNav('home')}
               className="dashboard__nav"
+              userDisplayName={workspaceWelcomeName}
             />
             {canViewDecideur ? (
               <DashboardDecideurNav
@@ -1589,6 +1600,7 @@ function App() {
               onGoHome={() => navigateToMainNav('home')}
               className="dashboard__nav dashboard__nav--drawer"
               mobileMode
+              userDisplayName={workspaceWelcomeName}
               onItemPick={closeMobileNav}
             />
             {canViewDecideur ? (
