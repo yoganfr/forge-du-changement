@@ -610,6 +610,24 @@ const CSS = `
   max-width: min(11rem, 46%);
 }
 
+/* Mobile : on sort la pilule du chevauchement en la plaçant au-dessus du titre,
+   et on retire la réserve de padding-right qui n'est plus nécessaire. */
+@media (max-width: 560px) {
+  .wh-card-corner-badges {
+    position: static;
+    flex-direction: row;
+    align-self: flex-end;
+    align-items: center;
+    max-width: 100%;
+    margin-bottom: 2px;
+    order: -1;
+  }
+
+  .workspace-home-roadmap .landing-roadmap-card.landing-roadmap-svg-card {
+    padding-right: 14px;
+  }
+}
+
 .wh-card-current-badge {
   font-size: 0.64rem;
   font-weight: 700;
