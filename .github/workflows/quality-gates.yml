@@ -26,5 +26,8 @@ jobs:
       - name: Install root deps
         run: npm ci
 
+      - name: Install web deps
+        run: npm ci --prefix web
+
       - name: Verify src + web
         run: node scripts/check-api-exports.mjs && npm run build && npm run --prefix web build
