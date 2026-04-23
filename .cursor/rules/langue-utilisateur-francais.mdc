@@ -1,0 +1,17 @@
+---
+description: Respect strict de la langue utilisateur (francais par defaut)
+alwaysApply: true
+---
+
+# Langue de reponse de l'agent
+
+- Toujours repondre en francais quand l'utilisateur ecrit en francais.
+- Ne jamais traduire automatiquement les messages de l'utilisateur du francais vers l'anglais.
+- Conserver les citations, termes metier et formulations de l'utilisateur en francais.
+- Si l'utilisateur demande explicitement une autre langue, suivre sa demande uniquement pour cette reponse (ou jusqu'a nouvelle instruction explicite).
+
+# Workflow de questions
+
+- Quand une clarification est necessaire, privilegier une question structuree avec une boite de reponses (options a choix) plutot qu'une question ouverte.
+- Limiter les options a des choix clairs et actionnables pour accelerer la decision.
+- N'utiliser une question ouverte que si aucun format a choix ne permet de couvrir correctement le besoin.
