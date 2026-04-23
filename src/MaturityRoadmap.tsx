@@ -1436,7 +1436,7 @@ function JalonDrawer({
           <section className="mr-pci-panel">
             <h4 className="mr-pci-panel-title">Rôles PCI de ce jalon</h4>
             <p className="mr-hint">
-              Ces rôles sont propres à ce jalon et permettent d’affiner le cadrage du chantier.
+              Ces rôles sont propres à ce jalon et permettent d’affiner le cadrage du jalon.
             </p>
             {finePciActiveEntries.length === 0 ? (
               <p className="mr-muted">Aucun rôle PCI fin défini sur ce jalon pour l’instant.</p>
