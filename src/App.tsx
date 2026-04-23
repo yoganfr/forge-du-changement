@@ -1514,7 +1514,6 @@ function App() {
                 <div
                   className="company-badge company-badge--readonly"
                   aria-label={`Espace ${workspaceName}`}
-                  title={workspaceName}
                 >
                   <span className="company-badge-initials">
                     {workspaceName.slice(0, 2).toUpperCase()}
