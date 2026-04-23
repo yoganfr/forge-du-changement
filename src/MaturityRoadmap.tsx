@@ -1406,12 +1406,12 @@ function JalonDrawer({
           </p>
         ) : null}
 
-        <h3 className="mr-drawer-section-title">Parties prenantes (macro chantier vs fine jalon)</h3>
+        <h3 className="mr-drawer-section-title">Gouvernance des parties prenantes (chantier vs jalon)</h3>
         <div className="mr-pci-pair">
           <section className="mr-pci-panel">
-            <h4 className="mr-pci-panel-title">Macro PCI chantier (hérité)</h4>
+            <h4 className="mr-pci-panel-title">Répartition des rôles pour le chantier (hérité)</h4>
             <p className="mr-hint">
-              Cette vue reprend les parties prenantes définies au niveau du chantier parent.
+              Ce bloc reprend les rôles définis au niveau du chantier.
             </p>
             {macroPciActiveEntries.length === 0 ? (
               <p className="mr-muted">Aucune partie prenante PCI définie au niveau du chantier pour l’instant.</p>
@@ -1434,9 +1434,9 @@ function JalonDrawer({
           </section>
 
           <section className="mr-pci-panel">
-            <h4 className="mr-pci-panel-title">Rôles PCI de ce jalon</h4>
+            <h4 className="mr-pci-panel-title">Répartition des rôles du jalon</h4>
             <p className="mr-hint">
-              Ces rôles sont propres à ce jalon et permettent d’affiner le cadrage du jalon.
+              Ce bloc précise les rôles réellement mobilisés sur ce jalon.
             </p>
             {finePciActiveEntries.length === 0 ? (
               <p className="mr-muted">Aucun rôle PCI fin défini sur ce jalon pour l’instant.</p>
@@ -1503,7 +1503,7 @@ function JalonDrawer({
           </div>
         </div>
         <div className="mr-field">
-          <span className="mr-raci-block-title">Contributeur</span>
+          <span className="mr-raci-block-title">Contributeurs</span>
           <div className="mr-raci-cell-grid">
             {directions
               .filter((d) => d.id !== piloteId)
@@ -1535,7 +1535,7 @@ function JalonDrawer({
           </div>
         </div>
         <div className="mr-field">
-          <span className="mr-raci-block-title">Informé</span>
+          <span className="mr-raci-block-title">Informés</span>
           <div className="mr-raci-cell-grid">
             {directions
               .filter((d) => d.id !== piloteId && !implIds.has(d.id))
