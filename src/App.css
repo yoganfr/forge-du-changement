@@ -677,6 +677,13 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-accent) 28%, transparent);
 }
 
+.dashboard__mobile-nav-action--readonly,
+.dashboard__mobile-nav-action--readonly:hover {
+  cursor: default;
+  border-color: var(--theme-border);
+  background: var(--theme-bg-page);
+}
+
 .dashboard__mobile-nav-action--danger {
   color: var(--score-critical);
   border-color: color-mix(in srgb, var(--score-critical) 38%, var(--theme-border));
@@ -823,6 +830,13 @@
 .company-badge:hover {
   border-color: color-mix(in srgb, var(--theme-accent) 45%, var(--glass-border));
   box-shadow: var(--glass-highlight), 0 4px 24px color-mix(in srgb, var(--theme-accent) 12%, transparent);
+}
+
+.company-badge--readonly,
+.company-badge--readonly:hover {
+  cursor: default;
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-highlight);
 }
 
 .company-badge-initials {

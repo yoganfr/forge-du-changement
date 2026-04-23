@@ -746,6 +746,17 @@ function App() {
       (serverAccess.role === 'consultant' || serverAccess.role === 'admin')) ||
     serverAccess?.source === 'superadmin'
 
+  /**
+   * Fiche entreprise : accessible en édition aux rôles de pilotage
+   * (super admin plateforme, consultant owner du workspace, admin & pilote côté client).
+   * Les membres CODIR (dirigeant ou non) et contributeurs n'y ont pas accès.
+   */
+  const canViewCompanySheet =
+    platformSuperadmin ||
+    currentUserRole === 'consultant' ||
+    currentUserRole === 'admin' ||
+    currentUserRole === 'pilote'
+
   const exitRoadmap = useCallback(() => {
     setMaturityRoadmapOpen(false)
     setRoadmapFocusProjetId(null)
@@ -921,6 +932,12 @@ function App() {
       navigateToMainNav('home')
     }
   }, [activeNav, currentUserRole, platformSuperadmin, isWorkspaceDirigeant, navigateToMainNav])
+
+  useEffect(() => {
+    if (activeNav === 'company' && !canViewCompanySheet) {
+      navigateToMainNav('home')
+    }
+  }, [activeNav, canViewCompanySheet, navigateToMainNav])
 
   const refreshWorkspacesCatalog = useCallback(async () => {
     if (!canAccessSettings) return
@@ -1480,16 +1497,31 @@ function App() {
               </div>
             </button>
             <div className="dashboard__topbar-actions-secondary">
-              <button
-                type="button"
-                className="company-badge"
-                onClick={() => navigateToMainNav('company')}
-              >
-                <span className="company-badge-initials">
-                  {workspaceName.slice(0, 2).toUpperCase()}
-                </span>
-                <span className="company-badge-name">{workspaceName}</span>
-              </button>
+              {canViewCompanySheet ? (
+                <button
+                  type="button"
+                  className="company-badge"
+                  onClick={() => navigateToMainNav('company')}
+                  aria-label={`Ouvrir la fiche ${workspaceName}`}
+                  title={`Ouvrir la fiche ${workspaceName}`}
+                >
+                  <span className="company-badge-initials">
+                    {workspaceName.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="company-badge-name">{workspaceName}</span>
+                </button>
+              ) : (
+                <div
+                  className="company-badge company-badge--readonly"
+                  aria-label={`Espace ${workspaceName}`}
+                  title={workspaceName}
+                >
+                  <span className="company-badge-initials">
+                    {workspaceName.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="company-badge-name">{workspaceName}</span>
+                </div>
+              )}
               {canAccessSettings && (
                 <button
                   type="button"
@@ -1573,19 +1605,31 @@ function App() {
 
             <div className="dashboard__mobile-nav-account">
               <span className="dashboard__mobile-nav-account-label">Compte et espace</span>
-              <button
-                type="button"
-                className="dashboard__mobile-nav-action"
-                onClick={() => {
-                  navigateToMainNav('company')
-                  closeMobileNav()
-                }}
-              >
-                <span className="dashboard__mobile-nav-action-mark" aria-hidden>
-                  {workspaceName.slice(0, 2).toUpperCase()}
-                </span>
-                <span className="dashboard__mobile-nav-action-text">{workspaceName}</span>
-              </button>
+              {canViewCompanySheet ? (
+                <button
+                  type="button"
+                  className="dashboard__mobile-nav-action"
+                  onClick={() => {
+                    navigateToMainNav('company')
+                    closeMobileNav()
+                  }}
+                >
+                  <span className="dashboard__mobile-nav-action-mark" aria-hidden>
+                    {workspaceName.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="dashboard__mobile-nav-action-text">{workspaceName}</span>
+                </button>
+              ) : (
+                <div
+                  className="dashboard__mobile-nav-action dashboard__mobile-nav-action--readonly"
+                  aria-label={`Espace ${workspaceName}`}
+                >
+                  <span className="dashboard__mobile-nav-action-mark" aria-hidden>
+                    {workspaceName.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="dashboard__mobile-nav-action-text">{workspaceName}</span>
+                </div>
+              )}
               <button
                 type="button"
                 className="dashboard__mobile-nav-action"
@@ -1713,7 +1757,7 @@ function App() {
                 title="Suivi PAE (vue contributeur)"
                 message="Module en préparation pour le reporting PAE côté contributeur."
               />
-            ) : normalizedActiveNav === 'company' ? (
+            ) : normalizedActiveNav === 'company' && canViewCompanySheet ? (
               <CompanySheet
                 workspaceId={workspaceId}
                 companyName={workspaceData?.companyName ?? workspaceName}
