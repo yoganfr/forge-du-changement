@@ -407,6 +407,22 @@
   flex-shrink: 0;
 }
 
+/* ── Pilule "Étape en cours" affichée sur l'item de nav actif ─────────── */
+.dashboard__nav-badge-current {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--theme-bg-card);
+  background: var(--theme-accent);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 70%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--theme-accent) 35%, transparent);
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
 .dashboard__menu-btn {
   display: none;
   appearance: none;
@@ -652,6 +668,19 @@
   flex-direction: column;
   gap: 10px;
   background: var(--theme-bg-page);
+}
+
+/* Petit séparateur décoratif (~25%, très fin) entre le parcours et la section compte */
+.dashboard__mobile-nav-account::before {
+  content: '';
+  display: block;
+  align-self: center;
+  width: 25%;
+  height: 1px;
+  margin-bottom: 6px;
+  background: color-mix(in srgb, var(--theme-border) 70%, transparent);
+  opacity: 0.6;
+  border: 0;
 }
 
 .dashboard__mobile-nav-account-label {

@@ -433,6 +433,11 @@ function DashboardMainNav({
         <span className="dashboard__nav-item-main">
           <span className="dashboard__nav-item-label">{module.label}</span>
           {isSoon ? <span className="dashboard__nav-badge-soon">Bientôt</span> : null}
+          {isActive && !isSoon ? (
+            <span className="dashboard__nav-badge-current" aria-label="Étape en cours">
+              Étape en cours
+            </span>
+          ) : null}
         </span>
         {module.subtitle ? (
           <span className="dashboard__nav-item-subtitle">{module.subtitle}</span>
@@ -571,6 +576,11 @@ function DashboardDecideurNav({
         <span className="dashboard__nav-item-main">
           <span className="dashboard__nav-item-label">{module.label}</span>
           {isSoon ? <span className="dashboard__nav-badge-soon">Bientôt</span> : null}
+          {isActive && !isSoon ? (
+            <span className="dashboard__nav-badge-current" aria-label="Étape en cours">
+              Étape en cours
+            </span>
+          ) : null}
         </span>
         {module.subtitle ? (
           <span className="dashboard__nav-item-subtitle">{module.subtitle}</span>
@@ -1578,16 +1588,6 @@ function App() {
                 ✕
               </button>
             </div>
-            <button
-              type="button"
-              className={`dashboard__mobile-nav-home ${activeNav === 'home' ? 'dashboard__mobile-nav-home--active' : ''}`}
-              onClick={() => {
-                navigateToMainNav('home')
-                closeMobileNav()
-              }}
-            >
-              Accueil — choix des modules
-            </button>
             <DashboardMainNav
               id="dashboard-mobile-nav"
               activeNav={activeNav}
