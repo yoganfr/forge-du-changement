@@ -34,6 +34,7 @@ import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
 import { usePciMatrix } from './usePciMatrix'
+import type { CanonicalStakeholder } from './pciMatrixTypes'
 import type { TimelineColumn } from './lib/roadmapTimelineColumns'
 import {
   assignJalonToColumn,
@@ -97,6 +98,40 @@ export type MaturityRoadmapProps = {
   focusProjetId?: string | null
   readOnly?: boolean
   onBack: () => void
+}
+
+type JalonDrawerMacroPciEntry = {
+  key: string
+  entiteType: 'direction' | 'autre'
+  entiteNom: string
+  personneNom: string | null
+  isPilote: boolean
+  isContributeur: boolean
+  isInforme: boolean
+  motivation: string | null
+}
+
+function pciRoleRank(input: { isPilote: boolean; isContributeur: boolean; isInforme: boolean }): number {
+  if (input.isPilote) return 0
+  if (input.isContributeur) return 1
+  if (input.isInforme) return 2
+  return 3
+}
+
+function toJalonDrawerMacroPciEntry(
+  stakeholder: CanonicalStakeholder,
+  row: { is_pilote: boolean; is_contributeur: boolean; is_informe: boolean; motivation: string | null } | null,
+): JalonDrawerMacroPciEntry {
+  return {
+    key: stakeholder.key,
+    entiteType: stakeholder.entite_type,
+    entiteNom: stakeholder.entite_nom,
+    personneNom: stakeholder.personne_nom,
+    isPilote: Boolean(row?.is_pilote),
+    isContributeur: Boolean(row?.is_contributeur),
+    isInforme: Boolean(row?.is_informe),
+    motivation: row?.motivation ?? null,
+  }
 }
 
 export default function MaturityRoadmap({
@@ -643,6 +678,13 @@ export default function MaturityRoadmap({
     : null
   const drawerProjetId = drawerChantier?.projet_id ?? ''
   const drawerProjetNom = drawerProjetId ? projectsById.get(drawerProjetId)?.nom ?? '' : ''
+  const { canonicalStakeholders, getRowFor } = pciMatrix
+  const drawerMacroPciEntries = useMemo<JalonDrawerMacroPciEntry[]>(() => {
+    if (!drawerChantierId) return []
+    return canonicalStakeholders.map((stakeholder) =>
+      toJalonDrawerMacroPciEntry(stakeholder, getRowFor(drawerChantierId, stakeholder.key)),
+    )
+  }, [drawerChantierId, canonicalStakeholders, getRowFor])
 
   if (loading) {
     return (
@@ -919,6 +961,7 @@ export default function MaturityRoadmap({
           directions={directions}
           memberDirectionId={memberDirectionId}
           memberDirectionName={memberDirectionName}
+          macroPciEntries={drawerMacroPciEntries}
           readOnly={readOnly}
           onDirectionsUpdated={async () => {
             const dirs = await getWorkspaceDirections(workspaceId)
@@ -956,6 +999,7 @@ function JalonDrawer({
   directions,
   memberDirectionId,
   memberDirectionName,
+  macroPciEntries,
   readOnly,
   onClose,
   onSaved,
@@ -972,6 +1016,7 @@ function JalonDrawer({
   directions: Direction[]
   memberDirectionId: string | null
   memberDirectionName: string | null
+  macroPciEntries: JalonDrawerMacroPciEntry[]
   readOnly: boolean
   onClose: () => void
   onSaved: () => Promise<void>
@@ -1024,6 +1069,43 @@ function JalonDrawer({
   }, [timelineCols, echeanceColKey])
 
   const axeLabel = jalon ? AXE_META[jalon.axe].title : ''
+  const macroPciActiveEntries = useMemo(
+    () =>
+      macroPciEntries
+        .filter((entry) => entry.isPilote || entry.isContributeur || entry.isInforme)
+        .sort((a, b) => pciRoleRank(a) - pciRoleRank(b)),
+    [macroPciEntries],
+  )
+  const finePciActiveEntries = directions
+    .map((direction) => ({
+      directionId: direction.id,
+      label: directionDisplayLabel(direction),
+      isPilote: piloteId === direction.id,
+      isContributeur: implIds.has(direction.id),
+      isInforme: infIds.has(direction.id),
+    }))
+    .filter((entry) => entry.isPilote || entry.isContributeur || entry.isInforme)
+    .sort((a, b) => pciRoleRank(a) - pciRoleRank(b))
+
+  function macroPciLabel(entry: JalonDrawerMacroPciEntry): string {
+    if (entry.personneNom) return `${entry.entiteNom} — ${entry.personneNom}`
+    return entry.entiteNom
+  }
+
+  function macroPciRoles(entry: JalonDrawerMacroPciEntry): string[] {
+    const tags: string[] = []
+    if (entry.isPilote) tags.push('P')
+    if (entry.isContributeur) tags.push('C')
+    if (entry.isInforme) tags.push('I')
+    return tags
+  }
+
+  function pciBadgeClass(tag: string): string {
+    const normalized = tag.toUpperCase()
+    if (normalized === 'P') return 'mr-pci-role-badge mr-pci-role-badge--p'
+    if (normalized === 'C') return 'mr-pci-role-badge mr-pci-role-badge--c'
+    return 'mr-pci-role-badge mr-pci-role-badge--i'
+  }
 
   async function syncRaci(targetJalonId: string) {
     const raci = await getJalonRaci(targetJalonId)
@@ -1324,7 +1406,73 @@ function JalonDrawer({
           </p>
         ) : null}
 
-        <h3 className="mr-drawer-section-title">Macro RACI</h3>
+        <h3 className="mr-drawer-section-title">Parties prenantes (macro chantier vs fine jalon)</h3>
+        <div className="mr-pci-pair">
+          <section className="mr-pci-panel">
+            <h4 className="mr-pci-panel-title">Macro PCI chantier (hérité)</h4>
+            <p className="mr-hint">
+              Cette vue reprend les parties prenantes définies au niveau du chantier parent.
+            </p>
+            {macroPciActiveEntries.length === 0 ? (
+              <p className="mr-muted">Aucune partie prenante PCI définie au niveau du chantier pour l’instant.</p>
+            ) : (
+              <div className="mr-raci-grid">
+                {macroPciActiveEntries.map((entry) => (
+                  <div key={entry.key} className="mr-raci-row">
+                    <span>{macroPciLabel(entry)}</span>
+                    <span className="mr-pci-role-badges">
+                      {macroPciRoles(entry).map((tag) => (
+                        <span key={`${entry.key}-${tag}`} className={pciBadgeClass(tag)}>
+                          {tag}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="mr-pci-panel">
+            <h4 className="mr-pci-panel-title">Rôles PCI de ce jalon</h4>
+            <p className="mr-hint">
+              Ces rôles sont propres à ce jalon et permettent d’affiner le cadrage du chantier.
+            </p>
+            {finePciActiveEntries.length === 0 ? (
+              <p className="mr-muted">Aucun rôle PCI fin défini sur ce jalon pour l’instant.</p>
+            ) : (
+              <div className="mr-raci-grid">
+                {finePciActiveEntries.map((entry) => {
+                  const tags: string[] = []
+                  if (entry.isPilote) tags.push('P')
+                  if (entry.isContributeur) tags.push('C')
+                  if (entry.isInforme) tags.push('I')
+                  return (
+                    <div key={entry.directionId} className="mr-raci-row">
+                      <span>{entry.label}</span>
+                      <span className="mr-pci-role-badges">
+                        {tags.map((tag) => (
+                          <span key={`${entry.directionId}-${tag}`} className={pciBadgeClass(tag)}>
+                            {tag}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+        <p className="mr-pci-legend">
+          <span className={pciBadgeClass('P')}>P</span> = Pilote
+          {' · '}
+          <span className={pciBadgeClass('C')}>C</span> = Contributeur
+          {' · '}
+          <span className={pciBadgeClass('I')}>I</span> = Informé
+        </p>
+
+        <h3 className="mr-drawer-section-title">Éditer les rôles PCI de ce jalon</h3>
         <div className="mr-field">
           <span className="mr-raci-block-title">Pilote (une direction)</span>
           <div className="mr-raci-cell-grid">
@@ -1355,7 +1503,7 @@ function JalonDrawer({
           </div>
         </div>
         <div className="mr-field">
-          <span className="mr-raci-block-title">Impliqué</span>
+          <span className="mr-raci-block-title">Contributeur</span>
           <div className="mr-raci-cell-grid">
             {directions
               .filter((d) => d.id !== piloteId)
