@@ -119,7 +119,8 @@
   max-width: min(220px, 28vw);
 }
 
-.dashboard__nav--top {
+/* Bandeau nav desktop : parcours + (optionnel) vue décideur — même ligne grille colonne 2 */
+.dashboard__nav-strip {
   grid-column: 2;
   justify-self: start;
   display: flex;
@@ -132,6 +133,16 @@
   width: max-content;
   max-width: 100%;
   margin-left: 4px;
+}
+
+.dashboard__nav-strip > .dashboard__nav {
+  min-width: 0;
+}
+
+.dashboard__journey-popover--decideur {
+  min-width: min(380px, 92vw);
+  max-width: min(440px, 94vw);
+  grid-template-columns: 1fr;
 }
 
 .dashboard__nav-journey-title {
@@ -2072,6 +2083,7 @@
   body.dg-printing .dashboard__topbar,
   body.dg-printing .dashboard__topbar-leading,
   body.dg-printing .dashboard__nav,
+  body.dg-printing .dashboard__nav-strip,
   body.dg-printing .dashboard__topbar-actions,
   body.dg-printing .dashboard__logout-btn,
   body.dg-printing .dashboard__theme-toggle,

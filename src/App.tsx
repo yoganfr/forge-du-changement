@@ -75,6 +75,7 @@ type JourneyModuleId =
   | 'pae_contrib'
   | 'suivi_contrib'
   | 'dg'
+  | 'discours_transfo'
 
 type JourneyModule = {
   id: JourneyModuleId
@@ -140,6 +141,22 @@ const CONTRIBUTEUR_JOURNEY_MODULES: readonly JourneyModule[] = [
     label: 'Suivi PAE (vue contributeur)',
     subtitle: "J'effectue le bon niveau de reporting lorsque je réalise mes PAE (vers Suivi PAE vue contributeur). Je décline de nouveaux jalons en PAE et plans de charge",
     status: 'soon',
+  },
+]
+
+/** Entrées du menu « Vue décideur » (navbar), distinct du parcours de transformation. */
+const DECIDEUR_VIEW_MODULES: readonly JourneyModule[] = [
+  {
+    id: 'discours_transfo',
+    label: 'Discours de transformation',
+    subtitle: 'Cadrage et narration de la transformation pour le comité de direction',
+    status: 'active',
+  },
+  {
+    id: 'dg',
+    label: 'Cockpit Projet transfo',
+    subtitle: 'Vue décideur consolidée : validation des projets BUILD, synthèses et arbitrages',
+    status: 'active',
   },
 ]
 
@@ -330,7 +347,6 @@ type DashboardMainNavProps = {
   contributeurModules: readonly JourneyModule[]
   showCodirSection: boolean
   showContributeurSection: boolean
-  showDecideurEntry: boolean
   onNavigate: (navId: string) => void
   onOpenRoadmap: () => void
   onGoHome: () => void
@@ -346,7 +362,6 @@ function DashboardMainNav({
   contributeurModules,
   showCodirSection,
   showContributeurSection,
-  showDecideurEntry,
   onNavigate,
   onOpenRoadmap,
   onGoHome,
@@ -368,21 +383,6 @@ function DashboardMainNav({
     onItemPick?.()
     setMenuOpen(false)
   }
-
-  const codirWithDecideur: readonly JourneyModule[] = showCodirSection
-    ? [
-        ...codirModules,
-        ...(showDecideurEntry
-          ? [
-              {
-                id: 'dg',
-                label: 'Vue décideur',
-                status: 'active',
-              } satisfies JourneyModule,
-            ]
-          : []),
-      ]
-    : []
 
   function renderModuleItem(module: JourneyModule) {
     const isActive = activeNav === module.id
@@ -452,7 +452,7 @@ function DashboardMainNav({
       {mobileMode ? (
         <>
           <span className="dashboard__nav-journey-title">Mon parcours de transformation</span>
-          {showCodirSection ? renderSection('Parcours membre CODIR', codirWithDecideur) : null}
+          {showCodirSection ? renderSection('Parcours membre CODIR', codirModules) : null}
           {showContributeurSection ? renderSection('Parcours membre contributeur', contributeurModules) : null}
         </>
       ) : (
@@ -475,8 +475,132 @@ function DashboardMainNav({
           </button>
           {menuOpen ? (
             <div className="dashboard__journey-popover" role="menu">
-              {showCodirSection ? renderSection('Parcours membre CODIR', codirWithDecideur) : null}
+              {showCodirSection ? renderSection('Parcours membre CODIR', codirModules) : null}
               {showContributeurSection ? renderSection('Parcours membre contributeur', contributeurModules) : null}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </nav>
+  )
+}
+
+type DashboardDecideurNavProps = {
+  activeNav: string
+  onNavigate: (navId: string) => void
+  onGoHome: () => void
+  className: string
+  mobileMode?: boolean
+  id?: string
+  onItemPick?: () => void
+}
+
+function DashboardDecideurNav({
+  activeNav,
+  onNavigate,
+  onGoHome,
+  className,
+  mobileMode = false,
+  id,
+  onItemPick,
+}: DashboardDecideurNavProps) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const closeTimerRef = useRef<number | null>(null)
+
+  function pick(module: JourneyModule) {
+    if (module.status === 'soon') return
+    onNavigate(module.id)
+    onItemPick?.()
+    setMenuOpen(false)
+  }
+
+  function renderModuleItem(module: JourneyModule) {
+    const isActive = activeNav === module.id
+    const isSoon = module.status === 'soon'
+    return (
+      <button
+        key={module.id}
+        type="button"
+        className={[
+          'dashboard__nav-item',
+          isActive ? 'dashboard__nav-item--active' : '',
+          isSoon ? 'dashboard__nav-item--soon' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        onClick={() => pick(module)}
+        disabled={isSoon}
+        aria-disabled={isSoon}
+      >
+        <span className="dashboard__nav-item-main">
+          <span className="dashboard__nav-item-label">{module.label}</span>
+          {isSoon ? <span className="dashboard__nav-badge-soon">Bientôt</span> : null}
+        </span>
+        {module.subtitle ? (
+          <span className="dashboard__nav-item-subtitle">{module.subtitle}</span>
+        ) : null}
+      </button>
+    )
+  }
+
+  function openMenuWithDelay() {
+    if (mobileMode) return
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setMenuOpen(true)
+  }
+
+  function closeMenuWithDelay() {
+    if (mobileMode) return
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
+    closeTimerRef.current = window.setTimeout(() => {
+      setMenuOpen(false)
+      closeTimerRef.current = null
+    }, 180)
+  }
+
+  useEffect(() => () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
+  }, [])
+
+  return (
+    <nav id={id} className={className} aria-label="Vue décideur">
+      {mobileMode ? (
+        <>
+          <span className="dashboard__nav-journey-title">Vue décideur</span>
+          <section className="dashboard__journey-section">
+            <div className="dashboard__journey-section-items">
+              {DECIDEUR_VIEW_MODULES.map(renderModuleItem)}
+            </div>
+          </section>
+        </>
+      ) : (
+        <div
+          className="dashboard__journey-menu"
+          onMouseEnter={openMenuWithDelay}
+          onMouseLeave={closeMenuWithDelay}
+        >
+          <button
+            type="button"
+            className={`dashboard__nav-journey-trigger ${menuOpen ? 'dashboard__nav-journey-trigger--open' : ''}`}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            onClick={() => {
+              onGoHome()
+              setMenuOpen((v) => !v)
+            }}
+          >
+            Vue décideur
+          </button>
+          {menuOpen ? (
+            <div className="dashboard__journey-popover dashboard__journey-popover--decideur" role="menu">
+              <section className="dashboard__journey-section">
+                <div className="dashboard__journey-section-items">
+                  {DECIDEUR_VIEW_MODULES.map(renderModuleItem)}
+                </div>
+              </section>
             </div>
           ) : null}
         </div>
@@ -501,6 +625,18 @@ function ModulePlaceholder({
 }
 
 function App() {
+  const debugLog = useCallback((payload: {
+    runId: string
+    hypothesisId: string
+    location: string
+    message: string
+    data: Record<string, unknown>
+  }) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7271/ingest/4a825d9f-9e80-4d72-a03f-6e97efcd6511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cf4629'},body:JSON.stringify({sessionId:'cf4629',runId:payload.runId,hypothesisId:payload.hypothesisId,location:payload.location,message:payload.message,data:payload.data,timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+  }, [])
+
   const readReviewSnapshotFromUrl = useCallback((): string | null => {
     const path = window.location.pathname
     const m = path.match(/^\/review\/([0-9a-f-]{16,})$/i)
@@ -531,6 +667,7 @@ function App() {
       'pae_contrib',
       'suivi_contrib',
       'dg',
+      'discours_transfo',
     ] as const
     return known.includes(activeNav as (typeof known)[number]) ? activeNav : 'home'
   }, [activeNav])
@@ -583,8 +720,17 @@ function App() {
   )
 
   const closeMobileNav = useCallback(() => {
+    // #region agent log
+    debugLog({
+      runId: 'hamburger-overlap',
+      hypothesisId: 'H3',
+      location: 'src/App.tsx:closeMobileNav',
+      message: 'Fermeture menu mobile',
+      data: { mobileNavOpenBeforeClose: mobileNavOpen, innerWidth: window.innerWidth, innerHeight: window.innerHeight },
+    })
+    // #endregion
     setMobileNavOpen(false)
-  }, [])
+  }, [debugLog, mobileNavOpen])
 
   const handleLogout = useCallback(() => {
     void signOut()
@@ -603,6 +749,81 @@ function App() {
 
   useEffect(() => {
     if (!mobileNavOpen) return
+    // #region agent log
+    debugLog({
+      runId: 'hamburger-overlap',
+      hypothesisId: 'H1',
+      location: 'src/App.tsx:mobileNavOpenEffect:enter',
+      message: 'Ouverture menu mobile detectee',
+      data: { mobileNavOpen, innerWidth: window.innerWidth, innerHeight: window.innerHeight, scrollY: window.scrollY },
+    })
+    // #endregion
+
+    const frameId = window.requestAnimationFrame(() => {
+      const panel = document.querySelector('.dashboard__mobile-nav-panel') as HTMLElement | null
+      const layer = document.querySelector('.dashboard__mobile-nav-layer') as HTMLElement | null
+      const topbarActions = document.querySelector('.dashboard__topbar-actions') as HTMLElement | null
+      const topbarSecondary = document.querySelector('.dashboard__topbar-actions-secondary') as HTMLElement | null
+      const drawerItems = Array.from(document.querySelectorAll('.dashboard__nav--drawer .dashboard__nav-item')) as HTMLElement[]
+      const drawerItemMetrics = drawerItems.slice(0, 3).map((item, index) => {
+        const subtitle = item.querySelector('.dashboard__nav-item-subtitle') as HTMLElement | null
+        const label = item.querySelector('.dashboard__nav-item-label') as HTMLElement | null
+        const itemRect = item.getBoundingClientRect()
+        const subtitleRect = subtitle?.getBoundingClientRect() ?? null
+        const labelRect = label?.getBoundingClientRect() ?? null
+        return {
+          index,
+          className: item.className,
+          clientHeight: item.clientHeight,
+          scrollHeight: item.scrollHeight,
+          overflowY: window.getComputedStyle(item).overflowY,
+          display: window.getComputedStyle(item).display,
+          flexDirection: window.getComputedStyle(item).flexDirection,
+          alignItems: window.getComputedStyle(item).alignItems,
+          itemRect,
+          labelRect,
+          subtitleRect,
+          subtitleExists: Boolean(subtitle),
+          subtitleTextLength: subtitle?.textContent?.trim().length ?? 0,
+        }
+      })
+      const panelRect = panel?.getBoundingClientRect() ?? null
+      const topbarRect = topbarActions?.getBoundingClientRect() ?? null
+      const overlap =
+        panelRect && topbarRect
+          ? !(panelRect.right < topbarRect.left || panelRect.left > topbarRect.right || panelRect.bottom < topbarRect.top || panelRect.top > topbarRect.bottom)
+          : null
+      // #region agent log
+      debugLog({
+        runId: 'hamburger-overlap',
+        hypothesisId: 'H2',
+        location: 'src/App.tsx:mobileNavOpenEffect:layout',
+        message: 'Mesures overlay mobile/topbar',
+        data: {
+          panelRect,
+          topbarRect,
+          hasOverlap: overlap,
+          layerAlignItems: layer ? window.getComputedStyle(layer).alignItems : null,
+          layerJustifyContent: layer ? window.getComputedStyle(layer).justifyContent : null,
+          topbarSecondaryDisplay: topbarSecondary ? window.getComputedStyle(topbarSecondary).display : null,
+          topbarActionsDisplay: topbarActions ? window.getComputedStyle(topbarActions).display : null,
+        },
+      })
+      // #endregion
+      // #region agent log
+      debugLog({
+        runId: 'hamburger-overlap',
+        hypothesisId: 'H5',
+        location: 'src/App.tsx:mobileNavOpenEffect:drawer-items',
+        message: 'Mesures des items drawer mobile',
+        data: {
+          itemCount: drawerItems.length,
+          firstItems: drawerItemMetrics,
+        },
+      })
+      // #endregion
+    })
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMobileNavOpen(false)
     }
@@ -610,10 +831,11 @@ function App() {
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
+      window.cancelAnimationFrame(frameId)
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
     }
-  }, [mobileNavOpen])
+  }, [debugLog, mobileNavOpen])
 
   useEffect(() => {
     const onPop = () => setReviewSnapshotId(readReviewSnapshotFromUrl())
@@ -625,11 +847,20 @@ function App() {
     if (typeof window.matchMedia !== 'function') return
     const mq = window.matchMedia('(min-width: 769px)')
     const onChange = () => {
+      // #region agent log
+      debugLog({
+        runId: 'hamburger-overlap',
+        hypothesisId: 'H4',
+        location: 'src/App.tsx:mobileMq:onChange',
+        message: 'Changement media query mobile',
+        data: { mqMatchesDesktop: mq.matches, innerWidth: window.innerWidth, mobileNavOpenBeforeChange: mobileNavOpen },
+      })
+      // #endregion
       if (mq.matches) setMobileNavOpen(false)
     }
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
-  }, [])
+  }, [debugLog, mobileNavOpen])
 
   useLayoutEffect(() => {
     applyThemeToDocument(theme)
@@ -643,7 +874,10 @@ function App() {
   }, [activeNav, canAccessSettings, navigateToMainNav])
 
   useEffect(() => {
-    if (activeNav === 'dg' && !canViewDecideurView(currentUserRole, platformSuperadmin)) {
+    if (
+      (activeNav === 'dg' || activeNav === 'discours_transfo') &&
+      !canViewDecideurView(currentUserRole, platformSuperadmin)
+    ) {
       navigateToMainNav('home')
     }
   }, [activeNav, currentUserRole, platformSuperadmin, navigateToMainNav])
@@ -785,8 +1019,8 @@ function App() {
       navigateToMainNav(pendingDg ? 'dg' : 'projects')
       window.alert(
         pendingDg
-          ? 'Votre projet BUILD est soumis au décideur mais pas encore validé pour la roadmap. Ouvrez la Vue décideur et validez le projet (section « Projets BUILD soumis pour la roadmap »).'
-          : 'Aucun projet BUILD validé par le décideur pour la roadmap. Créez un projet transformant BUILD, retenez-le pour le décideur, puis validez-le dans la Vue décideur.',
+          ? 'Votre projet BUILD est soumis au décideur mais pas encore validé pour la roadmap. Ouvrez le menu « Vue décideur », puis « Cockpit Projet transfo », et validez le projet (section « Projets BUILD soumis pour la roadmap »).'
+          : 'Aucun projet BUILD validé par le décideur pour la roadmap. Créez un projet transformant BUILD, retenez-le pour le décideur, puis validez-le dans le Cockpit Projet transfo (menu « Vue décideur »).',
       )
       return
     }
@@ -1128,7 +1362,21 @@ function App() {
               aria-expanded={mobileNavOpen}
               aria-haspopup="dialog"
               aria-controls={mobileNavOpen ? 'dashboard-mobile-nav' : undefined}
-              onClick={() => setMobileNavOpen((o) => !o)}
+              onClick={() =>
+                setMobileNavOpen((o) => {
+                  const next = !o
+                  // #region agent log
+                  debugLog({
+                    runId: 'hamburger-overlap',
+                    hypothesisId: 'H1',
+                    location: 'src/App.tsx:menuBtn:onClick',
+                    message: 'Toggle menu hamburger',
+                    data: { before: o, after: next, innerWidth: window.innerWidth, innerHeight: window.innerHeight },
+                  })
+                  // #endregion
+                  return next
+                })
+              }
             >
               <span className="dashboard__menu-bars" aria-hidden>
                 <span />
@@ -1138,18 +1386,27 @@ function App() {
             </button>
           </div>
 
-          <DashboardMainNav
-            activeNav={activeNav}
-            codirModules={codirModules}
-            contributeurModules={contributeurModules}
-            showCodirSection={showCodirSection}
-            showContributeurSection={showContributeurSection}
-            showDecideurEntry={canViewDecideur}
-            onNavigate={navigateToMainNav}
-            onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
-            onGoHome={() => navigateToMainNav('home')}
-            className="dashboard__nav dashboard__nav--top dashboard__nav--desktop"
-          />
+          <div className="dashboard__nav-strip dashboard__nav--desktop">
+            <DashboardMainNav
+              activeNav={activeNav}
+              codirModules={codirModules}
+              contributeurModules={contributeurModules}
+              showCodirSection={showCodirSection}
+              showContributeurSection={showContributeurSection}
+              onNavigate={navigateToMainNav}
+              onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
+              onGoHome={() => navigateToMainNav('home')}
+              className="dashboard__nav"
+            />
+            {canViewDecideur ? (
+              <DashboardDecideurNav
+                activeNav={activeNav}
+                onNavigate={navigateToMainNav}
+                onGoHome={() => navigateToMainNav('home')}
+                className="dashboard__nav"
+              />
+            ) : null}
+          </div>
 
           <div className="dashboard__topbar-actions">
             <button
@@ -1255,7 +1512,6 @@ function App() {
               contributeurModules={contributeurModules}
               showCodirSection={showCodirSection}
               showContributeurSection={showContributeurSection}
-              showDecideurEntry={canViewDecideur}
               onNavigate={navigateToMainNav}
               onOpenRoadmap={() => { void handleOpenRoadmapFromWorkspace() }}
               onGoHome={() => navigateToMainNav('home')}
@@ -1263,6 +1519,16 @@ function App() {
               mobileMode
               onItemPick={closeMobileNav}
             />
+            {canViewDecideur ? (
+              <DashboardDecideurNav
+                activeNav={activeNav}
+                onNavigate={navigateToMainNav}
+                onGoHome={() => navigateToMainNav('home')}
+                className="dashboard__nav dashboard__nav--drawer"
+                mobileMode
+                onItemPick={closeMobileNav}
+              />
+            ) : null}
 
             <div className="dashboard__mobile-nav-account">
               <span className="dashboard__mobile-nav-account-label">Compte et espace</span>
@@ -1362,6 +1628,11 @@ function App() {
               canViewDecideur ? (
                 <DashboardDG workspaceId={workspaceId} canActOnDecideurValidation={canActDecideur} />
               ) : <></>
+            ) : normalizedActiveNav === 'discours_transfo' ? (
+              <ModulePlaceholder
+                title="Discours de transformation"
+                message="Module en préparation. Le discours de transformation consolidé pour le CODIR sera accessible ici."
+              />
             ) : normalizedActiveNav === 'review' ? (
               <ModulePlaceholder
                 title="Review Roadmap"
