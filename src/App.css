@@ -1056,6 +1056,10 @@
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
+.settings-page__card + .settings-page__card {
+  margin-top: var(--space-xl);
+}
+
 .settings-page__section-title {
   margin: 0 0 var(--space-md);
   font-family: var(--font-display);
