@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **22 avril 2026**, 11 h 20 (Europe/Paris)
+Dernière mise à jour : **24 avril 2026**, 18 h 30 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -530,6 +530,49 @@ Principe : chaque vague migre un périmètre isolé, **conserve la parité compo
 
 ---
 
+## EPIC 16 — Discours de transformation (Vue décideur) 🚧 EN COURS
+
+Module performatif porté par le **dirigeant CODIR** pour cadrer la narration de la transformation à destination du CODIR et du collectif. Inspiré du document `docs/Référence Discours de transformation.md` (§2.3 — modèle performatif 8 blocs). Accessible depuis le nouveau menu **« Vue décideur »** de la navbar (à côté de « Mon parcours de transformation »), aux côtés du **Cockpit Projet transfo** (ancienne Vue décideur consolidée).
+
+| REF | Titre | Priorité | Statut |
+|---|-------|----------|--------|
+| 87 | Navbar : menu « Vue décideur » + routing `discours_transfo` / `dg` (cockpit consolidé renommé) | 🔴 | ✅ |
+| 88 | Éditeur V1 : 8 blocs performatifs (constituer / nommer la bascule / naming / principes / vision / trajectoire / engagement / ouverture), champs `text` / `longtext` / `list` / **`cards`**, textareas auto-resize, autosave, badge d'état de complétion | 🔴 | ✅ |
+| 88a | Bloc 2 « Nommer la bascule » : 3 cartouches colonnes (fait observé / impact CODIR / risque si on ne réagit pas) | 🟠 | ✅ |
+| 88b | Bloc 4 « Nouveaux principes du jeu » : cartouches Principe 1..3 obligatoires + bouton d'ajout optionnel Principe 4/5 | 🟠 | ✅ |
+| 88c | Introduction manifeste en tête du module (cadrage performatif du discours) | 🟡 | ✅ |
+| 89 | Désignation **dirigeant CODIR** porteur du Discours : `workspaces.dirigeant_user_id`, section dédiée dans `CompanySheet` (sélecteur membres CODIR actifs, chip récap, retrait, trace audit `workspace_dirigeant_set`) | 🔴 | ✅ |
+| 90 | ACL module Discours : édition réservée à superadmin / consultant / admin / **dirigeant CODIR** du workspace ; pilote = lecture seule ; autres rôles = module invisible | 🔴 | ✅ |
+| 90a | ACL « Vue décideur » globale : superadmin + consultant owner + admin + pilote (read-only cockpit) ; CODIR non-dirigeant et contributeur = menu invisible | 🔴 | ✅ |
+| 91 | Backend proxy IA : Edge Function Deno Supabase (auth JWT + RLS workspace) encapsulant les appels **OpenRouter `openai/gpt-oss-120b`** (0,039 $/M input, 0,19 $/M output), validation Zod sorties structurées | 🔴 | ⬜ |
+| 92 | Scoring IA par bloc (diagnostic qualitatif + niveaux 1-5) + vue synthèse Discours | 🔴 | ⬜ |
+| 93 | Reformulation IA par bloc (suggestions alternatives, préservation intention) | 🟠 | ⬜ |
+| 94 | Détection de jargon avec surbrillance inline + tooltip explicatif | 🟡 | ⬜ |
+| 95 | Comparaison de versions (V1 / V2 côte à côte, diff par bloc) | 🟡 | ⬜ |
+
+**Granularité produit** : 1 Discours vivant par workspace (pas de multi-discours). Versions stockées pour traçabilité et comparaison V1→V2 (REF-95).
+
+**Choix LLM** : OpenRouter.ai retenu pour simplicité d'intégration et coût minimal. Pas de lock-in clé provider (compte `yoganhedef` déjà opérationnel).
+
+---
+
+## EPIC 17 — Gouvernance parcours & déverrouillage progressif ✅ DONE
+
+Objectif : permettre à un administrateur de **piloter l'avancement du parcours de transformation** d'un workspace (CODIR et Contributeur indépendamment), déverrouillant dynamiquement les modules correspondants sans redéploiement. Finit le hardcoding `status: 'active' | 'soon'` des modules de navigation.
+
+| REF | Titre | Priorité | Statut |
+|---|-------|----------|--------|
+| 96 | Migration Supabase : remplacer `workspaces.current_step` (deprecated) par `current_step_codir smallint (0..6)` + `current_step_contributeur smallint (0..3)` ; RLS UPDATE via `can_manage_workspace` (superadmin + consultant owner + admin client) | 🔴 | ✅ |
+| 97 | Types `Workspace` mis à jour + API `updateWorkspaceCurrentStep(id, { codir?, contributeur? })` avec dedup fetch | 🔴 | ✅ |
+| 98 | `buildJourneyModules(defs, currentStep)` : statut `active` si `idx + 1 ≤ currentStep`, `soon` sinon (y compris si `currentStep` null ou 0 → tout verrouillé) | 🔴 | ✅ |
+| 99 | Pilule **« Étape en cours »** par parcours : affichage dans la nav **indépendamment** de la page active (module courant visible même sur la home) ; deux pilules indépendantes pour les rôles qui voient les deux sections (consultants / superadmins) | 🟠 | ✅ |
+| 100 | Section **« Phase du parcours de transformation »** dans Paramètres : 2 selects (CODIR 0..6 + Contributeur 0..3) avec autosave, placée en tête de page avant « Missions & entreprises clientes » ; mode lecture seule avec message explicatif pour rôles non autorisés | 🔴 | ✅ |
+| 101 | `WorkspaceHome` : étapes passées (`done`) restent cliquables (description + bouton actif) pour permettre le retour sur un module déjà parcouru ; seules les étapes `upcoming` sont verrouillées | 🟠 | ✅ |
+
+**Comportement produit retenu** : `current_step = 0 / null` signifie **« parcours non démarré, tous modules verrouillés »** (et non « phase 1 toujours ouverte par défaut »). L'admin doit explicitement ouvrir la phase 1 pour déverrouiller le premier module.
+
+---
+
 ## Stack technique
 
 - **Frontend** : React + TypeScript (Vite) + Next.js App Router (`web/`) pour landing SEO
@@ -588,6 +631,30 @@ Principe : chaque vague migre un périmètre isolé, **conserve la parité compo
 - `web/public/fonts/` — Satoshi + Clash Display (`fonts.css`)
 - `web/app/acces-membres/page.tsx` / `web/app/bientot-disponible/page.tsx` — pages de transition vers le parcours membre
 
+## Navigation canonique (source de vérité)
+
+Ce bloc est la référence produit pour la navbar applicative `/src` (workspace authentifié).
+
+- **Entrées historiques supprimées** en navigation principale : `La Fabrique`, `Mon Espace`.
+- **Macro-menu unique** : `Mon parcours de transformation`.
+- **Rôles CODIR** (`codir`) : section `Parcours membre CODIR` avec les modules (ordre canonique) :
+  1. `Projets transformants`
+  2. `Roadmap`
+  3. `Feedbacks Roadmap`
+  4. `Plans d'action (PAE) & Plans de charge (version membre CODIR)`
+  5. `Kick-off`
+  6. `Suivi PAE (vue membre CODIR)`
+- **Rôles contributeur** (`contributeur`) : section `Parcours membre contributeur` avec les modules (ordre canonique) :
+  1. `Review Roadmap`
+  2. `Plans d'action (PAE) & Plans de charge (version contributeur)`
+  3. `Suivi PAE (vue contributeur)`
+- **Asymétrie volontaire** : si un module n'est pas défini côté contributeur, il n'est pas affiché (pas de trou visuel, pas de placeholder forcé).
+- **Rôles avancés** (`consultant`, `admin`, `pilote`, `superadmin`) : affichent les deux sections dans le macro-menu.
+- **Review vs Feedbacks** : deux pages/modules distincts (pas de fusion sémantique).
+- **UX états non livrés** : item visible avec badge `Bientôt` et action désactivée.
+
+---
+
 ## Trajectoire suggérée
 
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
@@ -602,16 +669,18 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-1. EPIC 3 · **REF-7a → REF-7d** — figer une roadmap V1, ouvrir un cycle reviewers, collecter des propositions typées, puis arbitrer/clôturer.
-2. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier déjà intégrée à la granularité jalon.
-3. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
+1. EPIC 16 · **REF-91 → REF-92** — backend proxy IA (Edge Function OpenRouter) + scoring par bloc du Discours de transformation. Premier palier IA produit, déjà cadré et dé-risqué par l'éditeur V1 livré.
+2. EPIC 3 · **REF-7a → REF-7d** — figer une roadmap V1, ouvrir un cycle reviewers, collecter des propositions typées, puis arbitrer/clôturer.
+3. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier déjà intégrée à la granularité jalon.
+4. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
 
 ### Après
 
-4. EPIC 3 · **REF-7b.1c / REF-7b.1d / REF-7b.1e** — harmonisation PCI/RACI, polish UX final et durcissement technique du module PCI.
-5. EPIC 15 · **REF-76 / REF-77** — fondations partagées + Auth SSR Supabase dans `/web`.
-6. EPIC 11 · **REF-50 / REF-51** — MFA super-admin + journal des imports CSV.
-7. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
+5. EPIC 16 · **REF-93 / REF-94 / REF-95** — reformulation IA, détection jargon, comparaison V1/V2 du Discours.
+6. EPIC 3 · **REF-7b.1c / REF-7b.1d / REF-7b.1e** — harmonisation PCI/RACI, polish UX final et durcissement technique du module PCI.
+7. EPIC 15 · **REF-76 / REF-77** — fondations partagées + Auth SSR Supabase dans `/web`.
+8. EPIC 11 · **REF-50 / REF-51** — MFA super-admin + journal des imports CSV.
+9. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
 
 ### Plus tard
 
@@ -623,6 +692,28 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 23-24 avril 2026 — Vue décideur, Discours de transformation, gouvernance parcours
+
+#### Fait
+- **EPIC 16 · REF-87** : nouveau menu **« Vue décideur »** dans la navbar (à côté de « Mon parcours de transformation »), regroupant **Discours de transformation** et **Cockpit Projet transfo** (ex-Vue décideur consolidée renommée). L'ancien bouton « Vue décideur » a été retiré du menu Parcours.
+- **EPIC 16 · REF-88 / 88a / 88b / 88c** : éditeur V1 du **Discours de transformation** livré — 8 blocs performatifs (§2.3 document de référence), champs `text` / `longtext` / `list` / **`cards`** (nouvelle kind pour structures répétables), composant `AutoTextarea` pour auto-resize, autosave, badge de complétion par bloc. Harmonisation visuelle complète avec la fenêtre « Sélection de projets transformants » (mêmes cartes, champs, focus). Bloc 2 en 3 colonnes (fait observé / impact CODIR / risque), Bloc 4 en cartouches avec ajout optionnel P4/P5. Largeur single-column réduite à ~50 % et `Enter` actif pour les sauts de ligne. Texte d'introduction manifeste ajouté en tête.
+- **EPIC 16 · REF-89** : **désignation du dirigeant CODIR** porteur du Discours — colonne `workspaces.dirigeant_user_id`, section dédiée dans `CompanySheet` (sélecteur parmi membres CODIR actifs, chip récap, retrait, trace audit `workspace_dirigeant_set`).
+- **EPIC 16 · REF-90 / 90a** : ACL complète — édition Discours réservée à superadmin / consultant / admin / dirigeant CODIR ; pilote = lecture seule ; reste du CODIR + contributeurs = menu « Vue décideur » entièrement invisible. ACL fiche entreprise restreinte à superadmin / consultant owner / admin / pilote (CODIR et contributeurs n'y accèdent plus).
+- **EPIC 17 · REF-96 → REF-101** : gouvernance parcours livrée. Migration Supabase `workspaces_split_current_step_by_role` (colonnes `current_step_codir smallint 0..6` + `current_step_contributeur smallint 0..3`, RLS `can_manage_workspace`, pré-init `current_step_contributeur = 1`). API `updateWorkspaceCurrentStep` + types. Section « Phase du parcours de transformation » en tête de `SettingsPage` avec 2 selects (autosave, mode lecture seule pour rôles non autorisés). `WorkspaceHome` corrigé : étapes passées (`done`) restent cliquables (description + bouton actifs), seules les `upcoming` sont verrouillées. Pin bleu pour `done` et `upcoming`, rouge pour `current`.
+- **Navigation mobile** : harmonisation drawer hamburger — suppression du cartouche « Mon parcours de transformation » (aplati en labels discrets de type `Parcours de [Nom]`), suppression du bouton vestigial « Accueil — choix des modules », séparateur fin (25 % largeur) entre « Parcours » et « Compte et espace ».
+- **Pilule « Étape en cours »** : affichée en nav desktop **et** mobile sur le module courant de chaque parcours, indépendamment de la page active (visible aussi sur la home). Double pilule (CODIR + Contributeur) pour les rôles qui voient les deux sections.
+- **Polish** : badge entreprise en lecture seule avec `cursor: default !important` pour éviter la main inadaptée ; fix overlap pilule mobile sur cartes WorkspaceHome (positionnement static + padding adapté) ; spacing vertical inter-cartes dans Paramètres.
+- **Test users** : création d'un jeu complet de comptes de recette (superadmin / consultant / admin / pilote / CODIR dirigeant / CODIR non-dirigeant / contributeur) avec fix SQL pour champs `auth.users` NULL-sensibles (`confirmation_token` et co. → chaîne vide) afin de débloquer l'erreur GoTrue « Database error querying schema » en local.
+
+#### Correctifs déploiement notables
+- **Build Vercel TS** (commit `b0d1903`) : `JourneyModuleDef.id` typé `string` au lieu de `JourneyModuleId` (union de literals) — caché par `tsc --noEmit` local mais cassé par le `tsc -b` strict de Vercel. Fix en alignant le type.
+- **React runtime #310** (commit `9993281`) : `useMemo` placés après des early returns conditionnels (`authLoading`, `!authUser`) dans `App.tsx` → hooks count variable → écran blanc. Fix en retirant ces `useMemo` (calculs triviaux, <= 6 items) et en ajoutant le chaînage optionnel complet `workspaceData?.workspace?.current_step_codir`.
+- **Visibilité section Paramètres** (commit `9c1c64f`) : section Phase du parcours invisible car placée après la très grande carte « Missions & entreprises clientes ». Fix en la déplaçant en tête de `SettingsPage` avec spacing inter-cartes et texte de lead actualisé.
+
+#### À suivre
+- **EPIC 16 · REF-91** : Edge Function Deno Supabase encapsulant OpenRouter `openai/gpt-oss-120b` (auth JWT + RLS workspace + Zod) — prochain lot naturel pour brancher l'IA sur les 8 blocs.
+- **Recette par rôle** : passer les 7 rôles test en revue sur le parcours complet (Vue décideur / Discours / Paramètres / parcours membre) pour valider la matrice ACL en production.
 
 ### Session avril 2026 — synthèse des travaux réalisés
 
