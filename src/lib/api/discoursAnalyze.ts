@@ -20,12 +20,6 @@ export async function analyzeDiscoursWithAI(
     data: { session },
   } = await supabase.auth.getSession()
   const token = session?.access_token
-  // #region agent log
-  try {
-    const { data: userInfo } = await supabase.auth.getUser()
-    fetch('http://127.0.0.1:7271/ingest/4a825d9f-9e80-4d72-a03f-6e97efcd6511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cf4629'},body:JSON.stringify({sessionId:'cf4629',runId:'discours-pre-call',hypothesisId:'H1-H4',location:'discoursAnalyze.ts:before-fetch',message:'pre invoke session/user',data:{has_token:Boolean(token),session_user_id:session?.user?.id ?? null,session_user_email:session?.user?.email ?? null,getuser_id:userInfo?.user?.id ?? null,getuser_email:userInfo?.user?.email ?? null,workspaceId},timestamp:Date.now()})}).catch(()=>{})
-  } catch { /* ignore */ }
-  // #endregion
   if (!token) {
     throw new Error('Session expirée ou absente. Reconnectez-vous pour lancer l’analyse IA.')
   }
@@ -54,10 +48,7 @@ export async function analyzeDiscoursWithAI(
   }
 
   if (!res.ok) {
-    const err = payload as { message?: string; code?: string; error?: string; _debug?: unknown }
-    // #region agent log
-    fetch('http://127.0.0.1:7271/ingest/4a825d9f-9e80-4d72-a03f-6e97efcd6511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cf4629'},body:JSON.stringify({sessionId:'cf4629',runId:'discours-response',hypothesisId:'H1-H5',location:'discoursAnalyze.ts:after-fetch',message:'edge non-2xx',data:{status:res.status,body:err},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
+    const err = payload as { message?: string; code?: string; error?: string }
     const msg =
       err?.message || err?.error || err?.code || `Analyse IA indisponible (${res.status})`
     throw new Error(msg)

@@ -2185,7 +2185,9 @@
   }
 }
 
-@media (max-width: 768px) {
+/* Seuil tablette : la nav desktop (brand + nav-strip + actions) ne tient plus en ligne en dessous de ~1100px
+   à cause des 5 boutons à droite. On bascule en mode drawer pour éviter l'empilement vertical des actions. */
+@media (max-width: 1100px) {
   .dashboard__topbar-inner {
     padding: var(--space-sm) var(--space-md);
     column-gap: var(--space-sm);

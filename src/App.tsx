@@ -9,6 +9,7 @@ import {
   getRoadmapEligibleProjects,
   getLatestPendingInvitationForEmail,
   getWorkspace,
+  getWorkspaceConsultantMembership,
   getWorkspaceDirections,
   listWorkspaces,
   markInvitationsAcceptedForWorkspaceEmail,
@@ -715,18 +716,6 @@ function ModulePlaceholder({
 }
 
 function App() {
-  const debugLog = useCallback((payload: {
-    runId: string
-    hypothesisId: string
-    location: string
-    message: string
-    data: Record<string, unknown>
-  }) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7271/ingest/4a825d9f-9e80-4d72-a03f-6e97efcd6511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cf4629'},body:JSON.stringify({sessionId:'cf4629',runId:payload.runId,hypothesisId:payload.hypothesisId,location:payload.location,message:payload.message,data:payload.data,timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
-  }, [])
-
   const readReviewSnapshotFromUrl = useCallback((): string | null => {
     const path = window.location.pathname
     const m = path.match(/^\/review\/([0-9a-f-]{16,})$/i)
@@ -769,6 +758,10 @@ function App() {
   const [workspacesCatalog, setWorkspacesCatalog] = useState<Workspace[]>([])
   const [workspacesLoading, setWorkspacesLoading] = useState(false)
   const [workspacesError, setWorkspacesError] = useState<string | null>(null)
+  /** Consultant : seuls les `workspace_consultants.level = owner` voient la fiche entreprise (issue GH-31 · option B). */
+  const [consultantCompanyEligibility, setConsultantCompanyEligibility] = useState<
+    'irrelevant' | 'loading' | 'owner' | 'non_owner'
+  >('irrelevant')
   const [serverAccess, setServerAccess] = useState<ServerAccess | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [mfaEnrollmentRequired, setMfaEnrollmentRequired] = useState(false)
@@ -810,16 +803,44 @@ function App() {
       (serverAccess.role === 'consultant' || serverAccess.role === 'admin')) ||
     serverAccess?.source === 'superadmin'
 
+  useEffect(() => {
+    let cancelled = false
+    if (platformSuperadmin) {
+      setConsultantCompanyEligibility('irrelevant')
+      return
+    }
+    if (currentUserRole !== 'consultant') {
+      setConsultantCompanyEligibility('irrelevant')
+      return
+    }
+    if (!workspaceId || !currentAppUserId) {
+      setConsultantCompanyEligibility('non_owner')
+      return
+    }
+    setConsultantCompanyEligibility('loading')
+    void (async () => {
+      try {
+        const m = await getWorkspaceConsultantMembership(workspaceId, currentAppUserId)
+        if (cancelled) return
+        setConsultantCompanyEligibility(m?.level === 'owner' ? 'owner' : 'non_owner')
+      } catch {
+        if (!cancelled) setConsultantCompanyEligibility('non_owner')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId, currentAppUserId, currentUserRole, platformSuperadmin])
+
   /**
-   * Fiche entreprise : accessible en édition aux rôles de pilotage
-   * (super admin plateforme, consultant owner du workspace, admin & pilote côté client).
-   * Les membres CODIR (dirigeant ou non) et contributeurs n'y ont pas accès.
+   * Fiche entreprise : super-admin, consultant **owner** du workspace, admin & pilote côté client.
+   * Les consultants **collaborator**, CODIR et contributeurs n'y ont pas accès (GH-31 · option B).
    */
   const canViewCompanySheet =
     platformSuperadmin ||
-    currentUserRole === 'consultant' ||
     currentUserRole === 'admin' ||
-    currentUserRole === 'pilote'
+    currentUserRole === 'pilote' ||
+    (currentUserRole === 'consultant' && consultantCompanyEligibility === 'owner')
   /**
    * Droit d'éditer la phase du parcours (workspaces.current_step_*) — même périmètre que la RLS
    * serveur `can_manage_workspace` : superadmin + consultant owner + admin client.
@@ -844,17 +865,8 @@ function App() {
   )
 
   const closeMobileNav = useCallback(() => {
-    // #region agent log
-    debugLog({
-      runId: 'hamburger-overlap',
-      hypothesisId: 'H3',
-      location: 'src/App.tsx:closeMobileNav',
-      message: 'Fermeture menu mobile',
-      data: { mobileNavOpenBeforeClose: mobileNavOpen, innerWidth: window.innerWidth, innerHeight: window.innerHeight },
-    })
-    // #endregion
     setMobileNavOpen(false)
-  }, [debugLog, mobileNavOpen])
+  }, [])
 
   const handleLogout = useCallback(() => {
     void signOut()
@@ -865,6 +877,7 @@ function App() {
     setWorkspaceData(null)
     setCompanyLogo(null)
     setWorkspaceName('La Forge')
+    setConsultantCompanyEligibility('irrelevant')
     setServerAccess(null)
     setMobileNavOpen(false)
     navigateToMainNav('home')
@@ -873,81 +886,6 @@ function App() {
 
   useEffect(() => {
     if (!mobileNavOpen) return
-    // #region agent log
-    debugLog({
-      runId: 'hamburger-overlap',
-      hypothesisId: 'H1',
-      location: 'src/App.tsx:mobileNavOpenEffect:enter',
-      message: 'Ouverture menu mobile detectee',
-      data: { mobileNavOpen, innerWidth: window.innerWidth, innerHeight: window.innerHeight, scrollY: window.scrollY },
-    })
-    // #endregion
-
-    const frameId = window.requestAnimationFrame(() => {
-      const panel = document.querySelector('.dashboard__mobile-nav-panel') as HTMLElement | null
-      const layer = document.querySelector('.dashboard__mobile-nav-layer') as HTMLElement | null
-      const topbarActions = document.querySelector('.dashboard__topbar-actions') as HTMLElement | null
-      const topbarSecondary = document.querySelector('.dashboard__topbar-actions-secondary') as HTMLElement | null
-      const drawerItems = Array.from(document.querySelectorAll('.dashboard__nav--drawer .dashboard__nav-item')) as HTMLElement[]
-      const drawerItemMetrics = drawerItems.slice(0, 3).map((item, index) => {
-        const subtitle = item.querySelector('.dashboard__nav-item-subtitle') as HTMLElement | null
-        const label = item.querySelector('.dashboard__nav-item-label') as HTMLElement | null
-        const itemRect = item.getBoundingClientRect()
-        const subtitleRect = subtitle?.getBoundingClientRect() ?? null
-        const labelRect = label?.getBoundingClientRect() ?? null
-        return {
-          index,
-          className: item.className,
-          clientHeight: item.clientHeight,
-          scrollHeight: item.scrollHeight,
-          overflowY: window.getComputedStyle(item).overflowY,
-          display: window.getComputedStyle(item).display,
-          flexDirection: window.getComputedStyle(item).flexDirection,
-          alignItems: window.getComputedStyle(item).alignItems,
-          itemRect,
-          labelRect,
-          subtitleRect,
-          subtitleExists: Boolean(subtitle),
-          subtitleTextLength: subtitle?.textContent?.trim().length ?? 0,
-        }
-      })
-      const panelRect = panel?.getBoundingClientRect() ?? null
-      const topbarRect = topbarActions?.getBoundingClientRect() ?? null
-      const overlap =
-        panelRect && topbarRect
-          ? !(panelRect.right < topbarRect.left || panelRect.left > topbarRect.right || panelRect.bottom < topbarRect.top || panelRect.top > topbarRect.bottom)
-          : null
-      // #region agent log
-      debugLog({
-        runId: 'hamburger-overlap',
-        hypothesisId: 'H2',
-        location: 'src/App.tsx:mobileNavOpenEffect:layout',
-        message: 'Mesures overlay mobile/topbar',
-        data: {
-          panelRect,
-          topbarRect,
-          hasOverlap: overlap,
-          layerAlignItems: layer ? window.getComputedStyle(layer).alignItems : null,
-          layerJustifyContent: layer ? window.getComputedStyle(layer).justifyContent : null,
-          topbarSecondaryDisplay: topbarSecondary ? window.getComputedStyle(topbarSecondary).display : null,
-          topbarActionsDisplay: topbarActions ? window.getComputedStyle(topbarActions).display : null,
-        },
-      })
-      // #endregion
-      // #region agent log
-      debugLog({
-        runId: 'hamburger-overlap',
-        hypothesisId: 'H5',
-        location: 'src/App.tsx:mobileNavOpenEffect:drawer-items',
-        message: 'Mesures des items drawer mobile',
-        data: {
-          itemCount: drawerItems.length,
-          firstItems: drawerItemMetrics,
-        },
-      })
-      // #endregion
-    })
-
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setMobileNavOpen(false)
     }
@@ -955,11 +893,10 @@ function App() {
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
-      window.cancelAnimationFrame(frameId)
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
     }
-  }, [debugLog, mobileNavOpen])
+  }, [mobileNavOpen])
 
   useEffect(() => {
     const onPop = () => setReviewSnapshotId(readReviewSnapshotFromUrl())
@@ -969,22 +906,14 @@ function App() {
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
-    const mq = window.matchMedia('(min-width: 769px)')
+    // Doit rester aligné avec le breakpoint hamburger CSS (1100px) — cf. App.css .dashboard__topbar-inner @media.
+    const mq = window.matchMedia('(min-width: 1101px)')
     const onChange = () => {
-      // #region agent log
-      debugLog({
-        runId: 'hamburger-overlap',
-        hypothesisId: 'H4',
-        location: 'src/App.tsx:mobileMq:onChange',
-        message: 'Changement media query mobile',
-        data: { mqMatchesDesktop: mq.matches, innerWidth: window.innerWidth, mobileNavOpenBeforeChange: mobileNavOpen },
-      })
-      // #endregion
       if (mq.matches) setMobileNavOpen(false)
     }
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
-  }, [debugLog, mobileNavOpen])
+  }, [])
 
   useLayoutEffect(() => {
     applyThemeToDocument(theme)
@@ -1183,9 +1112,34 @@ function App() {
           setServerAccess({ source: 'users', dbUser: invitedUser })
           if (invitedUser.workspace_id) {
             const isConsultantMember = invitedUser.role === 'consultant'
+            const syncWorkspace = (id: string) => {
+              localStorage.setItem('workspaceId', id)
+              setWorkspaceId(id)
+            }
             if (!isConsultantMember) {
-              localStorage.setItem('workspaceId', invitedUser.workspace_id)
-              setWorkspaceId(invitedUser.workspace_id)
+              syncWorkspace(invitedUser.workspace_id)
+            } else {
+              // Consultant : conserver le choix multi-espaces (Paramètres) si l’ID est encore autorisé par la RLS.
+              // Sinon rejeter un workspaceId périmé (ex. autre compte sur le même navigateur → mauvaise recette).
+              const stored = localStorage.getItem('workspaceId')?.trim() || null
+              if (!stored) {
+                syncWorkspace(invitedUser.workspace_id)
+              } else {
+                try {
+                  invalidateCache(['workspaces:list'])
+                  const allowed = await listWorkspaces()
+                  const ids = new Set(allowed.map((w) => w.id))
+                  if (ids.has(stored)) {
+                    setWorkspaceId(stored)
+                  } else {
+                    clearWorkspaceSnapshot()
+                    syncWorkspace(invitedUser.workspace_id)
+                  }
+                } catch {
+                  clearWorkspaceSnapshot()
+                  syncWorkspace(invitedUser.workspace_id)
+                }
+              }
             }
           }
         } else if (platformSuper) {
@@ -1508,21 +1462,7 @@ function App() {
               aria-expanded={mobileNavOpen}
               aria-haspopup="dialog"
               aria-controls={mobileNavOpen ? 'dashboard-mobile-nav' : undefined}
-              onClick={() =>
-                setMobileNavOpen((o) => {
-                  const next = !o
-                  // #region agent log
-                  debugLog({
-                    runId: 'hamburger-overlap',
-                    hypothesisId: 'H1',
-                    location: 'src/App.tsx:menuBtn:onClick',
-                    message: 'Toggle menu hamburger',
-                    data: { before: o, after: next, innerWidth: window.innerWidth, innerHeight: window.innerHeight },
-                  })
-                  // #endregion
-                  return next
-                })
-              }
+              onClick={() => setMobileNavOpen((o) => !o)}
             >
               <span className="dashboard__menu-bars" aria-hidden>
                 <span />
