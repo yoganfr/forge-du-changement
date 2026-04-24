@@ -11,6 +11,10 @@ const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_KEY?.trim() ||
   (import.meta.env.DEV ? DEV_FALLBACK_KEY : '')
 
+/** Exposés pour les appels `fetch` manuels (ex. Edge Functions) avec les mêmes variables que le client. */
+export const VITE_CONFIG_SUPABASE_URL = SUPABASE_URL
+export const VITE_CONFIG_SUPABASE_ANON_KEY = SUPABASE_KEY
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     flowType: 'pkce',
