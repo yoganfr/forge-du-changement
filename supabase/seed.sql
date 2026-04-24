@@ -1,0 +1,2 @@
+-- Fichier minimal requis par supabase/config.toml (db.seed.sql_paths).
+-- Renseigner ici des INSERT de test si besoin pour `supabase db reset`.
