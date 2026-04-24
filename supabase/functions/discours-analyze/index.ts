@@ -133,10 +133,42 @@ Deno.serve(async (req) => {
     })
   }
   if (!profile) {
-    return new Response(JSON.stringify({ error: "Profil utilisateur introuvable" }), {
-      status: 403,
-      headers: { ...cors, "Content-Type": "application/json" },
-    })
+    // #region agent log : diagnostic 403 « Profil utilisateur introuvable »
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    const dbg: Record<string, unknown> = {
+      auth_user_id: user.id,
+      auth_email: user.email ?? null,
+      service_key_present: Boolean(serviceKey),
+    }
+    if (serviceKey) {
+      try {
+        const admin = createClient(supabaseUrl, serviceKey)
+        const byId = await admin
+          .from("users")
+          .select("id, email, workspace_id, is_platform_superadmin, status")
+          .eq("id", user.id)
+          .maybeSingle()
+        dbg.row_exists_via_service = Boolean(byId.data)
+        dbg.row_via_service_error = byId.error?.message ?? null
+        if (user.email) {
+          const byEmail = await admin
+            .from("users")
+            .select("id, workspace_id, status")
+            .eq("email", user.email)
+            .maybeSingle()
+          dbg.row_exists_by_email = Boolean(byEmail.data)
+          dbg.row_id_via_email = byEmail.data?.id ?? null
+        }
+      } catch (e) {
+        dbg.diag_exception = (e as Error).message
+      }
+    }
+    console.log("discours-analyze: profile not found", dbg)
+    return new Response(
+      JSON.stringify({ error: "Profil utilisateur introuvable", _debug: dbg }),
+      { status: 403, headers: { ...cors, "Content-Type": "application/json" } },
+    )
+    // #endregion
   }
   const isSuper = profile.is_platform_superadmin === true
   const sameWs = profile.workspace_id === workspaceId
