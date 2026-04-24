@@ -545,8 +545,8 @@ Module performatif porté par le **dirigeant CODIR** pour cadrer la narration de
 | 89 | Désignation **dirigeant CODIR** porteur du Discours : `workspaces.dirigeant_user_id`, section dédiée dans `CompanySheet` (sélecteur membres CODIR actifs, chip récap, retrait, trace audit `workspace_dirigeant_set`) | 🔴 | ✅ |
 | 90 | ACL module Discours : édition réservée à superadmin / consultant / admin / **dirigeant CODIR** du workspace ; pilote = lecture seule ; autres rôles = module invisible | 🔴 | ✅ |
 | 90a | ACL « Vue décideur » globale : superadmin + consultant owner + admin + pilote (read-only cockpit) ; CODIR non-dirigeant et contributeur = menu invisible | 🔴 | ✅ |
-| 91 | Backend proxy IA : Edge Function Deno Supabase (auth JWT + RLS workspace) encapsulant les appels **OpenRouter `openai/gpt-oss-120b`** (0,039 $/M input, 0,19 $/M output), validation Zod sorties structurées | 🔴 | ⬜ |
-| 92 | Scoring **IA** (enrichit l’analyse règles) + diagnostic LLM, aligné `DiscoursScoreSnapshot` (`source: 'ai'`) | 🔴 | ⬜ |
+| 91 | Backend proxy IA : Edge Function Deno Supabase (auth JWT + accès workspace + consultant via `workspace_consultants`) — OpenRouter **`openai/gpt-oss-120b`**, `response_format: json_object`, Zod, secret `OPENROUTER_API_KEY` | 🔴 | 🚧 (code : `supabase/functions/discours-analyze/`, déploiement + secret à valider) |
+| 92 | Scoring **IA** (enrichit l’analyse règles) + diagnostic LLM, aligné `DiscoursScoreSnapshot` (`source: 'ai'`) — bouton « Analyser avec l’IA et enregistrer » | 🔴 | 🚧 (câblage client : `analyzeDiscoursWithAI` + `updateVersionScore`) |
 | 93 | Reformulation IA par bloc (suggestions alternatives, préservation intention) | 🟠 | ⬜ |
 | 94 | Surlignage **inline** des termes jargon dans l’éditeur + tooltips (détection texte : voir 88d) | 🟡 | ⬜ |
 | 95 | Comparaison de versions (V1 / V2 côte à côte, diff par bloc) | 🟡 | ⬜ |

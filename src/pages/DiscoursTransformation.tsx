@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
+  analyzeDiscoursWithAI,
   getOrCreateDiscoursForWorkspace,
   getWorkspace,
   getWorkspaceUsers,
@@ -49,6 +50,8 @@ export default function DiscoursTransformationPage({
   const [blocs, setBlocs] = useState<DiscoursBlocsPayload>(() => emptyBlocsPayload())
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [scoreSaveState, setScoreSaveState] = useState<'idle' | 'saving' | 'error'>('idle')
+  const [aiState, setAiState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [aiError, setAiError] = useState<string | null>(null)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
@@ -170,6 +173,27 @@ export default function DiscoursTransformationPage({
     }
   }, [version?.id, canEdit, blocs])
 
+  const runAiAndSave = useCallback(async () => {
+    if (!workspaceId || !version?.id || !canEdit) return
+    if (flatForDiag.replace(/\s/g, '').length < 400) {
+      setAiError('Écrire au moins ~400 caractères utiles avant de lancer l’analyse (coût / pertinence).')
+      setAiState('error')
+      return
+    }
+    setAiError(null)
+    setAiState('loading')
+    try {
+      const snap = await analyzeDiscoursWithAI(workspaceId, flatForDiag)
+      const updated = await updateVersionScore(version.id, snap)
+      setVersion(updated)
+      setAiState('idle')
+    } catch (e) {
+      console.error('[DiscoursTransformation] analyse IA', e)
+      setAiError(e instanceof Error ? e.message : 'Analyse IA impossible.')
+      setAiState('error')
+    }
+  }, [workspaceId, version?.id, canEdit, flatForDiag])
+
   if (!workspaceId) {
     return (
       <section className="dashboard__module-panel">
@@ -251,8 +275,11 @@ export default function DiscoursTransformationPage({
         <aside className="discours-diagnostics" aria-labelledby="discours-diag-title" hidden={loading}>
           <h3 id="discours-diag-title" className="discours-diagnostics__title">Diagnostic (règles locales, §3.1.4)</h3>
           <p className="discours-diagnostics__intro">
-            Calcul déterministe à partir de votre texte (sans IA). S’actualise en direct ; vous pouvez l’
-            <strong>enregistrer sur la version courante</strong> pour la traçabilité (futur comparatif v1/v2).
+            Les <strong>jauges</strong> ci-dessous sont un <strong>calcul local par règles</strong> (sans coût, sans
+            envoi serveur) — c’est le même moteur que le bouton «&nbsp;Enregistrer ce diagnostic (règles)&nbsp;».
+            Le bouton <strong>Analyser avec l’IA</strong> envoie le texte de ton discours à notre
+            service Supabase, qui appelle le modèle <strong>openai/gpt-oss-120b</strong> (coût OpenRouter) et
+            enregistre le résultat sur la version comme <code>source: ai</code>.
           </p>
           <div className="discours-diagnostics__score-row">
             <span className="discours-diagnostics__total">
@@ -364,23 +391,38 @@ export default function DiscoursTransformationPage({
             </div>
           )}
           <div className="discours-diagnostics__actions">
-            <button
-              type="button"
-              className="discours-diagnostics__save"
-              disabled={!version?.id || !canEdit || scoreSaveState === 'saving'}
-              onClick={() => {
-                void saveDiagnostic()
-              }}
-            >
-              {scoreSaveState === 'saving' ? 'Enregistrement…' : 'Enregistrer ce diagnostic sur la version'}
-            </button>
-            {scoreSaveState === 'error' && (
-              <span className="discours-diagnostics__err" role="alert">Échec d’enregistrement. Réessaiez.</span>
+            <div className="discours-diagnostics__row-btns">
+              <button
+                type="button"
+                className="discours-diagnostics__save"
+                disabled={!version?.id || !canEdit || scoreSaveState === 'saving' || aiState === 'loading'}
+                onClick={() => {
+                  void saveDiagnostic()
+                }}
+              >
+                {scoreSaveState === 'saving' ? 'Enregistrement…' : 'Enregistrer le diagnostic (règles) sur la version'}
+              </button>
+              <button
+                type="button"
+                className="discours-diagnostics__ai"
+                disabled={!version?.id || !canEdit || !workspaceId || aiState === 'loading' || scoreSaveState === 'saving'}
+                onClick={() => {
+                  void runAiAndSave()
+                }}
+              >
+                {aiState === 'loading' ? 'Analyse IA en cours…' : 'Analyser avec l’IA et enregistrer'}
+              </button>
+            </div>
+            {aiError && (
+              <span className="discours-diagnostics__err" role="alert">{aiError}</span>
+            )}
+            {scoreSaveState === 'error' && !aiError && (
+              <span className="discours-diagnostics__err" role="alert">Échec d’enregistrement (règles). Réessaye.</span>
             )}
             {version?.score_snapshot && version.score_snapshot.computed_at && (
               <span className="discours-diagnostics__snap">
-                Dernier snapshot enregistré : {new Date(version.score_snapshot.computed_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })} — total{' '}
-                {version.score_snapshot.total} / 100
+                Dernier snapshot enregistré en base : {new Date(version.score_snapshot.computed_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })} — total{' '}
+                {version.score_snapshot.total} / 100 (source {version.score_snapshot.source === 'ai' ? 'IA' : 'règles'})
               </span>
             )}
           </div>

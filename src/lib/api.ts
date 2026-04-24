@@ -14,10 +14,12 @@ export type { ListOptions } from './api/cache'
 export {
   createWorkspace,
   getWorkspace,
+  getWorkspaceConsultantMembership,
   listWorkspaces,
   updateWorkspace,
   updateWorkspaceCurrentStep,
 } from './api/workspaces'
+export type { WorkspaceConsultantLevel } from './api/workspaces'
 export { createUser, getWorkspaceUsers, updateUser } from './api/users'
 export {
   createDirection,
@@ -96,6 +98,7 @@ export {
   updateVersionBlocs,
   updateVersionScore,
 } from './api/discoursTransformation'
+export { analyzeDiscoursWithAI } from './api/discoursAnalyze'
 export type { CreateRaciChantierInput, UpdateRaciChantierInput } from './api/raci-chantiers'
 export {
   createRaciChantier,
