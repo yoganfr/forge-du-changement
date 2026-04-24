@@ -87,7 +87,7 @@ type JourneyModule = {
 
 /** Définition "brute" d'un module de parcours : status calculé dynamiquement à partir du current_step. */
 type JourneyModuleDef = {
-  id: string
+  id: JourneyModuleId
   label: string
   subtitle: string
 }
