@@ -76,6 +76,31 @@ export async function updateWorkspace(
  * - Autorisation : policy RLS `workspaces_update` (superadmin + consultant owner + admin client).
  * - Passer `null` remet le parcours à l'état « non démarré » (tous modules verrouillés).
  */
+/** Niveau de rattachement consultant ↔ workspace (table `workspace_consultants`). */
+export type WorkspaceConsultantLevel = 'owner' | 'collaborator'
+
+/**
+ * Ligne active `workspace_consultants` pour ce couple workspace / utilisateur.
+ * Retourne `null` si pas de ligne ou erreur (à traiter comme « pas owner » côté UI).
+ */
+export async function getWorkspaceConsultantMembership(
+  workspaceId: string,
+  userId: string,
+): Promise<{ level: WorkspaceConsultantLevel } | null> {
+  const { data, error } = await supabase
+    .from('workspace_consultants')
+    .select('level')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (error || !data?.level) return null
+  const level = data.level as string
+  if (level !== 'owner' && level !== 'collaborator') return null
+  return { level: level as WorkspaceConsultantLevel }
+}
+
 export async function updateWorkspaceCurrentStep(
   id: string,
   patch: { codir?: number | null; contributeur?: number | null },
