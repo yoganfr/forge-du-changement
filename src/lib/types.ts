@@ -249,6 +249,10 @@ export type DiscoursScoreSnapshot = {
   source: 'rules' | 'ai'
   /** Horodatage du calcul. */
   computed_at: string
+  /** Slug de modèle demandé côté Edge (OpenRouter) — utile pour vérifier le circuit. */
+  model_requested?: string
+  /** Modèle effectif selon la réponse OpenRouter (souvent identique à `model_requested`). */
+  openrouter_model?: string
 }
 
 export type TransformationDiscourse = {

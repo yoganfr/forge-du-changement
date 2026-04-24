@@ -9,8 +9,18 @@ export async function analyzeDiscoursWithAI(
   workspaceId: string,
   flatText: string,
 ): Promise<DiscoursScoreSnapshot> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) {
+    throw new Error('Session expirée ou absente. Reconnectez-vous pour lancer l’analyse IA.')
+  }
   const { data, error } = await supabase.functions.invoke<DiscoursScoreSnapshot>('discours-analyze', {
     body: { workspaceId, text: flatText },
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   })
   if (error) {
     const msg = error.message ?? 'Analyse IA indisponible'

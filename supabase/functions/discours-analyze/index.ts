@@ -217,6 +217,10 @@ RÈGLES :
   }
 
   const orJson: unknown = await orRes.json()
+  const orModel = extractOpenRouterModel(orJson)
+  if (orModel) {
+    console.log("discours-analyze: OpenRouter model =", orModel, "| request =", MODEL)
+  }
   const content = extractOpenRouterText(orJson)
   if (!content) {
     return new Response(JSON.stringify({ error: "Réponse modèle vide" }), {
@@ -264,6 +268,8 @@ RÈGLES :
     recommandations: d.recommandations,
     source: "ai" as const,
     computed_at: new Date().toISOString(),
+    model_requested: MODEL,
+    openrouter_model: orModel,
   }
 
   return new Response(JSON.stringify(out), {
@@ -277,4 +283,10 @@ function extractOpenRouterText(body: unknown): string | null {
   const b = body as { choices?: Array<{ message?: { content?: string } }> }
   const c = b.choices?.[0]?.message?.content
   return typeof c === "string" && c.length > 0 ? c : null
+}
+
+function extractOpenRouterModel(body: unknown): string | undefined {
+  if (typeof body !== "object" || body === null) return undefined
+  const m = (body as { model?: string }).model
+  return typeof m === "string" && m.length > 0 ? m : undefined
 }
