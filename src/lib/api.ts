@@ -16,6 +16,7 @@ export {
   getWorkspace,
   listWorkspaces,
   updateWorkspace,
+  updateWorkspaceCurrentStep,
 } from './api/workspaces'
 export { createUser, getWorkspaceUsers, updateUser } from './api/users'
 export {

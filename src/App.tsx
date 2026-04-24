@@ -85,79 +85,97 @@ type JourneyModule = {
   status: 'active' | 'soon'
 }
 
-const CODIR_JOURNEY_MODULES: readonly JourneyModule[] = [
+/** Définition "brute" d'un module de parcours : status calculé dynamiquement à partir du current_step. */
+type JourneyModuleDef = {
+  id: string
+  label: string
+  subtitle: string
+}
+
+/** Parcours CODIR : 6 étapes, ordre = ordre de déverrouillage via `current_step_codir`. */
+const CODIR_JOURNEY_DEFS: readonly JourneyModuleDef[] = [
   {
     id: 'projects',
     label: 'Projets transformants',
     subtitle: 'Je veux sélectionner et prioriser mes projets transformants',
-    status: 'active',
   },
   {
     id: 'roadmap',
     label: 'Roadmap',
     subtitle: 'Je veux décliner mes projets transformants en Maturity Roadmaps',
-    status: 'active',
   },
   {
     id: 'feedbacks',
     label: 'Feedbacks Roadmap',
     subtitle: 'Je veux répondre et arbitrer les feedbacks de mon équipe sur ma Maturity Roadmap V1',
-    status: 'soon',
   },
   {
     id: 'pae_codir',
     label: "Plans d'actions d'Equipe (PAE) & Plans de charge (version membre CODIR)",
     subtitle: "J'affecte les jalons de ma Maturity Roadmaps V2 à des Managers pour réalisation de Plans d'actions d'Equipe (PAE) et plans de charge",
-    status: 'soon',
   },
   {
     id: 'kickoff',
     label: 'Kick-off',
     subtitle: 'Je prépare ma présentation de ma Maturity Roadmaps V2 et des PAE',
-    status: 'soon',
   },
   {
     id: 'suivi_codir',
     label: 'Suivi PAE (vue membre CODIR)',
     subtitle: "Je peux suivre la réalisation des plans d'action dans le temps (vers suivi PAE). Je mets à jour la Maturity Roadmap en fonction de la réalisation réelle",
-    status: 'soon',
   },
 ]
 
-/** Mappe l'index `current_step` (1..N) du workspace vers l'id du module de parcours correspondant. */
-const CODIR_STEP_TO_MODULE_ID = ['projects', 'roadmap', 'feedbacks', 'pae_codir', 'kickoff', 'suivi_codir'] as const
-const CONTRIBUTEUR_STEP_TO_MODULE_ID = ['review', 'pae_contrib', 'suivi_contrib'] as const
-
-function resolveCurrentJourneyModuleId(
-  role: AppUserRole,
-  currentStep: number | null | undefined,
-): string | null {
-  if (currentStep == null) return null
-  const table = role === 'contributeur' ? CONTRIBUTEUR_STEP_TO_MODULE_ID : CODIR_STEP_TO_MODULE_ID
-  const idx = Math.max(1, Math.min(currentStep, table.length)) - 1
-  return table[idx] ?? null
-}
-
-const CONTRIBUTEUR_JOURNEY_MODULES: readonly JourneyModule[] = [
+/** Parcours Contributeur : 3 étapes, ordre = ordre de déverrouillage via `current_step_contributeur`. */
+const CONTRIBUTEUR_JOURNEY_DEFS: readonly JourneyModuleDef[] = [
   {
     id: 'review',
     label: 'Review Roadmap',
     subtitle: "J'apporte mes feedbacks à la Maturity Roadmap de ma Direction",
-    status: 'active',
   },
   {
     id: 'pae_contrib',
     label: "Plans d'actions d'Equipe (PAE) & Plans de charge (version contributeur)",
     subtitle: "Je souhaite créer mon plan de charge et mon plan d'action pour les Jalons de la Maturity Roadmap qui m'ont été affectés",
-    status: 'soon',
   },
   {
     id: 'suivi_contrib',
     label: 'Suivi PAE (vue contributeur)',
     subtitle: "J'effectue le bon niveau de reporting lorsque je réalise mes PAE (vers Suivi PAE vue contributeur). Je décline de nouveaux jalons en PAE et plans de charge",
-    status: 'soon',
   },
 ]
+
+/**
+ * Transforme une liste de définitions en modules exploitables par la navigation :
+ * - `status = 'active'` si l'index (1..N) est ≤ au `current_step` du workspace
+ * - `status = 'soon'` sinon (y compris si `current_step` est null ou 0)
+ *
+ * Cela permet à un admin de déverrouiller progressivement les modules du parcours
+ * depuis la page Paramètres sans redéploiement.
+ */
+function buildJourneyModules(
+  defs: readonly JourneyModuleDef[],
+  currentStep: number | null | undefined,
+): readonly JourneyModule[] {
+  const effective = typeof currentStep === 'number' && currentStep > 0 ? currentStep : 0
+  return defs.map((def, idx) => ({
+    ...def,
+    status: idx + 1 <= effective ? 'active' : 'soon',
+  }))
+}
+
+/**
+ * Résout l'id du module de parcours qui correspond exactement à `current_step`.
+ * (Utile pour afficher la pilule "Étape en cours" dans la nav.)
+ */
+function resolveCurrentJourneyModuleIdFor(
+  defs: readonly JourneyModuleDef[],
+  currentStep: number | null | undefined,
+): string | null {
+  if (currentStep == null || currentStep < 1) return null
+  const idx = Math.min(currentStep, defs.length) - 1
+  return defs[idx]?.id ?? null
+}
 
 /** Entrées du menu « Vue décideur » (navbar), distinct du parcours de transformation. */
 const DECIDEUR_VIEW_MODULES: readonly JourneyModule[] = [
@@ -395,7 +413,8 @@ type DashboardMainNavProps = {
   id?: string
   onItemPick?: () => void
   userDisplayName?: string | null
-  currentJourneyModuleId?: string | null
+  currentJourneyModuleIdCodir?: string | null
+  currentJourneyModuleIdContributeur?: string | null
 }
 
 function DashboardMainNav({
@@ -412,7 +431,8 @@ function DashboardMainNav({
   id,
   onItemPick,
   userDisplayName,
-  currentJourneyModuleId,
+  currentJourneyModuleIdCodir,
+  currentJourneyModuleIdContributeur,
 }: DashboardMainNavProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const closeTimerRef = useRef<number | null>(null)
@@ -428,10 +448,10 @@ function DashboardMainNav({
     setMenuOpen(false)
   }
 
-  function renderModuleItem(module: JourneyModule) {
+  function renderModuleItem(module: JourneyModule, currentStepModuleId: string | null | undefined) {
     const isActive = activeNav === module.id
     const isSoon = module.status === 'soon'
-    const isCurrentStep = currentJourneyModuleId === module.id
+    const isCurrentStep = currentStepModuleId === module.id
     return (
       <button
         key={module.id}
@@ -485,13 +505,17 @@ function DashboardMainNav({
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
   }, [])
 
-  function renderSection(title: string, modules: readonly JourneyModule[]) {
+  function renderSection(
+    title: string,
+    modules: readonly JourneyModule[],
+    currentStepModuleId: string | null | undefined,
+  ) {
     if (modules.length === 0) return null
     return (
       <section key={title} className="dashboard__journey-section">
         <span className="dashboard__nav-section-label">{title}</span>
         <div className="dashboard__journey-section-items">
-          {modules.map(renderModuleItem)}
+          {modules.map((m) => renderModuleItem(m, currentStepModuleId))}
         </div>
       </section>
     )
@@ -508,8 +532,12 @@ function DashboardMainNav({
           const contributeurLabel = bothSections ? 'Parcours membre contributeur' : singleLabel
           return (
             <>
-              {showCodirSection ? renderSection(codirLabel, codirModules) : null}
-              {showContributeurSection ? renderSection(contributeurLabel, contributeurModules) : null}
+              {showCodirSection
+                ? renderSection(codirLabel, codirModules, currentJourneyModuleIdCodir)
+                : null}
+              {showContributeurSection
+                ? renderSection(contributeurLabel, contributeurModules, currentJourneyModuleIdContributeur)
+                : null}
             </>
           )
         })()
@@ -533,8 +561,12 @@ function DashboardMainNav({
           </button>
           {menuOpen ? (
             <div className="dashboard__journey-popover" role="menu">
-              {showCodirSection ? renderSection('Parcours membre CODIR', codirModules) : null}
-              {showContributeurSection ? renderSection('Parcours membre contributeur', contributeurModules) : null}
+              {showCodirSection
+                ? renderSection('Parcours membre CODIR', codirModules, currentJourneyModuleIdCodir)
+                : null}
+              {showContributeurSection
+                ? renderSection('Parcours membre contributeur', contributeurModules, currentJourneyModuleIdContributeur)
+                : null}
             </div>
           ) : null}
         </div>
@@ -788,6 +820,15 @@ function App() {
     currentUserRole === 'consultant' ||
     currentUserRole === 'admin' ||
     currentUserRole === 'pilote'
+  /**
+   * Droit d'éditer la phase du parcours (workspaces.current_step_*) — même périmètre que la RLS
+   * serveur `can_manage_workspace` : superadmin + consultant owner + admin client.
+   *
+   * NB : côté front on approxime "consultant owner" par `role === 'consultant'`. La RLS
+   * serveur validera finement ; en cas de refus, SettingsPage affiche l'erreur.
+   */
+  const canEditCurrentStep =
+    platformSuperadmin || currentUserRole === 'consultant' || currentUserRole === 'admin'
 
   const exitRoadmap = useCallback(() => {
     setMaturityRoadmapOpen(false)
@@ -1306,7 +1347,8 @@ function App() {
               logo_url: snap.logo_url,
               created_at: prev?.workspace?.created_at ?? '',
               trigram_convention: 'prenom_nom_3',
-              current_step: prev?.workspace?.current_step ?? null,
+              current_step_codir: prev?.workspace?.current_step_codir ?? null,
+              current_step_contributeur: prev?.workspace?.current_step_contributeur ?? null,
               dirigeant_user_id: prev?.workspace?.dirigeant_user_id ?? null,
             }
             return {
@@ -1363,12 +1405,26 @@ function App() {
     currentUserRole,
     platformSuperadmin,
   )
-  const codirModules = CODIR_JOURNEY_MODULES
-  const contributeurModules = CONTRIBUTEUR_JOURNEY_MODULES
-  const currentJourneyModuleId = resolveCurrentJourneyModuleId(
-    currentUserRole,
-    workspaceData?.workspace.current_step ?? null,
+  const currentStepCodir = workspaceData?.workspace.current_step_codir ?? null
+  const currentStepContributeur = workspaceData?.workspace.current_step_contributeur ?? null
+  const codirModules = useMemo(
+    () => buildJourneyModules(CODIR_JOURNEY_DEFS, currentStepCodir),
+    [currentStepCodir],
   )
+  const contributeurModules = useMemo(
+    () => buildJourneyModules(CONTRIBUTEUR_JOURNEY_DEFS, currentStepContributeur),
+    [currentStepContributeur],
+  )
+  const currentJourneyModuleIdCodir = resolveCurrentJourneyModuleIdFor(
+    CODIR_JOURNEY_DEFS,
+    currentStepCodir,
+  )
+  const currentJourneyModuleIdContributeur = resolveCurrentJourneyModuleIdFor(
+    CONTRIBUTEUR_JOURNEY_DEFS,
+    currentStepContributeur,
+  )
+  /** current_step pertinent pour la WorkspaceHome : on prend celui qui correspond au rôle affiché. */
+  const currentStepForHome = currentUserRole === 'contributeur' ? currentStepContributeur : currentStepCodir
   const avatarFromDb =
     serverAccess?.source === 'users'
       ? serverAccess.dbUser.avatar_url?.trim() || null
@@ -1492,7 +1548,8 @@ function App() {
               onGoHome={() => navigateToMainNav('home')}
               className="dashboard__nav"
               userDisplayName={workspaceWelcomeName}
-              currentJourneyModuleId={currentJourneyModuleId}
+              currentJourneyModuleIdCodir={currentJourneyModuleIdCodir}
+              currentJourneyModuleIdContributeur={currentJourneyModuleIdContributeur}
             />
             {canViewDecideur ? (
               <DashboardDecideurNav
@@ -1618,7 +1675,8 @@ function App() {
               className="dashboard__nav dashboard__nav--drawer"
               mobileMode
               userDisplayName={workspaceWelcomeName}
-              currentJourneyModuleId={currentJourneyModuleId}
+              currentJourneyModuleIdCodir={currentJourneyModuleIdCodir}
+              currentJourneyModuleIdContributeur={currentJourneyModuleIdContributeur}
               onItemPick={closeMobileNav}
             />
             {canViewDecideur ? (
@@ -1711,7 +1769,7 @@ function App() {
               />
             ) : normalizedActiveNav === 'home' ? (
               <WorkspaceHome
-                currentStep={workspaceData?.workspace.current_step ?? null}
+                currentStep={currentStepForHome}
                 currentUserRole={currentUserRole}
                 loggedInUserName={workspaceWelcomeName || fallbackFirstName || fullName || authUser.email || null}
                 navigateToMainNav={navigateToMainNav}
@@ -1727,6 +1785,21 @@ function App() {
                 onRefreshWorkspaces={() => { void refreshWorkspacesCatalog() }}
                 onSelectWorkspace={handleSelectWorkspaceFromSettings}
                 onAddWorkspace={() => setShowWorkspaceOnboarding(true)}
+                currentWorkspace={workspaceData?.workspace ?? null}
+                canEditCurrentStep={canEditCurrentStep}
+                onCurrentStepUpdated={(patch) => {
+                  setWorkspaceData((prev) => {
+                    if (!prev?.workspace) return prev
+                    return {
+                      ...prev,
+                      workspace: {
+                        ...prev.workspace,
+                        current_step_codir: patch.current_step_codir,
+                        current_step_contributeur: patch.current_step_contributeur,
+                      },
+                    }
+                  })
+                }}
               />
             ) : normalizedActiveNav === 'projects' ? (
               <ProjectSelector

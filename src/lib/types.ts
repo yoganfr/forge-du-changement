@@ -5,7 +5,15 @@ export type Workspace = {
   size: 'PME' | 'ETI' | 'Grand groupe' | null
   logo_url: string | null
   trigram_convention: 'prenom_nom_3' | 'nom_prenom_3' | 'custom' | null
-  current_step: number | null
+  /**
+   * @deprecated Remplacé par `current_step_codir` / `current_step_contributeur` depuis la migration
+   * `workspaces_split_current_step_by_role`. Conservé le temps de la transition.
+   */
+  current_step?: number | null
+  /** Phase en cours du parcours membre CODIR (0..6). NULL ou 0 = parcours non démarré. */
+  current_step_codir: number | null
+  /** Phase en cours du parcours membre Contributeur (0..3). NULL ou 0 = parcours non démarré. */
+  current_step_contributeur: number | null
   /** Membre CODIR taggé « dirigeant » du workspace (auteur du discours de transformation). */
   dirigeant_user_id: string | null
   created_at: string
