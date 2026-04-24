@@ -28,7 +28,6 @@ type StepDef = {
   desc: string
   moduleLabel: string
   moduleNavId: JourneyModuleId
-  available: boolean
 }
 
 const CODIR_STEPS: readonly StepDef[] = [
@@ -38,7 +37,6 @@ const CODIR_STEPS: readonly StepDef[] = [
     desc: 'Je veux sélectionner et prioriser mes projets transformants',
     moduleLabel: 'Projets transformants',
     moduleNavId: 'projects',
-    available: true,
   },
   {
     id: 2,
@@ -46,7 +44,6 @@ const CODIR_STEPS: readonly StepDef[] = [
     desc: 'Je veux décliner mes projets transformants en Maturity Roadmaps',
     moduleLabel: 'Roadmap',
     moduleNavId: 'roadmap',
-    available: true,
   },
   {
     id: 3,
@@ -54,7 +51,6 @@ const CODIR_STEPS: readonly StepDef[] = [
     desc: 'Je veux répondre et arbitrer les feedbacks de mon équipe sur ma Maturity Roadmap V1',
     moduleLabel: 'Feedbacks Roadmap',
     moduleNavId: 'feedbacks',
-    available: false,
   },
   {
     id: 4,
@@ -62,7 +58,6 @@ const CODIR_STEPS: readonly StepDef[] = [
     desc: "J'affecte les jalons de ma Maturity Roadmaps V2 à des Managers pour réalisation de Plans d'actions d'Equipe (PAE) et plans de charge",
     moduleLabel: "Plans d'actions d'Equipe (PAE) & Plans de charge (version membre CODIR)",
     moduleNavId: 'pae_codir',
-    available: false,
   },
   {
     id: 5,
@@ -70,7 +65,6 @@ const CODIR_STEPS: readonly StepDef[] = [
     desc: 'Je prépare ma présentation de ma Maturity Roadmaps V2 et des PAE',
     moduleLabel: 'Kick-off',
     moduleNavId: 'kickoff',
-    available: false,
   },
   {
     id: 6,
@@ -78,7 +72,6 @@ const CODIR_STEPS: readonly StepDef[] = [
     desc: "Je peux suivre la réalisation des plans d'action dans le temps (vers suivi PAE). Je mets à jour la Maturity Roadmap en fonction de la réalisation réelle",
     moduleLabel: 'Suivi PAE (vue membre CODIR)',
     moduleNavId: 'suivi_codir',
-    available: false,
   },
 ]
 
@@ -89,7 +82,6 @@ const CONTRIBUTEUR_STEPS: readonly StepDef[] = [
     desc: "J'apporte mes feedbacks à la Maturity Roadmap de ma Direction",
     moduleLabel: 'Review Roadmap',
     moduleNavId: 'review',
-    available: true,
   },
   {
     id: 2,
@@ -97,7 +89,6 @@ const CONTRIBUTEUR_STEPS: readonly StepDef[] = [
     desc: "Je souhaite créer mon plan de charge et mon plan d'action pour les Jalons de la Maturity Roadmap qui m'ont été affectés",
     moduleLabel: "Plans d'actions d'Equipe (PAE) & Plans de charge (version contributeur)",
     moduleNavId: 'pae_contrib',
-    available: false,
   },
   {
     id: 3,
@@ -105,12 +96,21 @@ const CONTRIBUTEUR_STEPS: readonly StepDef[] = [
     desc: "J'effectue le bon niveau de reporting lorsque je réalise mes PAE (vers Suivi PAE vue contributeur). Je décline de nouveaux jalons en PAE et plans de charge",
     moduleLabel: 'Suivi PAE (vue contributeur)',
     moduleNavId: 'suivi_contrib',
-    available: false,
   },
 ]
 
+/**
+ * Statut d'une étape en fonction de la phase courante (déverrouillée par l'admin via
+ * `workspaces.current_step_*`).
+ * - `done`     : étape passée (stepId < currentStep) → accessible mais condensée
+ * - `current`  : étape en cours (stepId === currentStep) → accessible, mise en avant
+ * - `upcoming` : étape future (stepId > currentStep OU phase non démarrée) → verrouillée
+ *
+ * Quand currentStep est null ou 0 (phase non démarrée), **tout** est `upcoming` :
+ * aucun module n'est accessible tant que l'admin n'a pas ouvert au moins la phase 1.
+ */
 function resolveStatus(stepId: number, currentStep: number | null): StepStatus {
-  if (currentStep === null) return stepId === 1 ? 'current' : 'upcoming'
+  if (currentStep === null || currentStep < 1) return 'upcoming'
   if (stepId < currentStep) return 'done'
   if (stepId === currentStep) return 'current'
   return 'upcoming'
@@ -141,8 +141,8 @@ export default function WorkspaceHome({
     return () => window.cancelAnimationFrame(t)
   }, [currentStepForRole])
 
-  function handleCta(step: StepDef) {
-    if (!step.available) return
+  function handleCta(step: StepDef, status: StepStatus) {
+    if (status === 'upcoming') return
     if (step.moduleNavId === 'roadmap') {
       onOpenRoadmap()
     } else {
@@ -180,9 +180,12 @@ export default function WorkspaceHome({
                 ? '/images/roadmap/pin-red.svg'
                 : '/images/roadmap/pin-blue.svg'
               const desc = step.desc
-              const showDetail = status !== 'done'
-              const showCta = showDetail && step.available
-              const showSoon = showDetail && !step.available
+              // Les étapes passées (done) restent cliquables : l'utilisateur peut revenir sur un
+              // module déjà parcouru. Seules les étapes upcoming sont verrouillées.
+              const isUnlocked = status === 'done' || status === 'current'
+              const showDetail = true
+              const showCta = isUnlocked
+              const showSoon = !isUnlocked
 
               return (
                 <Fragment key={step.id}>
@@ -240,7 +243,7 @@ export default function WorkspaceHome({
                           <button
                             type="button"
                             className="dashboard__logout-btn wh-card-module-btn"
-                            onClick={() => handleCta(step)}
+                            onClick={() => handleCta(step, status)}
                           >
                             {step.moduleLabel}
                           </button>
