@@ -17,14 +17,19 @@ Backend : **Supabase** (Postgres + RLS + Auth + Storage). Repo : `yoganfr/forge-
 
 ## 2. Lancer le projet en local
 
-Deux terminaux séparés — ne jamais couper Vite pour lancer Next.js :
+Par défaut, ne lancer que le dashboard Vite. Le serveur Next.js local de `/web` a déjà provoqué une cascade de processus `node.exe` et une saturation mémoire.
 
 ```bash
-# Terminal 1 — racine
+# Racine — dashboard authentifié stable
 npm run dev          # SPA Vite → http://localhost:5173
+```
 
-# Terminal 2 — dossier web
-cd web && npm run dev   # Next.js → http://localhost:3000
+`/web` reste déployé par Vercel et validé via `npm run build`. Son lancement local est volontairement bloqué :
+
+```bash
+cd web
+npm run dev          # bloqué volontairement
+npm run dev:manual   # uniquement si lancement local explicitement assumé
 ```
 
 Variables d'environnement :
@@ -79,7 +84,7 @@ Avant toute action, lire les docs pertinents :
 - Modification dashboard → reste dans `/src`. Pas de duplicata dans `/web` sans vague EPIC 15.
 - Modification landing / SEO / page publique → reste dans `/web`.
 - Nouvel écran → consulter EPIC 15 du backlog avant de choisir la cible.
-- Les tokens CSS sont partagés : `web/app/globals.css` importe `../../src/themes.css` via `turbopack.root`. Couplage temporaire, traité par REF-76.
+- `/web` garde une copie locale de `src/themes.css` dans `web/app/themes.css` pour éviter les imports cross-app en dev. Toute évolution des tokens doit synchroniser explicitement les deux fichiers ou traiter la dette REF-76.
 
 ## 7. Git workflow
 

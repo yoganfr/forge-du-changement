@@ -9,6 +9,10 @@ Le dashboard authentifié vit dans `/src` (Vite SPA), **pas** ici — voir la ra
 
 ## Getting Started (dev local)
 
+> Sécurité machine: `web` est volontairement bloqué en local via `npm run dev`
+> (historique de cascades `node.exe` / saturation mémoire).
+> Utiliser uniquement `npm run dev:manual` si lancement local explicitement voulu.
+
 Le repo héberge deux applications. Il faut **deux terminaux en parallèle** :
 
 ```bash
@@ -17,9 +21,9 @@ Le repo héberge deux applications. Il faut **deux terminaux en parallèle** :
 npm run dev
 
 # Terminal 2 — dossier web/
-#  → Landing Next.js, port 3000
+#  → Landing Next.js, port 3000 (déverrouillage explicite)
 cd web
-npm run dev
+npm run dev:manual
 ```
 
 - SPA Vite : http://localhost:5173 (authentification Supabase, dashboard).
@@ -66,7 +70,8 @@ Pour la production, ces variables sont gérées dans le projet Vercel `forge-du-
 
 | Script | Description |
 |---|---|
-| `npm run dev` | Lance `next dev` sur :3000 (Turbopack). |
+| `npm run dev` | **Bloque volontairement** le lancement local de `web` (protection mémoire machine). |
+| `npm run dev:manual` | Lance `next dev` sur :3000 uniquement si nécessaire. |
 | `npm run build` | Compile pour la prod (`next build`). |
 | `npm run start` | Lance le serveur Node.js prod (`next start`), à utiliser après `build`. |
 | `npm run lint` | ESLint sur l'ensemble du dossier (core-web-vitals + typescript). |

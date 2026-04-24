@@ -1,0 +1,386 @@
+/* Polices : voir /public/fonts/fonts.css (lien dans index.html) — hébergement local, pas de dépendance CDN au runtime */
+
+/* ═══════════════════════════════════════════════════
+   Thèmes — Règles strictes :
+   Les couleurs vives (bordeaux, corail, paille, bleus)
+   sont réservées aux boutons, icônes actives et badges.
+═══════════════════════════════════════════════════ */
+
+:root {
+  /* Signature marque — constant clair / sombre */
+  --brand-bordeaux: #8e3b46;
+
+  /* Couleur d'appoint (secondaire) — valeur par défaut avant application du thème */
+  --theme-support: var(--brand-bordeaux);
+
+  /* Palette fondamentale (mode clair) */
+  --caramel-candy-50: #ffeeb3;
+  --caramel-candy-100: #fdd284;
+  --caramel-candy-200: #f1872a;
+  --caramel-candy-300: #bf651a;
+  --caramel-candy-400: #b46118;
+  --caramel-candy-500: #af5214;
+  --caramel-candy-600: #921509;
+  --caramel-candy-700: #5f0202;
+  --caramel-candy-800: #470000;
+
+  --orecchiette-50: #fffbbd;
+  --orecchiette-100: #fbe086;
+  --orecchiette-200: #d1a035;
+  --orecchiette-300: #977629;
+  --orecchiette-400: #8f7224;
+  --orecchiette-500: #8a6f1c;
+  --orecchiette-600: #704a0c;
+  --orecchiette-700: #450b02;
+  --orecchiette-800: #2e0000;
+
+  --muted-yellow-green-50: #f3ffc7;
+  --muted-yellow-green-100: #d2ef96;
+  --muted-yellow-green-200: #91b64c;
+  --muted-yellow-green-300: #69843a;
+  --muted-yellow-green-400: #637e35;
+  --muted-yellow-green-500: #5e7c29;
+  --muted-yellow-green-600: #316411;
+  --muted-yellow-green-700: #022f02;
+  --muted-yellow-green-800: #001400;
+
+  /* Alias marque conservés pour compatibilité existante */
+  --dark-red-500: var(--caramel-candy-600);
+  --dark-red-600: var(--caramel-candy-700);
+  --coral-400: var(--caramel-candy-200);
+  --straw-400: var(--orecchiette-100);
+  --steel-blue-400: #4c86a8;
+
+  /* Typographie — Clash Display (titres) + Satoshi (corps), fallback systeme */
+  --font-display: "Clash Display", system-ui, sans-serif;
+  --font-body: "Satoshi", system-ui, sans-serif;
+
+  /* Échelle fluide 375px → 1440px, ratio 1.333 (Perfect Fourth), base 1rem */
+  --text-xs: clamp(0.75rem, 0.7rem + 0.2vw, 0.8rem);
+  --text-sm: clamp(0.875rem, 0.8rem + 0.3vw, 0.95rem);
+  --text-base: 1rem;
+  --text-lg: clamp(1.125rem, 1rem + 0.5vw, 1.25rem);
+  --text-xl: clamp(1.25rem, 1.1rem + 0.8vw, 1.75rem);
+  --text-2xl: clamp(1.5rem, 1.3rem + 1.2vw, 2.5rem);
+  --text-hero: clamp(2.25rem, 2rem + 4vw, 5rem);
+
+  /* Rétrocompatibilité (composants existants) */
+  --fs-base: var(--text-base);
+  --fs-title: var(--text-xl);
+  --fs-small: var(--text-sm);
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --ui-control-height: 40px;
+  --ui-radius-control: var(--radius-md);
+  --ui-radius-panel: 16px;
+  --ui-radius-badge: var(--radius-sm);
+  --ui-focus-ring: 0 0 0 3px color-mix(in srgb, var(--theme-accent) 18%, transparent);
+  --transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-fast: 160ms ease;
+  --max-width: 1280px;
+  --card-min: 240px;
+
+  /* Grain (référencé par index.css) */
+  --theme-noise-opacity: 0.028;
+}
+
+/* ─── Thème clair ─── */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Taichi light token mapping with app compatibility variables */
+  --brand-bordeaux: #af526d;
+
+  --caramel-candy-50: #fff3f5;
+  --caramel-candy-100: #ffe3e8;
+  --caramel-candy-200: #f4b8c6;
+  --caramel-candy-300: #e98ea2;
+  --caramel-candy-400: #d46d88;
+  --caramel-candy-500: #af526d;
+  --caramel-candy-600: #8e3f57;
+  --caramel-candy-700: #6d2d40;
+  --caramel-candy-800: #4c1b2a;
+
+  --orecchiette-50: #fff5ec;
+  --orecchiette-100: #ffeddf;
+  --orecchiette-200: #f4d1ba;
+  --orecchiette-300: #e1b289;
+  --orecchiette-400: #c28f6b;
+  --orecchiette-500: #a87556;
+  --orecchiette-600: #826754;
+  --orecchiette-700: #5f4a3a;
+  --orecchiette-800: #3a2c23;
+
+  --muted-yellow-green-50: #eff9f3;
+  --muted-yellow-green-100: #dcf0e4;
+  --muted-yellow-green-200: #bce2cc;
+  --muted-yellow-green-300: #9ad4b2;
+  --muted-yellow-green-400: #76c596;
+  --muted-yellow-green-500: #53b77a;
+  --muted-yellow-green-600: #2aa25e;
+  --muted-yellow-green-700: #1f7f49;
+  --muted-yellow-green-800: #165e36;
+
+  --dark-red-500: #cf473e;
+  --dark-red-600: #9e2f2b;
+  --coral-400: #af526d;
+  --straw-400: #ffeddf;
+  --steel-blue-400: #276bbb;
+
+  --theme-bg-page: #f3f6f0;
+  --theme-page-gradient: linear-gradient(
+    180deg,
+    #f9fbf7 0%,
+    #f3f6f0 45%,
+    color-mix(in srgb, #f3f6f0 90%, #ecefe9) 100%
+  );
+  --theme-bg-card: #ecefe9;
+  --theme-dashboard-card-border: #d7ddd1;
+  --theme-dashboard-card-shadow: 0 28px 56px -28px rgba(21, 27, 18, 0.16);
+  --theme-bg-sidebar: #161814;
+  --theme-text: #000000;
+  --theme-text-muted: #676964;
+  --theme-accent: #276bbb;
+  --theme-on-accent: #ffffff;
+  /* Accent secondaire (bordeaux / corail) — décoratif, moins “CTA” que --theme-accent */
+  --theme-support: var(--coral-400);
+  --theme-border: #8a8f85;
+  --theme-border-soft: color-mix(in srgb, var(--theme-border) 28%, var(--theme-bg-page));
+  --theme-border-strong: color-mix(in srgb, var(--theme-border) 68%, var(--theme-text));
+  --theme-sidebar-text: #f3f6f0;
+  --theme-sidebar-text-muted: #b4b9b1;
+  --theme-bg-raised: #f7f9f5;
+  --theme-bg-premium: color-mix(in srgb, var(--theme-bg-raised) 82%, #ffffff 18%);
+  --theme-image-placeholder: #dde2db;
+  --theme-route-ink: color-mix(in srgb, var(--theme-accent) 42%, var(--theme-border));
+
+  --theme-neon-orange: #af526d;
+  --theme-neon-green: #008a75;
+
+  --shadow-sm: 0 4px 12px rgba(21, 27, 18, 0.08);
+  --shadow-md: 0 10px 28px rgba(21, 27, 18, 0.12);
+  --shadow-lg: 0 18px 44px rgba(21, 27, 18, 0.16);
+  --shadow-card-long: 0 30px 60px -30px rgba(21, 27, 18, 0.2);
+
+  --glass-blur: 20px;
+  --glass-saturate: 1.38;
+  --glass-bg-header: color-mix(in srgb, rgb(243, 246, 240) 76%, transparent);
+  --glass-bg-card: color-mix(in srgb, rgb(236, 239, 233) 80%, transparent);
+  --glass-bg-chip: color-mix(in srgb, rgb(236, 239, 233) 86%, transparent);
+  --glass-bg-sidebar: color-mix(in srgb, rgb(22, 24, 20) 82%, transparent);
+  --glass-border: color-mix(in srgb, var(--theme-border) 30%, rgba(255, 255, 255, 0.66));
+  --glass-border-soft: rgba(255, 255, 255, 0.44);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  --glass-shadow: 0 8px 32px rgba(21, 27, 18, 0.1);
+
+  --score-caramel-1: #bce2cc;
+  --score-caramel-2: #76c596;
+  --score-caramel-3: #2aa25e;
+  --score-caramel-4: #1f7f49;
+  --score-critical: #cf473e;
+
+  --critere-pane-icon: linear-gradient(165deg, #141b15 0%, #1f2a20 100%);
+  --critere-pane-mid: linear-gradient(165deg, #415847 0%, #5f7a66 100%);
+  --critere-square-bg: #141b15;
+  --critere-square-bg-hover: #223026;
+  --critere-val-ink: #0f140f;
+
+  --clr-surface: var(--theme-bg-page);
+  --clr-text: var(--theme-text);
+  --clr-text-muted: var(--theme-text-muted);
+  --clr-border: var(--theme-border);
+  --clr-accent: var(--theme-accent);
+  --clr-accent-light: color-mix(in srgb, var(--theme-accent) 12%, var(--theme-bg-page));
+  --clr-primary: var(--theme-text);
+
+  --clr-badge-new: var(--steel-blue-400);
+  --clr-badge-promo: var(--coral-400);
+  --clr-badge-limited: color-mix(in srgb, var(--dark-red-500) 45%, var(--steel-blue-400));
+  --clr-star: #826754;
+}
+
+/* ─── Thème sombre ─── */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --theme-noise-opacity: 0.04;
+  --brand-bordeaux: #d590a2;
+
+  --caramel-candy-50: #2a0b14;
+  --caramel-candy-100: #3a1020;
+  --caramel-candy-200: #521a31;
+  --caramel-candy-300: #6f2741;
+  --caramel-candy-400: #8a3b54;
+  --caramel-candy-500: #a75068;
+  --caramel-candy-600: #c06f85;
+  --caramel-candy-700: #d590a2;
+  --caramel-candy-800: #f5dbe2;
+
+  --orecchiette-50: #1f1510;
+  --orecchiette-100: #2c1b12;
+  --orecchiette-200: #4a2a1d;
+  --orecchiette-300: #6a3d28;
+  --orecchiette-400: #826754;
+  --orecchiette-500: #a38269;
+  --orecchiette-600: #c79f7f;
+  --orecchiette-700: #e1b289;
+  --orecchiette-800: #f6e0cc;
+
+  --muted-yellow-green-50: #05120a;
+  --muted-yellow-green-100: #0a2211;
+  --muted-yellow-green-200: #11371d;
+  --muted-yellow-green-300: #1a5a2e;
+  --muted-yellow-green-400: #238244;
+  --muted-yellow-green-500: #2aa25e;
+  --muted-yellow-green-600: #4fbe7d;
+  --muted-yellow-green-700: #86d9a6;
+  --muted-yellow-green-800: #c5efcf;
+
+  --dark-red-500: #ec675b;
+  --dark-red-600: #c14a41;
+  --coral-400: #d590a2;
+  --straw-400: #e1b289;
+  --steel-blue-400: #79b4ff;
+
+  --theme-bg-page: #090b08;
+  --theme-page-gradient: linear-gradient(
+    165deg,
+    #050705 0%,
+    #090b08 40%,
+    color-mix(in srgb, #090b08 78%, #141612) 74%,
+    #10130f 100%
+  );
+  --theme-bg-card: #141612;
+  --theme-dashboard-card-border: #2b2f29;
+  --theme-dashboard-card-shadow: 0 30px 62px -30px rgba(0, 0, 0, 0.64);
+  --theme-bg-sidebar: #070906;
+  --theme-text: #f3f6f0;
+  --theme-text-muted: #cfd1cc;
+  --theme-accent: #79b4ff;
+  --theme-on-accent: #041a34;
+  --theme-neon-orange: #d590a2;
+  --theme-neon-green: #1c9781;
+  --theme-support: var(--theme-neon-orange);
+  --theme-border: #646862;
+  --theme-border-soft: color-mix(in srgb, var(--theme-border) 36%, var(--theme-bg-page));
+  --theme-border-strong: color-mix(in srgb, var(--theme-border) 72%, var(--theme-text));
+  --theme-sidebar-text: #f3f6f0;
+  --theme-sidebar-text-muted: #aeb3ac;
+  --theme-bg-raised: #191b17;
+  --theme-bg-premium: color-mix(in srgb, var(--theme-bg-raised) 88%, #1b1f19 12%);
+  --theme-image-placeholder: #1f221d;
+  --theme-route-ink: color-mix(in srgb, var(--theme-accent) 52%, var(--theme-border));
+
+  --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.42);
+  --shadow-md: 0 10px 32px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 56px rgba(0, 0, 0, 0.56);
+  --shadow-card-long: 0 32px 64px -26px rgba(0, 0, 0, 0.6);
+
+  --glass-blur: 32px;
+  --glass-saturate: 1.58;
+  --glass-bg-header: color-mix(in srgb, rgb(9, 11, 8) 36%, transparent);
+  --glass-bg-card: color-mix(in srgb, rgb(20, 22, 18) 26%, transparent);
+  --glass-bg-chip: color-mix(in srgb, rgb(25, 27, 23) 26%, transparent);
+  --glass-bg-sidebar: color-mix(in srgb, rgb(7, 9, 6) 88%, transparent);
+  --glass-border: color-mix(in srgb, var(--theme-border) 52%, rgba(255, 255, 255, 0.08));
+  --glass-border-soft: color-mix(in srgb, var(--theme-neon-green) 20%, rgba(255, 255, 255, 0.08));
+  --glass-highlight:
+    inset 0 1px 0 color-mix(in srgb, var(--theme-neon-orange) 32%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--theme-neon-green) 16%, transparent),
+    inset 0 0 36px -14px color-mix(in srgb, var(--theme-neon-green) 10%, transparent);
+  --glass-shadow:
+    0 14px 44px rgba(0, 0, 0, 0.54),
+    0 0 38px -14px color-mix(in srgb, var(--theme-neon-orange) 20%, transparent),
+    0 0 32px -16px color-mix(in srgb, var(--theme-neon-green) 14%, transparent);
+
+  --score-caramel-1: #11371d;
+  --score-caramel-2: #1a5a2e;
+  --score-caramel-3: #238244;
+  --score-caramel-4: #4fbe7d;
+  --score-critical: #ec675b;
+
+  --critere-pane-icon: linear-gradient(165deg, #0a120d 0%, #102016 100%);
+  --critere-pane-mid: linear-gradient(165deg, #1c2f23 0%, #294133 100%);
+  --critere-square-bg: #0a120d;
+  --critere-square-bg-hover: #122217;
+  --critere-val-ink: #f3f6f0;
+
+  --clr-surface: var(--theme-bg-page);
+  --clr-text: var(--theme-text);
+  --clr-text-muted: var(--theme-text-muted);
+  --clr-border: var(--theme-border);
+  --clr-accent: var(--theme-accent);
+  --clr-accent-light: color-mix(in srgb, var(--theme-accent) 20%, var(--theme-bg-page));
+  --clr-primary: var(--theme-text);
+
+  --clr-badge-new: var(--steel-blue-400);
+  --clr-badge-promo: var(--coral-400);
+  --clr-badge-limited: color-mix(in srgb, var(--dark-red-500) 45%, var(--steel-blue-400));
+  --clr-star: #e1b289;
+}
+
+/* ═══════════════════════════════════════════════════
+   Typographie globale — application des tokens
+═══════════════════════════════════════════════════ */
+
+/* Titres : en clair = texte principal foncé ; en sombre = crème (échelle inversée) */
+h1,
+.ds-h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--theme-text);
+}
+
+h2,
+.ds-h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--theme-text);
+}
+
+h3,
+.ds-h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--theme-text);
+}
+
+[data-theme="dark"] :is(h1, h2, h3, .ds-h1, .ds-h2, .ds-h3) {
+  /* Ne pas utiliser --orecchiette-800 en sombre : le token est inversé (#fffbbd) et paraît jaune */
+  color: var(--theme-text);
+}
+
+/* Boutons CTA — Satoshi, SM, graisse forte, casse naturelle (pas de caps forcées) */
+:is(
+  .login-primary-btn,
+  .login-google-btn,
+  .dashboard__admin-btn,
+  .dashboard__logout-btn,
+  .of-primary-btn,
+  .cs-primary-btn,
+  .wf-btn--primary,
+  .ps-add-project
+) {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}

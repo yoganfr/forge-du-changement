@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Source de vérité visuelle : src/themes.css (tokens produit, thèmes clair/sombre) */
-@import "../../src/themes.css";
+/* Source de vérité visuelle locale : app/themes.css (évite les imports cross-app en dev). */
+@import "./themes.css";
 
 /*
  * Next.js : polices mono Geist (layout) + variables nav non couvertes par themes.css
