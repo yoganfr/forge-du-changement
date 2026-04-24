@@ -4,7 +4,10 @@ import {
   getWorkspace,
   getWorkspaceUsers,
   updateVersionBlocs,
+  updateVersionScore,
 } from '../lib/api'
+import { computeRuleBasedDiscoursScore } from '../lib/discours/scoring'
+import { countJargonOccurrences, findAbstractPhrases, flattenDiscoursText } from '../lib/discours/jargon'
 import { PERFORMATIVE_BLOCS, emptyBlocsPayload, emptyCard } from '../lib/discours/blocs'
 import type { DiscoursBloc, DiscoursField, DiscoursSubField } from '../lib/discours/blocs'
 import type {
@@ -45,6 +48,7 @@ export default function DiscoursTransformationPage({
   const [version, setVersion] = useState<TransformationDiscourseVersion | null>(null)
   const [blocs, setBlocs] = useState<DiscoursBlocsPayload>(() => emptyBlocsPayload())
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [scoreSaveState, setScoreSaveState] = useState<'idle' | 'saving' | 'error'>('idle')
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
@@ -147,6 +151,24 @@ export default function DiscoursTransformationPage({
   )
 
   const completion = useMemo(() => computeCompletion(blocs), [blocs])
+  const ruleSnapshot = useMemo(() => computeRuleBasedDiscoursScore(blocs), [blocs])
+  const flatForDiag = useMemo(() => flattenDiscoursText(blocs), [blocs])
+  const jargonHits = useMemo(() => countJargonOccurrences(flatForDiag), [flatForDiag])
+  const abstractHits = useMemo(() => findAbstractPhrases(flatForDiag, 4), [flatForDiag])
+
+  const saveDiagnostic = useCallback(async () => {
+    if (!version?.id || !canEdit) return
+    const snap = computeRuleBasedDiscoursScore(blocs)
+    setScoreSaveState('saving')
+    try {
+      const updated = await updateVersionScore(version.id, snap)
+      setVersion(updated)
+      setScoreSaveState('idle')
+    } catch (e) {
+      console.error('[DiscoursTransformation] enregistrement diagnostic échoué', e)
+      setScoreSaveState('error')
+    }
+  }, [version?.id, canEdit, blocs])
 
   if (!workspaceId) {
     return (
@@ -224,6 +246,144 @@ export default function DiscoursTransformationPage({
             L’outil vous aide à structurer et à peaufiner ; l’incarnation reste la vôtre.
             Quand vous êtes prêt, commencez à rédiger.
           </p>
+        </aside>
+
+        <aside className="discours-diagnostics" aria-labelledby="discours-diag-title" hidden={loading}>
+          <h3 id="discours-diag-title" className="discours-diagnostics__title">Diagnostic (règles locales, §3.1.4)</h3>
+          <p className="discours-diagnostics__intro">
+            Calcul déterministe à partir de votre texte (sans IA). S’actualise en direct ; vous pouvez l’
+            <strong>enregistrer sur la version courante</strong> pour la traçabilité (futur comparatif v1/v2).
+          </p>
+          <div className="discours-diagnostics__score-row">
+            <span className="discours-diagnostics__total">
+              Score global <strong>{ruleSnapshot.total}</strong> / 100
+            </span>
+            <span className="discours-diagnostics__niveau">
+              Niveau {ruleSnapshot.niveau} (§3.3) — mots d’alerte (§3.2.A) : <strong>{jargonHits}</strong>
+            </span>
+          </div>
+          <ul className="discours-diagnostics__dim" role="list">
+            <li>
+              <span>Clarté stratégique</span>
+              <meter
+                className="discours-diagnostics__meter"
+                min={0}
+                max={20}
+                value={ruleSnapshot.dimensions.clarte_strategique}
+                title="Clarté stratégique"
+              />
+              <span className="discours-diagnostics__dim-v">{ruleSnapshot.dimensions.clarte_strategique} / 20</span>
+            </li>
+            <li>
+              <span>Force narrative</span>
+              <meter
+                className="discours-diagnostics__meter"
+                min={0}
+                max={20}
+                value={ruleSnapshot.dimensions.force_narrative}
+                title="Force narrative"
+              />
+              <span className="discours-diagnostics__dim-v">{ruleSnapshot.dimensions.force_narrative} / 20</span>
+            </li>
+            <li>
+              <span>Crédibilité managériale</span>
+              <meter
+                className="discours-diagnostics__meter"
+                min={0}
+                max={20}
+                value={ruleSnapshot.dimensions.credibilite_manageriale}
+                title="Crédibilité managériale"
+              />
+              <span className="discours-diagnostics__dim-v">{ruleSnapshot.dimensions.credibilite_manageriale} / 20</span>
+            </li>
+            <li>
+              <span>Pouvoir mobilisateur</span>
+              <meter
+                className="discours-diagnostics__meter"
+                min={0}
+                max={20}
+                value={ruleSnapshot.dimensions.pouvoir_mobilisateur}
+                title="Pouvoir mobilisateur"
+              />
+              <span className="discours-diagnostics__dim-v">{ruleSnapshot.dimensions.pouvoir_mobilisateur} / 20</span>
+            </li>
+            <li>
+              <span>Performativité collective</span>
+              <meter
+                className="discours-diagnostics__meter"
+                min={0}
+                max={20}
+                value={ruleSnapshot.dimensions.performativite_collective}
+                title="Performativité collective"
+              />
+              <span className="discours-diagnostics__dim-v">
+                {ruleSnapshot.dimensions.performativite_collective} / 20
+              </span>
+            </li>
+          </ul>
+          {ruleSnapshot.forces.length > 0 && (
+            <div className="discours-diagnostics__block">
+              <h4 className="discours-diagnostics__subh">Forces</h4>
+              <ul>
+                {ruleSnapshot.forces.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {ruleSnapshot.vigilances.length > 0 && (
+            <div className="discours-diagnostics__block">
+              <h4 className="discours-diagnostics__subh">Points de vigilance</h4>
+              <ul>
+                {ruleSnapshot.vigilances.map((v) => (
+                  <li key={v}>{v}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {ruleSnapshot.recommandations.length > 0 && (
+            <div className="discours-diagnostics__block">
+              <h4 className="discours-diagnostics__subh">Recommandations</h4>
+              <ol>
+                {ruleSnapshot.recommandations.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+          {abstractHits.length > 0 && (
+            <div className="discours-diagnostics__block discours-diagnostics__block--muted">
+              <h4 className="discours-diagnostics__subh">Phrases longues / abstraction (§3.2.B)</h4>
+              <ul>
+                {abstractHits.map((h) => (
+                  <li key={h.phrase}>
+                    <em>({h.wordCount} mots)</em> {h.reason} — <q>{h.phrase}</q>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="discours-diagnostics__actions">
+            <button
+              type="button"
+              className="discours-diagnostics__save"
+              disabled={!version?.id || !canEdit || scoreSaveState === 'saving'}
+              onClick={() => {
+                void saveDiagnostic()
+              }}
+            >
+              {scoreSaveState === 'saving' ? 'Enregistrement…' : 'Enregistrer ce diagnostic sur la version'}
+            </button>
+            {scoreSaveState === 'error' && (
+              <span className="discours-diagnostics__err" role="alert">Échec d’enregistrement. Réessaiez.</span>
+            )}
+            {version?.score_snapshot && version.score_snapshot.computed_at && (
+              <span className="discours-diagnostics__snap">
+                Dernier snapshot enregistré : {new Date(version.score_snapshot.computed_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })} — total{' '}
+                {version.score_snapshot.total} / 100
+              </span>
+            )}
+          </div>
         </aside>
 
         {loading ? (

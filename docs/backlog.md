@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **24 avril 2026**, 18 h 30 (Europe/Paris)
+Dernière mise à jour : **25 avril 2026** (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -541,13 +541,14 @@ Module performatif porté par le **dirigeant CODIR** pour cadrer la narration de
 | 88a | Bloc 2 « Nommer la bascule » : 3 cartouches colonnes (fait observé / impact CODIR / risque si on ne réagit pas) | 🟠 | ✅ |
 | 88b | Bloc 4 « Nouveaux principes du jeu » : cartouches Principe 1..3 obligatoires + bouton d'ajout optionnel Principe 4/5 | 🟠 | ✅ |
 | 88c | Introduction manifeste en tête du module (cadrage performatif du discours) | 🟡 | ✅ |
+| 88d | **Lot 2 (règles locales)** : `scoring.ts` + `jargon.ts`, panneau **Diagnostic** (5 dimensions /20, total /100, niveau 1–3, forces / vigilances / recommandations), comptage jargon §3.2.A, alertes phrases longues §3.2.B, persistance `score_snapshot` via `updateVersionScore` | 🟠 | ✅ |
 | 89 | Désignation **dirigeant CODIR** porteur du Discours : `workspaces.dirigeant_user_id`, section dédiée dans `CompanySheet` (sélecteur membres CODIR actifs, chip récap, retrait, trace audit `workspace_dirigeant_set`) | 🔴 | ✅ |
 | 90 | ACL module Discours : édition réservée à superadmin / consultant / admin / **dirigeant CODIR** du workspace ; pilote = lecture seule ; autres rôles = module invisible | 🔴 | ✅ |
 | 90a | ACL « Vue décideur » globale : superadmin + consultant owner + admin + pilote (read-only cockpit) ; CODIR non-dirigeant et contributeur = menu invisible | 🔴 | ✅ |
 | 91 | Backend proxy IA : Edge Function Deno Supabase (auth JWT + RLS workspace) encapsulant les appels **OpenRouter `openai/gpt-oss-120b`** (0,039 $/M input, 0,19 $/M output), validation Zod sorties structurées | 🔴 | ⬜ |
-| 92 | Scoring IA par bloc (diagnostic qualitatif + niveaux 1-5) + vue synthèse Discours | 🔴 | ⬜ |
+| 92 | Scoring **IA** (enrichit l’analyse règles) + diagnostic LLM, aligné `DiscoursScoreSnapshot` (`source: 'ai'`) | 🔴 | ⬜ |
 | 93 | Reformulation IA par bloc (suggestions alternatives, préservation intention) | 🟠 | ⬜ |
-| 94 | Détection de jargon avec surbrillance inline + tooltip explicatif | 🟡 | ⬜ |
+| 94 | Surlignage **inline** des termes jargon dans l’éditeur + tooltips (détection texte : voir 88d) | 🟡 | ⬜ |
 | 95 | Comparaison de versions (V1 / V2 côte à côte, diff par bloc) | 🟡 | ⬜ |
 
 **Granularité produit** : 1 Discours vivant par workspace (pas de multi-discours). Versions stockées pour traçabilité et comparaison V1→V2 (REF-95).
@@ -692,6 +693,15 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 25 avril 2026 — plan Discours synchronisé + Lot 2 règles (scoring + jargon + panneau)
+
+#### Fait
+- Mise à jour du plan Cursor **Module Discours de transformation V1** (fichier `.cursor/plans/module_discours_de_transformation_v1_*.plan.md`) : Lot 1 et Lot 2 marqués **terminés** (sauf surlignage inline jargon = **lot2b**), Lots 3–4 **en attente** ; alignement des décisions d’édition (pilote lecture seule, EPIC 17 hors périmètre strict).
+- **EPIC 16 · REF-88d** : `src/lib/discours/scoring.ts`, `jargon.ts`, panneau **Diagnostic** dans `DiscoursTransformation.tsx`, styles `App.css`, persistance `updateVersionScore` pour le snapshot règles.
+
+#### À suivre
+- **REF-91** Edge `discours-analyze` (OpenRouter) ; **92** couche IA sur le même `DiscoursScoreSnapshot` ; **94** surlignage inline.
 
 ### 23-24 avril 2026 — Vue décideur, Discours de transformation, gouvernance parcours
 
