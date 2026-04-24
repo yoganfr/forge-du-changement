@@ -1405,16 +1405,12 @@ function App() {
     currentUserRole,
     platformSuperadmin,
   )
-  const currentStepCodir = workspaceData?.workspace.current_step_codir ?? null
-  const currentStepContributeur = workspaceData?.workspace.current_step_contributeur ?? null
-  const codirModules = useMemo(
-    () => buildJourneyModules(CODIR_JOURNEY_DEFS, currentStepCodir),
-    [currentStepCodir],
-  )
-  const contributeurModules = useMemo(
-    () => buildJourneyModules(CONTRIBUTEUR_JOURNEY_DEFS, currentStepContributeur),
-    [currentStepContributeur],
-  )
+  const currentStepCodir = workspaceData?.workspace?.current_step_codir ?? null
+  const currentStepContributeur = workspaceData?.workspace?.current_step_contributeur ?? null
+  // NB : pas de useMemo ici car nous sommes apres des early returns conditionnels
+  // (authLoading, !authUser). React error #310 sinon. Le calcul est trivial (map <= 6 items).
+  const codirModules = buildJourneyModules(CODIR_JOURNEY_DEFS, currentStepCodir)
+  const contributeurModules = buildJourneyModules(CONTRIBUTEUR_JOURNEY_DEFS, currentStepContributeur)
   const currentJourneyModuleIdCodir = resolveCurrentJourneyModuleIdFor(
     CODIR_JOURNEY_DEFS,
     currentStepCodir,
