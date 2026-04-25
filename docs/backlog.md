@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **25 avril 2026** (Europe/Paris)
+Dernière mise à jour : **25 avril 2026**, 03 h 29 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -546,7 +546,7 @@ Module performatif porté par le **dirigeant CODIR** pour cadrer la narration de
 | 90 | ACL module Discours : édition réservée à superadmin / consultant / admin / **dirigeant CODIR** du workspace ; pilote = lecture seule ; autres rôles = module invisible | 🔴 | ✅ |
 | 90a | ACL « Vue décideur » globale : superadmin + consultant owner + admin + pilote (read-only cockpit) ; CODIR non-dirigeant et contributeur = menu invisible | 🔴 | ✅ |
 | 91 | Backend proxy IA : Edge Function Deno Supabase (auth JWT + accès workspace + consultant via `workspace_consultants`) — OpenRouter **`openai/gpt-oss-120b`**, `response_format: json_object`, Zod, secret `OPENROUTER_API_KEY` | 🔴 | ✅ |
-| 92 | Scoring **IA** (enrichit l’analyse règles) + diagnostic LLM, aligné `DiscoursScoreSnapshot` (`source: 'ai'`) — bouton « Analyser avec l’IA et enregistrer » | 🔴 | ✅ |
+| 92 | Scoring **IA** (enrichit l’analyse règles) + diagnostic LLM, aligné `DiscoursScoreSnapshot` (`source: 'ai'`) — bouton « Analyser avec l’IA et enregistrer », feedback ciblé par bloc, synthèse courte et détection de feedback périmé | 🔴 | ✅ |
 | 93 | Reformulation IA par bloc (suggestions alternatives, préservation intention) | 🟠 | ⬜ |
 | 94 | Surlignage **inline** des termes jargon dans l’éditeur + tooltips (détection texte : voir 88d) | 🟡 | ⬜ |
 | 95 | Comparaison de versions (V1 / V2 côte à côte, diff par bloc) | 🟡 | ⬜ |
@@ -660,8 +660,8 @@ Ce bloc est la référence produit pour la navbar applicative `/src` (workspace 
 
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
-- **Maintenant** : finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), puis fermer le gap décideur transverse (EPIC 2 · REF-3). Le prochain lot roadmap le plus naturel après la base déjà livrée est **REF-7b.1bis**.
-- **Après** : poser les fondations de l'EPIC 15 (REF-76 + REF-77), renforcer gouvernance/sécurité (EPIC 11), arbitrer l'export PDF autonome (EPIC 13), puis lancer l’harmonisation **PCI / RACI** et le polish final du module PCI (REF-7b.1c → 7b.1e).
+- **Maintenant** : finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), fermer le gap décideur transverse (EPIC 2 · REF-3) et prolonger le module Discours avec les prochains lots IA visibles côté usage (**REF-93 → REF-95**). Le prochain lot roadmap le plus naturel après la base déjà livrée est **REF-7b.1bis**.
+- **Après** : poser les fondations de l'EPIC 15 (REF-76 + REF-77), arbitrer l'export PDF autonome (EPIC 13), puis lancer l’harmonisation **PCI / RACI** et le polish final du module PCI (REF-7b.1c → 7b.1e).
 - **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète.
 
 ---
@@ -670,29 +670,37 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-1. EPIC 16 · **REF-91 → REF-92** — backend proxy IA (Edge Function OpenRouter) + scoring par bloc du Discours de transformation. Premier palier IA produit, déjà cadré et dé-risqué par l'éditeur V1 livré.
+1. EPIC 16 · **REF-93 / REF-94 / REF-95** — reformulation IA, détection jargon inline et comparaison V1/V2 pour faire du module Discours un vrai compagnon d’itération.
 2. EPIC 3 · **REF-7a → REF-7d** — figer une roadmap V1, ouvrir un cycle reviewers, collecter des propositions typées, puis arbitrer/clôturer.
 3. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier déjà intégrée à la granularité jalon.
 4. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
 
 ### Après
 
-5. EPIC 16 · **REF-93 / REF-94 / REF-95** — reformulation IA, détection jargon, comparaison V1/V2 du Discours.
 6. EPIC 3 · **REF-7b.1c / REF-7b.1d / REF-7b.1e** — harmonisation PCI/RACI, polish UX final et durcissement technique du module PCI.
 7. EPIC 15 · **REF-76 / REF-77** — fondations partagées + Auth SSR Supabase dans `/web`.
-8. EPIC 11 · **REF-50 / REF-51** — MFA super-admin + journal des imports CSV.
-9. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
+8. EPIC 13 · **REF-36** — arbitrage explicite : finaliser export PDF autonome uniquement si besoin client avéré au-delà de l'impression navigateur.
+9. EPIC 4 · **REF-10–13** — relancer le PAE une fois le tunnel décideur mieux stabilisé.
 
 ### Plus tard
 
-8. EPIC 15 · **REF-78 à REF-86** — suite migration `/src` → `/web` par vagues.
-9. EPIC 4 · **REF-10–13** — PAE complet.
-10. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires.
-11. EPIC 12 (complet) — extension du design premium au-delà des quick wins ciblés.
+10. EPIC 15 · **REF-78 à REF-86** — suite migration `/src` → `/web` par vagues.
+11. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires.
+12. EPIC 12 (complet) — extension du design premium au-delà des quick wins ciblés.
 
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 25 avril 2026 — Discours IA : feedback par bloc + revue qualité enrichie
+
+#### Fait
+- **EPIC 16 · REF-92** : enrichissement du diagnostic IA du module Discours avec **feedback ciblé par bloc performatif**, `synthese` courte, `bloc_feedback` structuré et `blocs_fingerprint` pour détecter un retour devenu périmé après édition.
+- Le snapshot local/règles est réaligné sur ce format enrichi pour garder une **Revue qualité** homogène entre analyse locale et analyse IA.
+- L’écran `DiscoursTransformation` a été revu pour mieux exposer la qualité du discours : carte score, état du feedback IA, détails par bloc et signaux plus actionnables pour la réécriture.
+
+#### À suivre
+- **EPIC 16 · REF-93 / REF-94 / REF-95** : reformulation IA assistée, surlignage inline du jargon et comparaison de versions pour passer d’un diagnostic à une vraie boucle d’amélioration.
 
 ### 25 avril 2026 — plan Discours synchronisé + Lot 2 règles (scoring + jargon + panneau)
 
