@@ -34,11 +34,22 @@ const AiPayloadSchema = z.object({
   forces: z.array(z.string()).max(10),
   vigilances: z.array(z.string()).max(10),
   recommandations: z.array(z.string()).max(10),
+  synthese: z.string().max(700).optional(),
+  bloc_feedback: z
+    .record(z.object({
+      synthese: z.string().max(500).optional(),
+      forces: z.array(z.string()).max(4).optional(),
+      vigilances: z.array(z.string()).max(4).optional(),
+      recommandations: z.array(z.string()).max(4).optional(),
+    }))
+    .optional(),
 })
 
 const BodySchema = z.object({
   workspaceId: z.string().uuid(),
   text: z.string().min(1),
+  blocs: z.unknown().optional(),
+  blocs_fingerprint: z.string().optional(),
 })
 
 Deno.serve(async (req) => {
@@ -108,7 +119,7 @@ Deno.serve(async (req) => {
       { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
     )
   }
-  const { workspaceId, text } = parsedBody.data
+  const { workspaceId, text, blocs, blocs_fingerprint } = parsedBody.data
   const useful = text.replace(/\s/g, " ").trim()
   if (useful.length < MIN_CHARS) {
     return new Response(
@@ -161,6 +172,17 @@ Deno.serve(async (req) => {
     )
   }
 
+  const blocKeys = [
+    "nous_reconnaitre",
+    "nommer_la_bascule",
+    "futur_desirable",
+    "nouveaux_principes",
+    "concentrer_efforts",
+    "reconnaitre_epreuves",
+    "distribuer_roles",
+    "sceller_engagement",
+  ] as const
+
   const system = `Tu es un expert en communication de direction et en conduite du changement.
 Tu évalues un discours de transformation (CODIR) selon 5 dimensions (0–20 chacune) :
 clarté stratégique, force narrative, crédibilité managériale, pouvoir mobilisateur, performativité collective.
@@ -170,6 +192,8 @@ Niveau global (§3.3) : 1 = à retravailler, 2 = solide, 3 = transformant.
 RÈGLES :
 - Ne fabrique pas de faits : base-toi uniquement sur le texte fourni.
 - Sois bref dans les listes (puces claires, françaises).
+- Donne une synthèse exploitable dans l'en-tête, puis des retours ciblés par bloc.
+- Pour bloc_feedback, utilise uniquement ces clés si le bloc contient assez de matière : ${blocKeys.join(", ")}.
 - Réponds UNIQUEMENT par un JSON valide, sans markdown, avec exactement la structure :
 {
   "total": number,
@@ -183,8 +207,18 @@ RÈGLES :
   "niveau": 1 | 2 | 3,
   "forces": string[],
   "vigilances": string[],
-  "recommandations": string[]
+  "recommandations": string[],
+  "synthese": string,
+  "bloc_feedback": {
+    "nous_reconnaitre": { "synthese": string, "forces": string[], "vigilances": string[], "recommandations": string[] },
+    "...": { "synthese": string, "forces": string[], "vigilances": string[], "recommandations": string[] }
+  }
 }`
+
+  const structuredBlocs =
+    blocs === undefined
+      ? ""
+      : `\n\nPayload structuré par bloc (JSON, à privilégier pour les retours ciblés) :\n${JSON.stringify(blocs).slice(0, 80_000)}`
 
   const orRes = await fetch(OPENROUTER_URL, {
     method: "POST",
@@ -199,11 +233,11 @@ RÈGLES :
         {
           role: "user",
           content:
-            `Texte du discours à analyser (workspace connu) :\n\n${text.slice(0, 120_000)}`,
+            `Texte du discours à analyser (workspace connu) :\n\n${text.slice(0, 120_000)}${structuredBlocs}`,
         },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 2_000,
+      max_tokens: 4_000,
     }),
   })
 
@@ -266,10 +300,13 @@ RÈGLES :
     forces: d.forces,
     vigilances: d.vigilances,
     recommandations: d.recommandations,
+    synthese: d.synthese,
+    bloc_feedback: d.bloc_feedback,
     source: "ai" as const,
     computed_at: new Date().toISOString(),
     model_requested: MODEL,
     openrouter_model: orModel,
+    blocs_fingerprint,
   }
 
   return new Response(JSON.stringify(out), {

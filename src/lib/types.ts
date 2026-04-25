@@ -245,6 +245,18 @@ export type DiscoursScoreSnapshot = {
   forces: string[]
   vigilances: string[]
   recommandations: string[]
+  /** Synthèse courte destinée au cartouche "Revue qualité". Présente surtout pour les analyses IA. */
+  synthese?: string
+  /** Retours ciblés par bloc performatif (`nous_reconnaitre`, `nommer_la_bascule`, etc.). */
+  bloc_feedback?: Record<
+    string,
+    {
+      synthese?: string
+      forces?: string[]
+      vigilances?: string[]
+      recommandations?: string[]
+    }
+  >
   /** Source du scoring : `rules` (local, déterministe) ou `ai` (LLM via Edge function). */
   source: 'rules' | 'ai'
   /** Horodatage du calcul. */
@@ -253,6 +265,8 @@ export type DiscoursScoreSnapshot = {
   model_requested?: string
   /** Modèle effectif selon la réponse OpenRouter (souvent identique à `model_requested`). */
   openrouter_model?: string
+  /** Empreinte du payload de blocs analysé, utilisée pour détecter un feedback périmé après édition. */
+  blocs_fingerprint?: string
 }
 
 export type TransformationDiscourse = {

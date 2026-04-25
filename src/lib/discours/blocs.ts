@@ -153,6 +153,7 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
         key: 'limites_modele_actuel',
         label: 'En quoi notre modèle actuel atteint ses limites',
         kind: 'long',
+        aide: "Nommer 1 ou 2 limites concrètes : ce qui fonctionnait hier mais ralentit, fragilise ou coûte trop aujourd’hui.",
       },
       {
         key: 'risque_statu_quo',
@@ -201,11 +202,13 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
         key: 'mieux_pour_equipes',
         label: 'Ce qui sera mieux pour nos équipes',
         kind: 'long',
+        aide: "Décrire le bénéfice vécu par les équipes : moins de friction, plus de clarté, de soutien ou de pouvoir d’agir.",
       },
       {
         key: 'mieux_pour_entreprise',
         label: 'Ce qui sera mieux pour l’entreprise',
         kind: 'long',
+        aide: "Relier le futur désiré à un effet d’entreprise observable : qualité, vitesse, robustesse, confiance, impact ou modèle économique.",
       },
       {
         key: 'preuves_reussite',
@@ -238,10 +241,30 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
         aide:
           "3 principes structurants (min), jusqu’à 5 si nécessaire. Chaque cartouche se lit de haut en bas : intitulé, ce que cela veut dire, ce que cela change, ce que cela exige du CODIR.",
         subFields: [
-          { key: 'intitule', label: 'Intitulé du principe', kind: 'text' },
-          { key: 'veut_dire', label: 'Ce que cela veut dire concrètement', kind: 'long' },
-          { key: 'change', label: 'Ce que cela change par rapport à aujourd’hui', kind: 'long' },
-          { key: 'exige', label: 'Ce que cela exige des dirigeants du CODIR', kind: 'long' },
+          {
+            key: 'intitule',
+            label: 'Intitulé du principe',
+            kind: 'text',
+            aide: 'Formuler le principe comme une règle de décision simple, pas comme une valeur abstraite.',
+          },
+          {
+            key: 'veut_dire',
+            label: 'Ce que cela veut dire concrètement',
+            kind: 'long',
+            aide: 'Traduire le principe en comportements visibles, arbitrages ou pratiques de pilotage.',
+          },
+          {
+            key: 'change',
+            label: 'Ce que cela change par rapport à aujourd’hui',
+            kind: 'long',
+            aide: 'Nommer clairement ce qu’on arrête, ce qu’on simplifie ou ce qu’on décide autrement.',
+          },
+          {
+            key: 'exige',
+            label: 'Ce que cela exige des dirigeants du CODIR',
+            kind: 'long',
+            aide: 'Dire l’exigence de posture ou de discipline collective portée par les dirigeants.',
+          },
         ],
       },
       {
@@ -269,12 +292,14 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
         label: 'Nos priorités — directions stratégiques d’entreprise (3 max)',
         kind: 'list',
         max: 3,
+        aide: 'Écrire uniquement les priorités qui concentrent réellement l’énergie collective. Une priorité = un choix, pas un thème.',
       },
       {
         key: 'simplifications',
         label: 'Ce que nous devons simplifier (3 max)',
         kind: 'list',
         max: 3,
+        aide: 'Identifier ce qu’il faut retirer, clarifier ou alléger pour rendre la transformation exécutable.',
       },
     ],
     questionSeminaire:
@@ -294,9 +319,24 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
       'Préparation à la coopération',
     ],
     fields: [
-      { key: 'risques_contexte_marche', label: 'Les risques de contexte / marché', kind: 'long' },
-      { key: 'risques_metiers_business', label: 'Les risques liés à nos processus métiers / business', kind: 'long' },
-      { key: 'risques_manageriaux', label: 'Les risques managériaux / gouvernance / organisation', kind: 'long' },
+      {
+        key: 'risques_contexte_marche',
+        label: 'Les risques de contexte / marché',
+        kind: 'long',
+        aide: 'Décrire les pressions externes déjà visibles : marché, usages, réglementation, concurrence, attentes sociales.',
+      },
+      {
+        key: 'risques_metiers_business',
+        label: 'Les risques liés à nos processus métiers / business',
+        kind: 'long',
+        aide: 'Identifier les points de fragilité opérationnelle : processus trop lourds, qualité, délais, coûts, dépendances.',
+      },
+      {
+        key: 'risques_manageriaux',
+        label: 'Les risques managériaux / gouvernance / organisation',
+        kind: 'long',
+        aide: 'Nommer ce qui peut bloquer la transformation dans nos façons de décider, coopérer ou arbitrer.',
+      },
       {
         key: 'risques_humains_emotionnels',
         label: 'Les risques humains / émotionnels',
@@ -350,16 +390,19 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
         key: 'equipes_peuvent_attendre',
         label: 'Ce que les équipes peuvent attendre de nous',
         kind: 'long',
+        aide: 'Formuler une promesse de gouvernance crédible : soutien, clarté, décisions, écoute, arbitrages tenus.',
       },
       {
         key: 'non_negociable',
         label: 'Ce qui est non négociable (postures, rôles)',
         kind: 'long',
+        aide: 'Lister les invariants : ce qui ne sera pas ouvert au débat car nécessaire au cap, à la sécurité ou à la cohérence.',
       },
       {
         key: 'discutable',
         label: 'Ce qui est discutable',
         kind: 'long',
+        aide: 'Délimiter l’espace de controverse utile : ce que le CODIR accepte de discuter, ajuster ou challenger.',
       },
       {
         key: 'a_co_construire',
@@ -384,6 +427,7 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
         key: 'pourquoi_vaut_leffort',
         label: 'Pourquoi cette transformation vaut l’effort',
         kind: 'long',
+        aide: 'Exprimer le sens de l’effort : ce que l’entreprise, les clients et les équipes gagneront vraiment.',
       },
       {
         key: 'de_quoi_serons_nous_fiers',
@@ -396,6 +440,7 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
         label: 'Ce que je nous demande dans les 30 prochains jours (3 max)',
         kind: 'list',
         max: 3,
+        aide: 'Formuler des demandes actionnables, observables dans le mois, avec un verbe clair.',
       },
       {
         key: 'prochaine_etape_date',
@@ -419,6 +464,7 @@ export const PERFORMATIVE_BLOCS: readonly DiscoursBloc[] = [
         key: 'engagement_final',
         label: 'Mon engagement final',
         kind: 'long',
+        aide: 'Conclure par une phrase personnelle et engageante : ce que je prends sur moi, et ce que je demande au collectif.',
       },
     ],
     questionSeminaire:

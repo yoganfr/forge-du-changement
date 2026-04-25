@@ -3,7 +3,7 @@ import {
   VITE_CONFIG_SUPABASE_ANON_KEY,
   VITE_CONFIG_SUPABASE_URL,
 } from '../supabase'
-import type { DiscoursScoreSnapshot } from '../types'
+import type { DiscoursBlocsPayload, DiscoursScoreSnapshot } from '../types'
 
 /**
  * Appelle l’Edge Function `discours-analyze` (OpenRouter) avec la session courante.
@@ -15,6 +15,8 @@ import type { DiscoursScoreSnapshot } from '../types'
 export async function analyzeDiscoursWithAI(
   workspaceId: string,
   flatText: string,
+  blocs?: DiscoursBlocsPayload,
+  blocsFingerprint?: string,
 ): Promise<DiscoursScoreSnapshot> {
   const {
     data: { session },
@@ -37,7 +39,7 @@ export async function analyzeDiscoursWithAI(
       apikey: anon,
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ workspaceId, text: flatText }),
+    body: JSON.stringify({ workspaceId, text: flatText, blocs, blocs_fingerprint: blocsFingerprint }),
   })
 
   let payload: unknown
