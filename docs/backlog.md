@@ -547,8 +547,7 @@ Module performatif porté par le **dirigeant CODIR** pour cadrer la narration de
 | 90a | ACL « Vue décideur » globale : superadmin + consultant owner + admin + pilote (read-only cockpit) ; CODIR non-dirigeant et contributeur = menu invisible | 🔴 | ✅ |
 | 91 | Backend proxy IA : Edge Function Deno Supabase (auth JWT + accès workspace + consultant via `workspace_consultants`) — OpenRouter **`openai/gpt-oss-120b`**, `response_format: json_object`, Zod, secret `OPENROUTER_API_KEY` | 🔴 | ✅ |
 | 92 | Scoring **IA** (enrichit l’analyse règles) + diagnostic LLM, aligné `DiscoursScoreSnapshot` (`source: 'ai'`) — bouton « Analyser avec l’IA et enregistrer », feedback ciblé par bloc, synthèse courte et détection de feedback périmé | 🔴 | ✅ |
-| 93 | Reformulation IA par bloc (suggestions alternatives, préservation intention) | 🟠 | ⬜ |
-| 94 | Surlignage **inline** des termes jargon dans l’éditeur + tooltips (détection texte : voir 88d) | 🟡 | ⬜ |
+| 94 | Diagnostic jargon (compte + alertes) sans surlignage inline pendant l’édition | 🟡 | ✅ |
 | 95 | Comparaison de versions (V1 / V2 côte à côte, diff par bloc) + gestion V1/V2 (enregistrer, figer V2, supprimer) + impression PDF sans UI | 🟡 | ✅ |
 
 **Granularité produit** : 1 Discours vivant par workspace (pas de multi-discours). Versions stockées pour traçabilité et comparaison V1→V2 (REF-95).
@@ -670,7 +669,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-1. EPIC 16 · **REF-93 / REF-94 / REF-95** — reformulation IA, détection jargon inline et comparaison V1/V2 pour faire du module Discours un vrai compagnon d’itération.
+1. EPIC 16 · **REF-94 / REF-95** — diagnostic jargon et comparaison V1/V2 + gestion V1/V2 pour faire du module Discours un vrai compagnon d’itération.
 2. EPIC 3 · **REF-7a → REF-7d** — figer une roadmap V1, ouvrir un cycle reviewers, collecter des propositions typées, puis arbitrer/clôturer.
 3. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier déjà intégrée à la granularité jalon.
 4. EPIC 2 · **REF-3** — livrer le Gantt macro consolidé pour fermer le gap décideur transverse.
@@ -706,7 +705,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 - L’écran `DiscoursTransformation` a été revu pour mieux exposer la qualité du discours : carte score, état du feedback IA, détails par bloc et signaux plus actionnables pour la réécriture.
 
 #### À suivre
-- **EPIC 16 · REF-93 / REF-94 / REF-95** : reformulation IA assistée, surlignage inline du jargon et comparaison de versions pour passer d’un diagnostic à une vraie boucle d’amélioration.
+- **EPIC 16 · REF-94 / REF-95** : diagnostic jargon et comparaison de versions pour passer d’un diagnostic à une vraie boucle d’amélioration.
 
 ### 25 avril 2026 — plan Discours synchronisé + Lot 2 règles (scoring + jargon + panneau)
 
