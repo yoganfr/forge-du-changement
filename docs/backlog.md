@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **25 avril 2026**, 03 h 29 (Europe/Paris)
+Dernière mise à jour : **26 avril 2026**, 03 h 48 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -691,6 +691,12 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 26 avril 2026 — Nettoyage instrumentation debug Discours IA
+
+#### Fait
+- Nettoyage des traces locales `7271/ingest` et des marqueurs “agent log” dans `supabase/functions/discours-analyze`, sans modifier le contrat de sortie `DiscoursScoreSnapshot` (EPIC 16 · REF-91).
+- Suppression des logs console de bruit dans la fonction Edge pour réduire le risque d'effet secondaire en restitution (modèle OpenRouter / écart dimensions).
 
 ### 25 avril 2026 — Discours IA : feedback par bloc + revue qualité enrichie
 
