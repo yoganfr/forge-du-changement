@@ -267,6 +267,20 @@ export type DiscoursScoreSnapshot = {
   openrouter_model?: string
   /** Empreinte du payload de blocs analysé, utilisée pour détecter un feedback périmé après édition. */
   blocs_fingerprint?: string
+
+  /**
+   * Métriques persistées (pour l'UX) permettant d'estimer l'écart entre la dernière
+   * analyse (souvent IA) et la version courante, sans dépendre du contenu complet.
+   */
+  written_bloc_keys?: string[]
+  written_chars_by_bloc?: Record<string, number>
+  written_chars_total?: number
+
+  // Compteurs UX pour l'écart IA : uniquement champs top-level (text/long/list),
+  // sans les sous-champs des cards.
+  written_top_level_field_keys?: string[]
+  written_top_level_chars_by_field?: Record<string, number>
+  written_top_level_chars_total?: number
 }
 
 export type TransformationDiscourse = {

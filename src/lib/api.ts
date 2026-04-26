@@ -94,6 +94,8 @@ export {
   getOrCreateDiscoursForWorkspace,
   getVersionById,
   listVersionsForDiscourse,
+  softDeleteDiscourseVersion,
+  setDiscourseCurrentVersion,
   setWorkspaceDirigeant,
   updateVersionBlocs,
   updateVersionScore,

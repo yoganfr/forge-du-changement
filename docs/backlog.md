@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **26 avril 2026**, 03 h 48 (Europe/Paris)
+Dernière mise à jour : **26 avril 2026**, 16 h 23 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -549,7 +549,7 @@ Module performatif porté par le **dirigeant CODIR** pour cadrer la narration de
 | 92 | Scoring **IA** (enrichit l’analyse règles) + diagnostic LLM, aligné `DiscoursScoreSnapshot` (`source: 'ai'`) — bouton « Analyser avec l’IA et enregistrer », feedback ciblé par bloc, synthèse courte et détection de feedback périmé | 🔴 | ✅ |
 | 93 | Reformulation IA par bloc (suggestions alternatives, préservation intention) | 🟠 | ⬜ |
 | 94 | Surlignage **inline** des termes jargon dans l’éditeur + tooltips (détection texte : voir 88d) | 🟡 | ⬜ |
-| 95 | Comparaison de versions (V1 / V2 côte à côte, diff par bloc) | 🟡 | ⬜ |
+| 95 | Comparaison de versions (V1 / V2 côte à côte, diff par bloc) + gestion V1/V2 (enregistrer, figer V2, supprimer) + impression PDF sans UI | 🟡 | ✅ |
 
 **Granularité produit** : 1 Discours vivant par workspace (pas de multi-discours). Versions stockées pour traçabilité et comparaison V1→V2 (REF-95).
 

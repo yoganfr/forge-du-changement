@@ -15,6 +15,18 @@ function discourseCacheKeys(workspaceId: string): string[] {
   return [`discours:${workspaceId}`, `discours-versions:${workspaceId}`]
 }
 
+const DELETED_VERSION_PREFIX = 'DELETED:'
+
+export function isDeletedVersionLabel(versionLabel: string): boolean {
+  return versionLabel.trim().toUpperCase().startsWith(DELETED_VERSION_PREFIX)
+}
+
+export function buildDeletedVersionLabel(versionLabel: string): string {
+  const trimmed = versionLabel.trim()
+  if (isDeletedVersionLabel(trimmed)) return trimmed
+  return `${DELETED_VERSION_PREFIX}${trimmed}`
+}
+
 /**
  * Récupère le discours du workspace, le crée avec une version `v1` vide s'il n'existe pas encore.
  * Les droits d'écriture sont gérés côté Postgres par la policy RLS
@@ -190,6 +202,47 @@ export async function freezeNewVersion(
   if (updErr) throw updErr
 
   return version
+}
+
+/**
+ * Soft-delete récupérable : on garde la ligne en base pour permettre un recovery,
+ * mais on masque la version côté UI via un préfixe dans `version_label`.
+ */
+export async function softDeleteDiscourseVersion(
+  versionId: string,
+  currentVersionLabel: string,
+): Promise<TransformationDiscourseVersion> {
+  const nextLabel = buildDeletedVersionLabel(currentVersionLabel)
+
+  const { data, error } = await supabase
+    .from('transformation_discourse_versions')
+    .update({ version_label: nextLabel })
+    .eq('id', versionId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as TransformationDiscourseVersion
+}
+
+/**
+ * Met à jour la version courante du discours.
+ * Utilisé notamment après soft-delete pour éviter que l’UI ne revienne sur
+ * une version marquée `DELETED:...` au rechargement.
+ */
+export async function setDiscourseCurrentVersion(
+  discourseId: string,
+  nextVersionId: string | null,
+): Promise<TransformationDiscourse> {
+  const { data, error } = await supabase
+    .from('transformation_discourses')
+    .update({ current_version_id: nextVersionId })
+    .eq('id', discourseId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as TransformationDiscourse
 }
 
 /** Désigne (ou retire) le membre CODIR « dirigeant » pour ce workspace. */

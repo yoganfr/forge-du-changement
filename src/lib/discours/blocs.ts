@@ -502,5 +502,75 @@ export function emptyBlocsPayload(): Record<
     }
     payload[bloc.key] = fields
   }
+
+  // Seed de test (dev/test uniquement) pour que les écrans de "Discours de transformation"
+  // aient un contenu factuel dès l’initialisation. Aucun bouton UI : c’est juste du
+  // remplissage de départ pour faciliter les tests.
+  const isTestLike = import.meta.env.DEV || import.meta.env.MODE === 'test'
+  if (isTestLike) {
+    // Bloc 1 — Nous reconnaître
+    payload.nous_reconnaitre = {
+      ...payload.nous_reconnaitre,
+      acquis_majeurs: [
+        'Nous avons construit une relation client reconnue sur notre marché.',
+        'Nous avons développé une expertise industrielle robuste et réplicable.',
+        'Nous avons stabilisé nos pratiques internes, ce qui a rendu nos livraisons fiables.',
+      ],
+      ce_qui_a_fait_reussite:
+        'Nos succès reposent sur une relation client tenue dans la durée, une exécution rigoureuse et une amélioration continue fondée sur le retour terrain.',
+      a_preserver:
+        'Nous voulons préserver une culture de la fiabilité opérationnelle et la capacité à écouter et formaliser ce que le terrain remonte.',
+      enseignement_passe:
+        'Nous avons appris que le changement durable commence par une reconnaissance explicite des acquis et par une clarification des règles de décision avant d’accélérer.',
+    }
+
+    // Bloc 2 — Nommer la bascule
+    const cards = payload.nommer_la_bascule.changements_bascule as Array<Record<string, string>> | null
+    if (Array.isArray(cards)) {
+      payload.nommer_la_bascule = {
+        ...payload.nommer_la_bascule,
+        changements_bascule: cards.map((c, idx) => {
+          if (idx === 0) {
+            return {
+              ...c,
+              fait_observe:
+                'Le contexte dans lequel nous avons réussi hier n’est plus le même : les attentes clients ont évolué et notre environnement concurrentiel s’est durci.',
+              impact_codir:
+                'Ce changement oblige le CODIR à ajuster ses priorités de pilotage et ses arbitrages, pour diriger une transformation orientée résultats mesurables.',
+              risque_si_pas_reaction:
+                'Sans réaction, nous risquons un décrochage progressif : perte de vitesse, baisse de crédibilité et tension accrue sur les équipes.',
+            }
+          }
+          if (idx === 1) {
+            return {
+              ...c,
+              fait_observe:
+                'Notre modèle historique ralentit : certaines décisions prennent trop de temps et les retours terrain ne remontent pas au bon niveau de gouvernance.',
+              impact_codir:
+                'Le CODIR doit redistribuer les responsabilités et rendre plus explicites les circuits de décision pour accélérer sans perdre la qualité.',
+              risque_si_pas_reaction:
+                'Sans ajustement, l’organisation continuera à coûteuse : effort mal aligné, initiatives dispersées et augmentation des frictions.',
+            }
+          }
+          return {
+            ...c,
+            fait_observe:
+              'Les contraintes externes changent : exigences réglementaires et exigences de service deviennent plus strictes, et nos marges de manœuvre se réduisent.',
+            impact_codir:
+              'Le CODIR doit garantir une trajectoire réaliste, avec des priorités et des preuves attendues qui sécurisent la transformation.',
+            risque_si_pas_reaction:
+              'Sans réaction, nous subissons une perte de compétitivité et une dégradation de la capacité à livrer avec stabilité.',
+          }
+        }),
+        limites_modele_actuel:
+          'Notre modèle actuel atteint ses limites : il a été conçu pour un contexte stable, mais les cycles de décision et d’exécution ne suivent plus l’évolution de notre environnement.',
+        risque_statu_quo:
+          'Le risque principal du statu quo n’est pas le changement : c’est l’immobilisme qui fait perdre la trajectoire, la crédibilité et l’énergie collective.',
+        pourquoi_maintenant:
+          'Nous avons encore la main, mais pas pour toujours : une fenêtre d’action existe maintenant pour stabiliser la transformation et sécuriser la suite.',
+      }
+    }
+  }
+
   return payload
 }
