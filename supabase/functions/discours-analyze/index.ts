@@ -20,28 +20,36 @@ const cors = {
 } as const
 
 const AiDimensionsSchema = z.object({
-  clarte_strategique: z.number().min(0).max(20),
-  force_narrative: z.number().min(0).max(20),
-  credibilite_manageriale: z.number().min(0).max(20),
-  pouvoir_mobilisateur: z.number().min(0).max(20),
-  performativite_collective: z.number().min(0).max(20),
+  // Certains modèles renvoient parfois les valeurs en string. `coerce` évite un échec Zod inutile.
+  clarte_strategique: z.coerce.number().min(0).max(20),
+  force_narrative: z.coerce.number().min(0).max(20),
+  credibilite_manageriale: z.coerce.number().min(0).max(20),
+  pouvoir_mobilisateur: z.coerce.number().min(0).max(20),
+  performativite_collective: z.coerce.number().min(0).max(20),
 })
 
 const AiPayloadSchema = z.object({
-  total: z.number().min(0).max(100),
+  total: z.coerce.number().min(0).max(100),
   dimensions: AiDimensionsSchema,
-  niveau: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  forces: z.array(z.string()).max(10),
-  vigilances: z.array(z.string()).max(10),
-  recommandations: z.array(z.string()).max(10),
-  synthese: z.string().max(700).optional(),
+  // Tolérant : `niveau` peut arriver en string.
+  niveau: z.coerce.number().int().min(1).max(3),
+  // Les modèles peuvent renvoyer plus d'items que prévu : on ne bloque plus à max=10/4.
+  forces: z.array(z.string()).max(30),
+  vigilances: z.array(z.string()).max(30),
+  recommandations: z.array(z.string()).max(30),
+  synthese: z.string().max(700).optional().nullable(),
   bloc_feedback: z
-    .record(z.object({
-      synthese: z.string().max(500).optional(),
-      forces: z.array(z.string()).max(4).optional(),
-      vigilances: z.array(z.string()).max(4).optional(),
-      recommandations: z.array(z.string()).max(4).optional(),
-    }))
+    .union([
+      z.record(
+        z.object({
+          synthese: z.string().max(500).optional().nullable(),
+          forces: z.array(z.string()).max(10).optional(),
+          vigilances: z.array(z.string()).max(10).optional(),
+          recommandations: z.array(z.string()).max(10).optional(),
+        }),
+      ),
+      z.null(),
+    ])
     .optional(),
 })
 
@@ -252,9 +260,7 @@ RÈGLES :
 
   const orJson: unknown = await orRes.json()
   const orModel = extractOpenRouterModel(orJson)
-  if (orModel) {
-    console.log("discours-analyze: OpenRouter model =", orModel, "| request =", MODEL)
-  }
+  // Note: orModel est renvoyé au front pour affichage/diagnostic, sans log console.
   const content = extractOpenRouterText(orJson)
   if (!content) {
     return new Response(JSON.stringify({ error: "Réponse modèle vide" }), {
@@ -264,20 +270,30 @@ RÈGLES :
   }
 
   let rawJson: unknown
+  const coerced = coerceJsonObjectText(content)
   try {
-    rawJson = JSON.parse(content)
+    rawJson = JSON.parse(coerced)
   } catch {
-    return new Response(JSON.stringify({ error: "Le modèle n’a pas renvoyé un JSON valide" }), {
-      status: 502,
-      headers: { ...cors, "Content-Type": "application/json" },
-    })
+    return new Response(
+      JSON.stringify({ error: "Le modèle n’a pas renvoyé un JSON valide (coerceV2)" }),
+      {
+        status: 502,
+        headers: { ...cors, "Content-Type": "application/json" },
+      },
+    )
   }
 
   const ai = AiPayloadSchema.safeParse(rawJson)
   if (!ai.success) {
+    const firstIssue = ai.error.issues[0]
+    const issuePath = firstIssue?.path?.join('.') ?? '—'
+    const issueMessage = firstIssue?.message ?? '—'
+
     console.error("Zod", ai.error.flatten(), content.slice(0, 500))
     return new Response(
-      JSON.stringify({ error: "Analyse reçue mais format inattendu. Réessayer." }),
+      JSON.stringify({
+        error: `Analyse reçue mais format inattendu (zodV2). Réessayer. ZodIssue: ${issuePath} — ${issueMessage}`,
+      }),
       { status: 502, headers: { ...cors, "Content-Type": "application/json" } },
     )
   }
@@ -289,18 +305,17 @@ RÈGLES :
     d.dimensions.credibilite_manageriale +
     d.dimensions.pouvoir_mobilisateur +
     d.dimensions.performativite_collective
-  if (Math.abs(d.total - sumDim) > 8) {
-    console.warn("discours-analyze: écart total vs somme dimensions", d.total, sumDim)
-  }
+  // Le backend tolère un léger écart numérique; pas de log console pour éviter le bruit.
 
+  const niveauOut = (Math.round(d.niveau) as 1 | 2 | 3)
   const out = {
     total: d.total,
     dimensions: d.dimensions,
-    niveau: d.niveau,
+    niveau: niveauOut,
     forces: d.forces,
     vigilances: d.vigilances,
     recommandations: d.recommandations,
-    synthese: d.synthese,
+    synthese: d.synthese ?? undefined,
     bloc_feedback: d.bloc_feedback,
     source: "ai" as const,
     computed_at: new Date().toISOString(),
@@ -326,4 +341,69 @@ function extractOpenRouterModel(body: unknown): string | undefined {
   if (typeof body !== "object" || body === null) return undefined
   const m = (body as { model?: string }).model
   return typeof m === "string" && m.length > 0 ? m : undefined
+}
+
+/**
+ * Certains modèles renvoient le JSON dans des blocs ```json ...``` ou avec du texte
+ * autour, malgré l'instruction "sans markdown".
+ * On tente d'extraire le premier objet JSON { ... } de façon tolérante.
+ */
+function coerceJsonObjectText(text: string): string {
+  const t = text.trim()
+
+  // Retire les fences éventuelles partout (pas seulement début/fin).
+  const withoutFences = t
+    .replace(/```(?:json)?/gi, '')
+    .replace(/```/g, '')
+    .trim()
+
+  const firstBrace = withoutFences.indexOf('{')
+  if (firstBrace === -1) return withoutFences
+
+  // Extraction robuste de l'objet JSON "le plus externe" via comptage d'accolades
+  // en évitant les accolades à l'intérieur des strings JSON.
+  let depth = 0
+  let start = -1
+  let inString = false
+  let escaped = false
+
+  for (let i = firstBrace; i < withoutFences.length; i++) {
+    const ch = withoutFences[i] ?? ''
+
+    if (inString) {
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (ch === '\\') {
+        escaped = true
+        continue
+      }
+      if (ch === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (ch === '"') {
+      inString = true
+      continue
+    }
+
+    if (ch === '{') {
+      if (depth === 0) start = i
+      depth += 1
+      continue
+    }
+
+    if (ch === '}') {
+      if (depth > 0) depth -= 1
+      if (depth === 0 && start !== -1) {
+        return withoutFences.slice(start, i + 1)
+      }
+    }
+  }
+
+  // Fallback : ne pas inventer, laisser JSON.parse échouer comme d'origine.
+  return withoutFences
 }
