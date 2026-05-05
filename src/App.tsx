@@ -212,6 +212,8 @@ const APP_SHELL_FALLBACK = (
 )
 
 const AUTH_BOOT_DEBUG_STORAGE_KEY = 'lfdc:debug:auth-boot'
+const ACCESS_DENIED_LOGIN_MESSAGE =
+  "Votre compte n'a pas accès à cet espace. Vérifiez votre invitation ou contactez un administrateur."
 
 function isAuthBootDebugEnabled(): boolean {
   try {
@@ -739,6 +741,7 @@ function App() {
   }, [])
   const [authLoading, setAuthLoading] = useState(true)
   const [authUser, setAuthUser] = useState<User | null>(null)
+  const [loginForcedMessage, setLoginForcedMessage] = useState<string | null>(null)
   const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
   const [workspaceName, setWorkspaceName] = useState('La Forge')
@@ -898,6 +901,7 @@ function App() {
     setMobileNavOpen(false)
     navigateToMainNav('home')
     setAuthUser(null)
+    setLoginForcedMessage(null)
   }, [navigateToMainNav])
 
   useEffect(() => {
@@ -1127,6 +1131,7 @@ function App() {
       const invBootstrap = pendingInv ?? acceptedInv
 
       if (platformSuper || invitedUser) {
+        setLoginForcedMessage(null)
         setPlatformSuperadmin(platformSuper)
         if (platformSuper) {
           const requiresMfa = await isMfaEnrollmentRequiredForSuperadmin()
@@ -1174,17 +1179,16 @@ function App() {
         } else {
           setServerAccess(null)
         }
-        try {
-          if (invitedUser?.workspace_id && invitedUser.email) {
-            await markInvitationsAcceptedForWorkspaceEmail(invitedUser.workspace_id, invitedUser.email)
-          }
-        } catch {
-          /* alignement statut invitation : best-effort */
+        if (invitedUser?.workspace_id && invitedUser.email) {
+          void markInvitationsAcceptedForWorkspaceEmail(invitedUser.workspace_id, invitedUser.email).catch(() => {
+            /* alignement statut invitation : best-effort */
+          })
         }
         logAuthBoot(debugEnabled, 'session reconciled (platform/user row)', startedAt)
         return
       }
       if (invBootstrap?.workspace_id) {
+        setLoginForcedMessage(null)
         setPlatformSuperadmin(false)
         setAuthUser(user)
         localStorage.setItem('workspaceId', invBootstrap.workspace_id)
@@ -1198,8 +1202,11 @@ function App() {
         logAuthBoot(debugEnabled, 'session reconciled (invitation bootstrap)', startedAt)
         return
       }
+      setLoginForcedMessage(ACCESS_DENIED_LOGIN_MESSAGE)
       setServerAccess(null)
-      await signOut()
+      void signOut().catch(() => {
+        /* déconnexion silencieuse best-effort */
+      })
       setPlatformSuperadmin(false)
       setMfaEnrollmentRequired(false)
       setAuthUser(null)
@@ -1221,6 +1228,7 @@ function App() {
       const sessionUser = session?.user ?? null
       if (!sessionUser) {
         setAuthUser(null)
+        setLoginForcedMessage(null)
         setPlatformSuperadmin(false)
         setServerAccess(null)
         setAuthLoading(false)
@@ -1248,6 +1256,7 @@ function App() {
         const sessionUser = session?.user ?? null
         if (!sessionUser) {
           setAuthUser(null)
+          setLoginForcedMessage(null)
           setPlatformSuperadmin(false)
           setServerAccess(null)
           setAuthLoading(false)
@@ -1376,8 +1385,10 @@ function App() {
       <Suspense fallback={APP_SHELL_FALLBACK}>
         <Login
           onAuthenticated={(user) => {
+            setLoginForcedMessage(null)
             setAuthUser(user)
           }}
+          forcedMessage={loginForcedMessage}
         />
       </Suspense>
     )

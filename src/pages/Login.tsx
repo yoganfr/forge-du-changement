@@ -11,6 +11,7 @@ import {
 
 interface LoginProps {
   onAuthenticated?: (user: User) => void
+  forcedMessage?: string | null
 }
 
 function mapAuthErrorMessage(message: string): string {
@@ -24,7 +25,7 @@ function mapAuthErrorMessage(message: string): string {
   return message || 'Une erreur est survenue, veuillez réessayer'
 }
 
-export default function Login({ onAuthenticated }: LoginProps) {
+export default function Login({ onAuthenticated, forcedMessage }: LoginProps) {
   const [showAuthForm, setShowAuthForm] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -96,6 +97,7 @@ export default function Login({ onAuthenticated }: LoginProps) {
     <div className="login-page">
       <style>{CSS}</style>
       <div className="login-card">
+        {forcedMessage ? <div className="login-error-banner">{forcedMessage}</div> : null}
         {!showAuthForm ? (
           <div className="login-landing">
             <div className="login-brand">
