@@ -211,6 +211,23 @@ const APP_SHELL_FALLBACK = (
   </div>
 )
 
+const AUTH_BOOT_DEBUG_STORAGE_KEY = 'lfdc:debug:auth-boot'
+
+function isAuthBootDebugEnabled(): boolean {
+  if (!import.meta.env.DEV) return false
+  try {
+    return localStorage.getItem(AUTH_BOOT_DEBUG_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function logAuthBoot(debugEnabled: boolean, phase: string, startedAt: number): void {
+  if (!debugEnabled) return
+  const elapsedMs = Math.round(performance.now() - startedAt)
+  console.info(`[auth-boot] ${phase} (${elapsedMs} ms)`)
+}
+
 function readStoredProfile(email?: string | null): StoredMemberProfile | null {
   try {
     migrateLegacyMemberProfileIfNeeded(email)
@@ -1089,14 +1106,25 @@ function App() {
   }, [workspaceId, navigateToMainNav])
 
   const reconcileAuthSession = useCallback(async (user: User) => {
+    const debugEnabled = isAuthBootDebugEnabled()
+    const startedAt = performance.now()
     try {
-      const email = user.email ?? ''
-      const emailNorm = email.trim().toLowerCase()
-      const invitedUser = await getCurrentUser()
-      const platformSuper = await isPlatformSuperadmin()
+      const emailNorm = (user.email ?? '').trim().toLowerCase()
+      const [invitedUser, platformSuper] = await Promise.all([
+        getCurrentUser(user),
+        isPlatformSuperadmin(),
+      ])
+      logAuthBoot(debugEnabled, 'identity + superadmin checks', startedAt)
       const skipInvFetch = Boolean(invitedUser) || platformSuper
-      const pendingInv = skipInvFetch ? null : await getLatestPendingInvitationForEmail(emailNorm)
-      const acceptedInv = skipInvFetch ? null : await getAcceptedInvitationAwaitingUserRow(emailNorm)
+      const [pendingInv, acceptedInv] = skipInvFetch
+        ? [null, null]
+        : await Promise.all([
+            getLatestPendingInvitationForEmail(emailNorm),
+            getAcceptedInvitationAwaitingUserRow(emailNorm),
+          ])
+      if (!skipInvFetch) {
+        logAuthBoot(debugEnabled, 'invitation checks', startedAt)
+      }
       const invBootstrap = pendingInv ?? acceptedInv
 
       if (platformSuper || invitedUser) {
@@ -1154,6 +1182,7 @@ function App() {
         } catch {
           /* alignement statut invitation : best-effort */
         }
+        logAuthBoot(debugEnabled, 'session reconciled (platform/user row)', startedAt)
         return
       }
       if (invBootstrap?.workspace_id) {
@@ -1167,6 +1196,7 @@ function App() {
           role: invitationRoleToStoredRole(invBootstrap.role),
           workspaceId: invBootstrap.workspace_id,
         })
+        logAuthBoot(debugEnabled, 'session reconciled (invitation bootstrap)', startedAt)
         return
       }
       setServerAccess(null)
@@ -1174,54 +1204,66 @@ function App() {
       setPlatformSuperadmin(false)
       setMfaEnrollmentRequired(false)
       setAuthUser(null)
+      logAuthBoot(debugEnabled, 'session reconciled (access denied)', startedAt)
     } finally {
       invalidateCache(['workspace-users:', 'workspaces:list'])
+      logAuthBoot(debugEnabled, 'reconcileAuthSession finished', startedAt)
     }
   }, [])
 
   useEffect(() => {
     let alive = true
+    const debugEnabled = isAuthBootDebugEnabled()
+    const initialStartedAt = performance.now()
 
     void supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!alive) return
+      logAuthBoot(debugEnabled, 'initial getSession resolved', initialStartedAt)
       const sessionUser = session?.user ?? null
       if (!sessionUser) {
         setAuthUser(null)
         setPlatformSuperadmin(false)
         setServerAccess(null)
         setAuthLoading(false)
+        logAuthBoot(debugEnabled, 'initial auth finished (no session)', initialStartedAt)
         return
       }
 
       const { data: freshData, error: freshErr } = await supabase.auth.getUser()
       if (!alive) return
+      logAuthBoot(debugEnabled, 'initial getUser resolved', initialStartedAt)
       const freshUser = !freshErr && freshData?.user ? freshData.user : null
       const resolvedUser = freshUser ?? sessionUser
 
       await reconcileAuthSession(resolvedUser)
       if (!alive) return
       setAuthLoading(false)
+      logAuthBoot(debugEnabled, 'initial auth finished (authenticated)', initialStartedAt)
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       void (async () => {
+        const authChangeStartedAt = performance.now()
         const sessionUser = session?.user ?? null
         if (!sessionUser) {
           setAuthUser(null)
           setPlatformSuperadmin(false)
           setServerAccess(null)
           setAuthLoading(false)
+          logAuthBoot(debugEnabled, 'auth state change finished (no session)', authChangeStartedAt)
           return
         }
 
         const { data: freshData, error: freshErr } = await supabase.auth.getUser()
+        logAuthBoot(debugEnabled, 'auth state change getUser resolved', authChangeStartedAt)
         const freshUser = !freshErr && freshData?.user ? freshData.user : null
         const resolvedUser = freshUser ?? sessionUser
 
         await reconcileAuthSession(resolvedUser)
         setAuthLoading(false)
+        logAuthBoot(debugEnabled, 'auth state change finished (authenticated)', authChangeStartedAt)
       })()
     })
 

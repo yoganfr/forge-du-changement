@@ -4,6 +4,7 @@ import {
 } from './api'
 import { insertAuditEvent } from './api/audit'
 import { supabase } from './supabase'
+import type { User as SupabaseAuthUser } from '@supabase/supabase-js'
 
 /** Délai minimum entre deux envois OTP (même email) — complète le rate limiting Supabase Auth. */
 const OTP_COOLDOWN_MS = 45_000
@@ -104,12 +105,12 @@ function readBrowserMemberUserId(): string | null {
  * (2) ligne dont `id` = `auth.uid()` — celle utilisée par la RLS sur `workspaces` ;
  * (3) filtre email + workspace courant ; (4) heuristique sur doublons d’email.
  */
-export async function getCurrentUser() {
-  const session = await getSession()
-  if (!session?.user.email) return null
+export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
+  const resolvedSessionUser = sessionUser ?? (await getSession())?.user ?? null
+  if (!resolvedSessionUser?.email) return null
 
-  const email = session.user.email.trim().toLowerCase()
-  const authId = session.user.id
+  const email = resolvedSessionUser.email.trim().toLowerCase()
+  const authId = resolvedSessionUser.id
 
   const emailMatches = (r: { email?: string | null } | null) =>
     r?.email?.trim().toLowerCase() === email
