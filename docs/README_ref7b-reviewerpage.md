@@ -205,6 +205,7 @@ Voir [`docs/git-commit-conventions.md`](docs/git-commit-conventions.md) pour dé
 
 | Élément | Responsable | Proof |
 |---------|-------------|-------|
+| Workflow de planification | ✅ Documentation | [`docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md`](AI-AGENT-FEATURE-PLANNING-WORKFLOW.md) |
 | Règles métier | ✅ Yogan + AI | [`Règles métier — REF-7b.2...`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) |
 | Architecture UX | ✅ Yogan + AI | [`architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) |
 | Plan backend | ✅ AI | [`.cursor/plans/ref-7b.2...`](.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md) |
