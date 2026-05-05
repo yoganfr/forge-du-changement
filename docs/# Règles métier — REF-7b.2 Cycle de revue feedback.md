@@ -6,6 +6,13 @@ Dernière mise à jour : **5 mai 2026**, 22 h 10 (Europe/Paris)
 
 ---
 
+### Voir aussi
+- **Plan d'implémentation backend** : [`.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md`](.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md) — Schéma SQL, RLS, API routes, audit trail, 5 todos
+- **Architecture UX ReviewerPage** : [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) — Complément : Frontend + Partie 2/3
+- **Backlog** : [`docs/backlog.md`](docs/backlog.md) (lignes 135 & 138) — REF-7b.2 et REF-7b.5 dans EPIC 3
+
+---
+
 ## 1. Concepts fondamentaux
 
 ### 1.1 Lifecycle reviewer (états et transitions)

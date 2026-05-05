@@ -4,6 +4,13 @@
 
 ---
 
+### Voir aussi
+- **Règles métier cycle de revue** : [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) — Fondations (lifecycle, feedbacks, arbitrage)
+- **Plan d'implémentation frontend** : [`.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md`](.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md) — 8 composants, refactor grille, 6 todos
+- **Backlog** : [`docs/backlog.md`](docs/backlog.md) (ligne 138) — REF-7b.5 dans EPIC 3
+
+---
+
 ## 1. Réutilisation RoadmapTimelineGrid : analyse
 
 ### Option A : Réutiliser avec readOnly=true
