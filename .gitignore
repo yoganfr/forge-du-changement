@@ -36,3 +36,12 @@ test-invitations.csv
 
 # Exports recette locaux (CSV Supabase, captures)
 recette/
+
+# Playwright test artifacts
+.playwright-cli/
+tmp-check.png
+
+# Claude / Cursor local config (IDE-specific settings)
+.claude/
+Test.code-workspace
+.cursor/rules/web-safety-*.mdc
