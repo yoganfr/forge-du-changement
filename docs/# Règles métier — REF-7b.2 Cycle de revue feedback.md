@@ -47,13 +47,27 @@ Chaque feedback appartient à l'un des 3 kinds suivants :
 
 #### Kind 3 : **proposition_chantier** (créer nouveau chantier)
 - **Contenu** : Idem decision (constat/proposition/bénéfice) + `projet_pere_id`, `axe`, `titre_chantier`
-- **Où** : Saisie en Partie 3 de ReviewerPage
+- **Où** : Saisie en Partie 3 de ReviewerPage (en bas de page)
+- **Projet père** : Choix parmi les projets transformants de V1 (pas création nouveau projet)
+- **Axe** : Placement dans PROCESSUS / ORGANISATION / OUTILS / KPI
 - **CODIR action** : ok / nok / sous_condition + motivation
 - **Éditable** : NON après soumission
 
 **Distinction réactions ≠ propositions** : Les **réactions** peuvent rester brouillons et éditées même après ACK CODIR. Les **décisions/propositions** sont des engagements structurés et deviennent immuables.
 
-### 1.3 États arbitrage CODIR
+### 1.3 Types de feedbacks par target
+
+Les feedbacks sont toujours émis sur des **éléments existants** de la roadmap V1 :
+
+| Target type | Description | Exemple |
+|-------------|-------------|---------|
+| **'chantier'** | Feedback sur un chantier existant | "Ce chantier manque de détail sur les jalons" |
+| **'jalon'** | Feedback sur un jalon existant | "Ce jalon doit être décalé de Q2 à Q3" |
+| **'raci_chantier'** | Feedback sur les parties prenantes RACI du chantier | "Direction Finance ne devrait pas être pilote, mais impliquée" |
+
+**Les propositions de NOUVEAUX chantiers** (Kind 3) se font en Partie 3 via formulaire structuré (pas de `target_type = 'proposition'` : c'est kind = 'proposition_chantier' avec champs dédiés).
+
+### 1.4 États arbitrage CODIR
 
 Pour chaque feedback, CODIR définit un `codir_status` :
 
