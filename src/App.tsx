@@ -214,7 +214,6 @@ const APP_SHELL_FALLBACK = (
 const AUTH_BOOT_DEBUG_STORAGE_KEY = 'lfdc:debug:auth-boot'
 
 function isAuthBootDebugEnabled(): boolean {
-  if (!import.meta.env.DEV) return false
   try {
     return localStorage.getItem(AUTH_BOOT_DEBUG_STORAGE_KEY) === '1'
   } catch {
