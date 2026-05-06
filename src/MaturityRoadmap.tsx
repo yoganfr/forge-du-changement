@@ -30,6 +30,7 @@ import {
 } from './lib/api'
 import { getCurrentUser } from './lib/auth'
 import CreateDirectionDialog from './CreateDirectionDialog'
+import ReviewDeadlineDialog, { formatDeadlinePreview } from './ReviewDeadlineDialog'
 import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
@@ -49,24 +50,6 @@ import {
   syncKpiMirrorForParentJalon,
 } from './lib/kpiMirrorSync'
 import './MaturityRoadmap.css'
-
-/** ISO 8601 pour `review_deadline` : +14 jours, 23:59 heure locale (stockée en UTC côté Postgres). */
-function suggestedReviewDeadlineIso(): string {
-  const d = new Date()
-  d.setDate(d.getDate() + 14)
-  d.setHours(23, 59, 0, 0)
-  return d.toISOString()
-}
-
-/** Saisie prompt → valeur persistable (ISO) ou null si vide. */
-function coerceReviewDeadlineForDb(raw: string | null): string | null {
-  if (raw == null) return null
-  const t = raw.trim()
-  if (!t) return null
-  const ms = Date.parse(t)
-  if (Number.isFinite(ms)) return new Date(ms).toISOString()
-  return t
-}
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
@@ -194,6 +177,10 @@ export default function MaturityRoadmap({
     Array<{ id: string; kind: string; codir_status: string | null; reviewer_user_id: string; comment: string | null; constat: string | null; proposition: string | null; benefice: string | null }>
   >([])
   const [reviewersBySnapshot, setReviewersBySnapshot] = useState<Record<string, number>>({})
+  const [reviewDeadlineDialog, setReviewDeadlineDialog] = useState<{
+    snapshotId: string
+    reviewerIds: string[]
+  } | null>(null)
   const [roadmapToast, setRoadmapToast] = useState<{
     message: string
     variant: 'error' | 'info' | 'warning'
@@ -636,12 +623,14 @@ export default function MaturityRoadmap({
       setSnapshotFeedback('Aucun reviewer valide trouvé pour ces emails.')
       return
     }
-    const suggestedDeadline = suggestedReviewDeadlineIso()
-    const deadlineRaw = window.prompt(
-      'Date limite de fin de revue (modifiable). Entrée = garder la suggestion ; une date reconnue par le navigateur fonctionne aussi.',
-      suggestedDeadline,
-    )
-    const reviewDeadline = coerceReviewDeadlineForDb(deadlineRaw)
+    setReviewDeadlineDialog({ snapshotId, reviewerIds })
+  }
+
+  async function completeOpenReview(
+    snapshotId: string,
+    reviewerIds: string[],
+    reviewDeadline: string | null,
+  ) {
     try {
       const me = await getCurrentUser()
       await openSnapshotReview({
@@ -654,9 +643,7 @@ export default function MaturityRoadmap({
       const reviewerUrl = `${window.location.origin}/review/${snapshotId}`
       void navigator.clipboard?.writeText(reviewerUrl)
       const deadlineHint =
-        reviewDeadline != null
-          ? ` · Deadline : ${new Date(reviewDeadline).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}`
-          : ''
+        reviewDeadline != null ? ` · Deadline : ${formatDeadlinePreview(reviewDeadline)}` : ''
       setSnapshotFeedback(
         `Revue ouverte (${reviewerIds.length} reviewer${reviewerIds.length > 1 ? 's' : ''}).${deadlineHint} Lien copié : ${reviewerUrl}`,
       )
@@ -1011,6 +998,17 @@ export default function MaturityRoadmap({
           {roadmapToast.message}
         </div>
       ) : null}
+
+      <ReviewDeadlineDialog
+        open={reviewDeadlineDialog !== null}
+        onCancel={() => setReviewDeadlineDialog(null)}
+        onConfirm={(reviewDeadline) => {
+          const flow = reviewDeadlineDialog
+          setReviewDeadlineDialog(null)
+          if (!flow) return
+          void completeOpenReview(flow.snapshotId, flow.reviewerIds, reviewDeadline)
+        }}
+      />
     </div>
   )
 }
