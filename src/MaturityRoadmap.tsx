@@ -1015,17 +1015,9 @@ export default function MaturityRoadmap({
                     aria-label={`Afficher « ${s.label} » dans le menu Version roadmap`}
                   >
                     <span className="mr-recent-snapshots__label">{s.label}</span>
-                    <span className="mr-recent-snapshots__meta">
-                      <span className="mr-recent-snapshots__date">{created}</span>
-                      <span className="mr-recent-snapshots__sep" aria-hidden="true">
-                        ·
-                      </span>
-                      <span className="mr-recent-snapshots__status">{snapshotStatusLabelFr(s.status)}</span>
-                      <span className="mr-recent-snapshots__sep" aria-hidden="true">
-                        ·
-                      </span>
-                      <span>{formatRevReviewersCount(n)}</span>
-                    </span>
+                    <span className="mr-recent-snapshots__date">{created}</span>
+                    <span className="mr-recent-snapshots__status">{snapshotStatusLabelFr(s.status)}</span>
+                    <span className="mr-recent-snapshots__reviewers">{formatRevReviewersCount(n)}</span>
                   </button>
                 </li>
               )
