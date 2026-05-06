@@ -9,6 +9,29 @@
   color: var(--theme-text);
 }
 
+/*
+ * Largeur du module : sur petit viewport le token global (--mr-root-max-width: 780px) évite une ligne trop longue ;
+ * au-delà, on ouvre pour que la grille temporelle utilise l’espace (détection = media queries viewport, pas de JS).
+ */
+@media (min-width: 960px) {
+  .mr-root {
+    --mr-root-max-width: min(960px, calc(100vw - 2 * var(--space-lg)));
+  }
+}
+
+@media (min-width: 1200px) {
+  .mr-root {
+    --mr-root-max-width: min(var(--max-width), calc(100vw - 2 * var(--space-xl)));
+  }
+}
+
+@media (min-width: 1536px) {
+  .mr-root {
+    /* Proche du bandeau dashboard (1440px) : un peu d’air latéral via calc */
+    --mr-root-max-width: min(1400px, calc(100vw - 2 * var(--space-xl)));
+  }
+}
+
 /* Accordéon : figement, revue, sélecteur de version, liste des figements récents */
 .mr-versions-accordion {
   margin-bottom: var(--space-md);

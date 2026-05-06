@@ -87,7 +87,7 @@
   --transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   --motion-fast: 160ms ease;
   --max-width: 1280px;
-  /** Module Maturity Roadmap (~2 × largeur smartphone courante, limite le vide latéral sur grand écran) */
+  /** Module Maturity Roadmap : base resserrée ; élargissements par breakpoint dans `MaturityRoadmap.css` (.mr-root). */
   --mr-root-max-width: 780px;
   --card-min: 240px;
 
