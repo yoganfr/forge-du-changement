@@ -394,7 +394,9 @@
   margin-top: -2px;
 }
 
-.mr-toolbar select {
+/* Pilule légende + même traitement pour l’axe sous l’aide grille (hors .mr-toolbar) */
+.mr-toolbar select,
+.mr-tgrid-axis-filter select {
   min-width: 200px;
   width: 100%;
   max-width: 320px;
@@ -406,7 +408,8 @@
   font-family: var(--font-body);
 }
 
-.mr-toolbar select:focus-visible {
+.mr-toolbar select:focus-visible,
+.mr-tgrid-axis-filter select:focus-visible {
   outline: none;
   box-shadow: var(--ui-focus-ring);
 }
