@@ -26,6 +26,24 @@
   gap: var(--space-sm, 8px);
 }
 
+/* Boutons visibles (pas le style lien « Retour ») : aligner avec la grille d’actions modales */
+.mr-snapshot-toolbar__actions .mr-btn-primary,
+.mr-snapshot-toolbar__actions .mr-btn-ghost {
+  margin-left: 0;
+}
+
+.mr-snapshot-toolbar__actions .mr-btn-ghost {
+  padding: 10px 16px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.mr-snapshot-toolbar__actions .mr-btn-ghost:disabled,
+.mr-snapshot-toolbar__actions .mr-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .mr-snapshot-toolbar__version {
   display: flex;
   flex-direction: column;

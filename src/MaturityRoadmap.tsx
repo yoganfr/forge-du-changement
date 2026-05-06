@@ -767,7 +767,7 @@ export default function MaturityRoadmap({
           <div className="mr-snapshot-toolbar__actions">
             <button
               type="button"
-              className="mr-back"
+              className="mr-btn-primary"
               onClick={() => handleOpenFreezeDialog()}
               disabled={snapshotSaving}
             >
@@ -775,7 +775,7 @@ export default function MaturityRoadmap({
             </button>
             <button
               type="button"
-              className="mr-back"
+              className="mr-btn-ghost"
               onClick={() => { void handleOpenReview() }}
               disabled={
                 snapshotSaving ||
