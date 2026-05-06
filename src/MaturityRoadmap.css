@@ -1520,10 +1520,13 @@
   margin: 0 auto;
 }
 
-/* Axe KPI : deux bandes verticales, ordre de lecture gauche → droite (ltr), alignées au début du titre */
+/*
+ * Axe KPI : deux bandes verticales. Lecture verticale type « colonnes » : la colonne de droite d’abord.
+ * `row-reverse` place split[0] à droite sans bidirectionnel sur le conteneur (plus prévisible que rtl).
+ */
 .mr-tgrid__axis-cell-title.mr-tgrid__axis-cell-title--split {
   display: inline-flex;
-  flex-direction: row;
+  flex-direction: row-reverse;
   direction: ltr;
   align-items: flex-start;
   gap: 0.35rem;
@@ -1533,6 +1536,8 @@
 
 .mr-tgrid__axis-cell-title--split .mr-tgrid__axis-cell-title-line {
   display: block;
+  direction: ltr;
+  unicode-bidi: isolate;
   writing-mode: vertical-lr;
   text-orientation: mixed;
   text-align: center;

@@ -21,7 +21,7 @@ function AxisColumnTitle({ axe }: { axe: Axe }) {
   const split = meta.axisColumnSplit
   if (split) {
     return (
-      <span className="mr-tgrid__axis-cell-title mr-tgrid__axis-cell-title--split" dir="ltr">
+      <span className="mr-tgrid__axis-cell-title mr-tgrid__axis-cell-title--split">
         <span className="mr-tgrid__axis-cell-title-line">{split[0]}</span>
         <span className="mr-tgrid__axis-cell-title-line">{split[1]}</span>
       </span>
