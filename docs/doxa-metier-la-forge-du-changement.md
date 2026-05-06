@@ -2,7 +2,7 @@
 
 **Document de synthèse narrative** pour aligner produit, implémentations et agents IA sur le **sens métier** de l’outil. Il **ne remplace pas** les règles détaillées (`docs/# Règles métier — Maturity Roadmap.md`, `docs/# Règles métier — REF-7b.2 …`, matrice permissions, backlog) : il les **ordonne** et en donne la **lecture d’ensemble**.
 
-Dernière mise à jour : **6 mai 2026**, 21 h 49 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
 
 ---
 
@@ -64,6 +64,12 @@ Les **rôles métier** sont portés par la table `users.role` et la matrice docu
 
 **Vue décideur** (ex-DG) : accès **lecture / validation décideur / historique** pour certains rôles ; **exclus** pour `codir` et `contributeur` dans la matrice actuelle — la **validation décideur** est un **jalon de gouvernance** (date + commentaire obligatoires).
 
+### 4.3 Périmètre projet BUILD et CODIR (règle d’or)
+
+- Chaque membre **CODIR** porte **sa** roadmap de direction : le périmètre **n’est pas** implicitement le même que celui d’un autre CODIR du même workspace (pas de « même grille » entre voisins).
+- **Hors roadmap transversale** : deux CODIR **ne portent pas** les **mêmes** projets transformants (**BUILD**) — les ensembles de BUILD assignés à des CODIR différents sont **disjoints**.
+- **Exception** : une **roadmap transversale**, où plusieurs périmètres métiers sont **explicitement** engagés sur les **mêmes** BUILD (gouvernance et co‑owners documentés). Dans ce cadre seulement, le recoupement BUILD entre CODIR est **légitime** ; partout ailleurs, il est **exclu** par conception métier.
+
 ---
 
 ## 5. Espace de travail et directions
@@ -71,7 +77,7 @@ Les **rôles métier** sont portés par la table `users.role` et la matrice docu
 - Un **workspace** = une **entreprise cliente** (dossier fermé, isolation par RLS).  
 - Les **directions** segmentent les roadmaps (ex. DRH, DAF) ; les utilisateurs peuvent avoir un `direction_id` (fondations REF-7b.0, invitations CSV).  
 - La **roadmap par direction** est le support naturel du **CODIR** qui pilote ce domaine.  
-- Les roadmaps **transverses** (projets transformants qui couvrent **plusieurs** directions) sont un **cas de gouvernance distinct** (co‑owners, voir synthèse roadmap et backlog). Pour le **premier livrable** du **tableau de pilotage de revue**, la logique est la **même** que pour une roadmap « classique » : seules les règles de **qui lance la campagne** et de **qui est reviewer** changent — pas un écran entièrement différent.
+- Les roadmaps **transverses** (projets transformants qui couvrent **plusieurs** directions) sont le **seul** cadre où plusieurs CODIR peuvent **légitimement** partager les **mêmes** BUILD — **cas de gouvernance distinct** (co‑owners, voir synthèse roadmap §6 et backlog). Pour le **premier livrable** du **tableau de pilotage de revue**, la logique est la **même** que pour une roadmap « classique » : seules les règles de **qui lance la campagne** et de **qui est reviewer** changent — pas un écran entièrement différent.
 
 ---
 

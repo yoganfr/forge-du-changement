@@ -2,6 +2,8 @@
 
 *Document de synthèse pour aligner implémentations futures. Complète le document principal `docs/# Règles métier — Maturity Roadmap.md` (règles détaillées) sans le remplacer.*
 
+Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
+
 ---
 
 ## 1. Paramètres d’échéances (workspace)
@@ -63,9 +65,11 @@
 
 ## 6. Roadmaps transverses et droits
 
+- **Disjonction BUILD par défaut** : en roadmap « par direction », les projets BUILD portés par un CODIR **ne se recoupent pas** avec ceux d’un autre CODIR du même workspace. Chaque CODIR a **son** périmètre BUILD.
+- **Seul levier de recoupement** : une **roadmap transversale** — seul cas métier où les **mêmes** BUILD peuvent être portés ou co‑portés par **plusieurs** périmètres / CODIR, avec règles de gouvernance explicites.
 - **Co-owners** : uniquement pour les **roadmaps projets transverses** impliquant **plusieurs périmètres métiers**.
 - **Édition** : **CODIR** (titulaire) ; **consultant** avec autorisation **en renfort** si besoin.
-- **Implémentation** : politiques RLS / table des membres éditeurs selon le type de roadmap (direction vs transverse).
+- **Implémentation** : politiques RLS / table des membres éditeurs selon le type de roadmap (direction vs transverse) ; ne pas inférer un partage BUILD multi‑CODIR sans flag / type « transverse ».
 
 ---
 

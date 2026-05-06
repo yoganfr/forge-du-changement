@@ -16,6 +16,18 @@ Ce n'est pas un outil de reporting. C'est un outil de **dialogue structuré** en
 
 ---
 
+## 1 bis. Périmètre BUILD, CODIR et transversalité
+
+Règle **structurelle** pour éviter les ambiguïtes de périmètre entre directions :
+
+1. **Une roadmap par CODIR** : chaque membre CODIR prépare et porte **sa** roadmap ; elle ne se confond pas avec celle d’un autre CODIR du même workspace.
+2. **BUILD disjoints entre CODIR** : tant qu’on n’est **pas** dans une **roadmap transversale** explicite, deux CODIR **ne partagent pas** les **mêmes** projets transformants (BUILD). Les périmètres BUILD sont **disjoints**.
+3. **Exception — roadmap transversale** : lorsque la transformation est **volontairement** cross-directions, une roadmap dédiée peut faire porter les **mêmes** BUILD à plusieurs CODIR ; la gouvernance (co‑owners, lancement de revue, reviewers) suit alors les règles **transverses** documentées dans `docs/maturity-roadmap-synthese-evolutions-produit.md` §6 et le backlog.
+
+Toute évolution produit (filtres, RLS, invitations) doit **respecter** cette distinction : pas de double-affectation BUILD « par défaut » hors cadre transversal.
+
+---
+
 ## 2. Hiérarchie complète de la structure
 
 ```

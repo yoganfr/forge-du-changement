@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **6 mai 2026**, 20 h 25 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -117,6 +117,8 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 ---
 
 ## EPIC 3 — Maturity Roadmap (Rôles & Rythmes) 🚧 EN COURS
+
+> **Règle métier (périmètre BUILD / CODIR)** : chaque CODIR porte **sa** roadmap ; les BUILD sont **disjoints** entre CODIR **sauf** dans une **roadmap transversale** explicite. Source : `docs/doxa-metier-la-forge-du-changement.md` §4.3, `docs/# Règles métier — Maturity Roadmap.md` §1 bis, `docs/maturity-roadmap-synthese-evolutions-produit.md` §6.
 
 | REF | Titre | Priorité | Statut |
 |---|-------|----------|--------|

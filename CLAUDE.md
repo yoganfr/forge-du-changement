@@ -44,7 +44,7 @@ Avant toute action, lire les docs pertinents :
 
 | Type de demande | Doc à lire |
 |-----------------|------------|
-| Toujours — narrative métier (lire en premier) | [docs/doxa-metier-la-forge-du-changement.md](docs/doxa-metier-la-forge-du-changement.md) |
+| Toujours — narrative métier (lire en premier ; §4.3 périmètre BUILD / CODIR) | [docs/doxa-metier-la-forge-du-changement.md](docs/doxa-metier-la-forge-du-changement.md) |
 | Toujours — commits | [docs/git-commit-conventions.md](docs/git-commit-conventions.md) |
 | Règles métier roadmap | [docs/# Règles métier — Maturity Roadmap.md](docs/#%20Règles%20métier%20—%20Maturity%20Roadmap.md) |
 | Évolution produit / EPICs / backlog | [docs/backlog.md](docs/backlog.md) |
