@@ -90,9 +90,11 @@ export default function ReviewRoadmapHubPage({ workspaceId, currentAppUserId, on
         >
           <p style={{ margin: 0 }}>Aucune revue ne vous est assignée sur cet espace pour le moment.</p>
           <p style={{ margin: '0.75rem 0 0', fontSize: '0.92rem', color: 'var(--theme-text-muted, #57534e)' }}>
-            Le CODIR doit ouvrir une revue sur un snapshot figé et vous inclure comme reviewer (même email que
-            votre compte). Vous pouvez aussi utiliser un lien direct{' '}
-            <code style={{ fontSize: '0.85em' }}>/review/&lt;id_snapshot&gt;</code> qui vous a été communiqué.
+            À l’ouverture de la revue, le CODIR saisit les emails des reviewers (premier dialogue). Pour apparaître
+            ici, votre compte doit être dans cette liste — ouvrir la revue en CODIR sans y inclure votre propre
+            email ne vous assigne pas automatiquement comme reviewer. Les emails sont résolus parmi les membres de
+            l’espace (correspondance exacte après normalisation). Sinon utilisez un lien direct{' '}
+            <code style={{ fontSize: '0.85em' }}>/review/&lt;id_snapshot&gt;</code> si vous avez bien été désigné.
           </p>
         </div>
       ) : null}
