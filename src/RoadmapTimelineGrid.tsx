@@ -15,6 +15,21 @@ function mrAxisCellModifier(axe: Axe): string {
   return `mr-tgrid__axis-cell--${axe.toLowerCase()}`
 }
 
+/** Titre dans la colonne verticale « Axe » : découpage KPI en deux colonnes pour moins de hauteur. */
+function AxisColumnTitle({ axe }: { axe: Axe }) {
+  const meta = AXE_META[axe]
+  const split = meta.axisColumnSplit
+  if (split) {
+    return (
+      <span className="mr-tgrid__axis-cell-title mr-tgrid__axis-cell-title--split">
+        <span className="mr-tgrid__axis-cell-title-line">{split[0]}</span>
+        <span className="mr-tgrid__axis-cell-title-line">{split[1]}</span>
+      </span>
+    )
+  }
+  return <span className="mr-tgrid__axis-cell-title">{meta.title}</span>
+}
+
 /** Payload drag & drop chantier (HTML5 `dataTransfer`). */
 const CHANTIER_DRAG_MIME = 'application/x-forge-chantier-v1'
 /** Payload drag & drop jalon (même ligne / ajustement échéance). */
@@ -795,7 +810,7 @@ export default function RoadmapTimelineGrid({
                           className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                         >
                           <span className="mr-tgrid__axis-cell-inner">
-                            <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                            <AxisColumnTitle axe={axe} />
                           </span>
                         </td>
                       ) : null}
@@ -831,7 +846,7 @@ export default function RoadmapTimelineGrid({
                           className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                         >
                           <span className="mr-tgrid__axis-cell-inner">
-                            <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                            <AxisColumnTitle axe={axe} />
                           </span>
                         </td>
                       ) : null}
@@ -906,7 +921,7 @@ export default function RoadmapTimelineGrid({
                         className={`mr-tgrid__sticky mr-tgrid__sticky--axis mr-tgrid__axis-cell ${mrAxisCellModifier(axe)}`}
                       >
                         <span className="mr-tgrid__axis-cell-inner">
-                          <span className="mr-tgrid__axis-cell-title">{AXE_META[axe].title}</span>
+                          <AxisColumnTitle axe={axe} />
                         </span>
                       </td>
                     ) : null}

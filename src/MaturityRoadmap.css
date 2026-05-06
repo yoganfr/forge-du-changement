@@ -1520,6 +1520,29 @@
   margin: 0 auto;
 }
 
+/* Axe « Mesure des effets » : deux bandes verticales côte à côte → moins de hauteur que tout sur une colonne */
+.mr-tgrid__axis-cell-title.mr-tgrid__axis-cell-title--split {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.35rem;
+  writing-mode: horizontal-tb;
+  max-height: none;
+}
+
+.mr-tgrid__axis-cell-title--split .mr-tgrid__axis-cell-title-line {
+  display: block;
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  text-align: center;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: inherit;
+}
+
 /* Teintes d’axe — base opaque (theme-bg-card) pour éviter le contenu qui transparaît au scroll horizontal */
 .mr-tgrid__axis-block--processus {
   background: color-mix(in srgb, var(--theme-support) 6%, var(--theme-bg-card));

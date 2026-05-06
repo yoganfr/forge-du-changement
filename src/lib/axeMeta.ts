@@ -12,6 +12,11 @@ export type AxeDisplayMeta = {
   color: string
   /** Périmètre fonctionnel de l’axe (aide contextuelle). */
   description: string
+  /**
+   * Dans la colonne « Axe » (texte vertical), deux segments côte à côte pour limiter la hauteur.
+   * Sinon un seul bloc avec `title`.
+   */
+  axisColumnSplit?: readonly [string, string]
 }
 
 /**
@@ -50,5 +55,6 @@ export const AXE_META: Record<Axe, AxeDisplayMeta> = {
     color: '#B45309',
     description:
       'À chaque jalon : observer les effets réels et tangibles du changement produit.',
+    axisColumnSplit: ['4. Mesure des Effets', '& indicateurs de suivi'],
   },
 }
