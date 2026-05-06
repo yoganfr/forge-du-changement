@@ -2,7 +2,7 @@
 
 *Document de synthèse pour aligner implémentations futures. Complète le document principal `docs/# Règles métier — Maturity Roadmap.md` (règles détaillées) sans le remplacer.*
 
-Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 23 h 43 (Europe/Paris)
 
 ---
 
@@ -181,7 +181,7 @@ Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
 
 ## 10. État technique dans le dépôt (référence)
 
-*Mis à jour le 20 avril 2026 — aligné sur le code et les scripts SQL versionnés.*
+*Mis à jour le 6 mai 2026 — aligné sur le code et les scripts SQL versionnés.*
 
 ### Phase 1 (fonctionnelle)
 
@@ -198,6 +198,7 @@ Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
 - **Performances** : `getWorkspaceDirectionsWithProjects` charge les directions puis **tous les projets du workspace en une requête**, puis groupe côté client par `direction_id` (plus de requête projet par direction).
 - **Qualité** : tests **Vitest** ciblés (`npm run test`) sur `normalizeAxeForDb`, tri des jalons par axe/ordre, construction des colonnes timeline et placement jalon / date cible (`src/lib/api/roadmap.test.ts`, `src/lib/roadmapTimelineColumns.test.ts`).
 - **Storage** : les uploads d’images continuent d’exposer une **URL publique** via `getPublicUrl` ; une utilitaire **`createSignedAssetUrl`** est disponible pour une migration progressive vers des **URLs signées** (bucket assets — voir aussi `docs/supabase-storage-assets-hardening.sql`).
+- **Grille timeline — colonne « Axe » (mai 2026)** : libellé **KPI** long découpé en deux bandes verticales via `AXE_META.KPI.axisColumnSplit` dans `src/lib/axeMeta.ts`, rendu par `AxisColumnTitle` dans `src/RoadmapTimelineGrid.tsx`, styles `mr-tgrid__axis-cell-title--split` dans `src/MaturityRoadmap.css`. Ordre de lecture vertical assuré par `flex-direction: row-reverse` sur le conteneur des bandes. Une tentative de centrage vertical du titre dans la cellule rowspan a été **rejetée** (revert) ; documenter toute nouvelle approche avant implémentation.
 
 ### Suite logique côté produit / code
 
@@ -205,4 +206,4 @@ Les **phases A à G** et le **volet Phase F** (controverse / plans d’action, u
 
 ---
 
-*Dernière mise à jour du document : 20 avril 2026 — synthèse métier + point d’ancrage technique repo.*
+*Dernière mise à jour du document : 6 mai 2026 — synthèse métier + point d’ancrage technique repo.*

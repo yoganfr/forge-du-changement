@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 23 h 43 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -165,6 +165,13 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 **Drag & drop — grille matrice (compléments avril 2026)**  
 - **Vague 1** : déplacement d’une **ligne chantier** entre axes (Processus / Organisation / Outils ; pas KPI), refetch ciblé — **sans rechargement complet de page**.  
 - **Vague 2** : déplacement des **pilules jalons** sur la **même ligne** (même `chantier_id` + même `axe`) pour ajuster l’échéance (`mois_cible` / `annee_cible`) ; **une pilule par cellule** temps (sinon toast + drop refusé) ; **renumérotation automatique** des `ordre_sequentiel` sur l’axe si l’ordre chronologique change ; mode **lecture seule** sans drag. API : `recalculateOrdreSequentielForChantierAxe` dans `src/lib/api/roadmap.ts`.
+
+**6 mai 2026 — colonne « Axe » : titre KPI long (deux bandes verticales)**  
+- **Données** : `AXE_META.KPI.axisColumnSplit` dans [`src/lib/axeMeta.ts`](../src/lib/axeMeta.ts) — deux segments de libellé (`4. Mesure des Effets` puis `& indicateurs de suivi`) sans changer le `title` complet pour menus / cohérence produit.  
+- **UI** : composant `AxisColumnTitle` dans [`src/RoadmapTimelineGrid.tsx`](../src/RoadmapTimelineGrid.tsx) ; styles [`src/MaturityRoadmap.css`](../src/MaturityRoadmap.css) (classes `mr-tgrid__axis-cell-title--split` / `-line`).  
+- **Ordre de lecture** : flex `flex-direction: row-reverse` + `direction: ltr` sur le conteneur des deux bandes pour que la lecture verticale corresponde au bon ordre (remplace une approche `direction: rtl` peu fiable selon les moteurs).  
+- **Tentative de centrage vertical** du bloc titre dans la cellule (rowspan) : **non retenue** — rendu jugé incorrect ; **annulée** par revert (`revert(roadmap): annuler centrage vertical titres d’axe`). Ne pas réintroduire sans nouveau design validé.  
+- Détail : [`docs/history/2026-05-06-roadmap-colonne-axe-kpi.md`](history/2026-05-06-roadmap-colonne-axe-kpi.md).
 
 ---
 
@@ -611,7 +618,8 @@ Objectif : permettre à un administrateur de **piloter l'avancement du parcours 
 - `pages/Login.tsx` — écran connexion premium
 - `pages/AuthCallback.tsx` — retour OAuth/Magic Link
 - `MaturityRoadmap.tsx` — orchestration roadmap (projets, snapshots, tiroirs, intégration PCI)
-- `RoadmapTimelineGrid.tsx` — grille 4 axes × échéances **+ colonnes Parties prenantes PCI**
+- `RoadmapTimelineGrid.tsx` — grille 4 axes × échéances **+ colonnes Parties prenantes PCI** ; titre colonne « Axe » avec découpage optionnel (`AxisColumnTitle`)
+- `axeMeta.ts` — métadonnées des axes (`AXE_META`, option **`axisColumnSplit`** pour libellé KPI sur deux bandes verticales)
 - `RaciChantiersMatrix.tsx` — vue autonome secondaire / détachée de la matrice PCI si besoin
 - `usePciMatrix.tsx` — hook cœur du module PCI (chargement, canonicalisation, édition, popover)
 - `RaciChantiersPopover.tsx` — popover PCI (cellule / création / édition entête)
@@ -692,6 +700,16 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 6 mai 2026 — Grille roadmap : colonne « Axe », titre KPI sur deux bandes verticales
+
+#### Fait
+- Libellé long de l’axe **KPI** découpé via `axisColumnSplit` (`axeMeta.ts`) ; rendu `AxisColumnTitle` + CSS split dans la timeline (`RoadmapTimelineGrid`, `MaturityRoadmap.css`).
+- Ordre de lecture vertical corrigé avec `flex-direction: row-reverse` + `direction: ltr` sur le conteneur des deux bandes.
+- Tentative de centrage vertical du titre dans la cellule rowspan **annulée** (revert) — ne pas réintroduire sans nouvelle spec.
+
+#### À suivre
+- Suite **REF-7b** / grille selon priorisation « Maintenant » du backlog ; aucun item ouvert spécifique sur ce titre KPI.
 
 ### 26 avril 2026 — Nettoyage instrumentation debug Discours IA
 
