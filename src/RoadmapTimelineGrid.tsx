@@ -70,6 +70,8 @@ type Props = {
   /** Colonnes temps (même référence que `monthYearFromTimelineColumnKey` côté parent si drag jalon). */
   timelineColumns?: TimelineColumn[]
   axeFilter: 'all' | Axe
+  /** Si fourni, affiche « Axe affiché » sous l’aide et au-dessus du tableau (ex. édition CODIR). */
+  onAxeFilterChange?: (value: 'all' | Axe) => void
   readOnly: boolean
   projectColorById: Record<string, string>
   projetNomById: Record<string, string>
@@ -95,6 +97,7 @@ export default function RoadmapTimelineGrid({
   jalonsByChantier,
   timelineColumns: timelineColumnsProp,
   axeFilter,
+  onAxeFilterChange,
   readOnly,
   projectColorById,
   projetNomById,
@@ -595,6 +598,24 @@ export default function RoadmapTimelineGrid({
           pour les parcourir.
         </li>
       </ul>
+
+      {onAxeFilterChange ? (
+        <label className="mr-toolbar__field mr-tgrid-axis-filter" htmlFor="mr-axe-filter">
+          <span className="mr-toolbar__label">Axe affiché</span>
+          <select
+            id="mr-axe-filter"
+            value={axeFilter}
+            onChange={(e) => onAxeFilterChange(e.target.value as 'all' | Axe)}
+          >
+            <option value="all">Les quatre axes</option>
+            {AXES.map((a) => (
+              <option key={a} value={a}>
+                {AXE_META[a].title}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       <div
         className={[

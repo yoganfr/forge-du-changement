@@ -1119,21 +1119,6 @@ export default function MaturityRoadmap({
             </ul>
           </div>
         </div>
-        <label className="mr-toolbar__field" htmlFor="mr-axe-filter">
-          <span className="mr-toolbar__label">Axe affiché</span>
-          <select
-            id="mr-axe-filter"
-            value={axeFilter}
-            onChange={(e) => setAxeFilter(e.target.value as typeof axeFilter)}
-          >
-            <option value="all">Les quatre axes</option>
-            {AXES.map((a) => (
-              <option key={a} value={a}>
-                {AXE_META[a].title}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       {pciMatrix.loadError ? <p className="rcm-error">{pciMatrix.loadError}</p> : null}
@@ -1144,6 +1129,7 @@ export default function MaturityRoadmap({
         jalonsByChantier={jalonsByChantier}
         timelineColumns={roadmapTimeColumns}
         axeFilter={axeFilter}
+        onAxeFilterChange={setAxeFilter}
         readOnly={readOnly}
         projectColorById={projectColorById}
         projetNomById={projetNomById}
