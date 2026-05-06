@@ -19,6 +19,7 @@
   overflow: hidden;
 }
 
+/* Bandeau seul : rouge bordeaux léger (marque), tranche vs gris du corps du panneau */
 .mr-versions-accordion__summary {
   cursor: pointer;
   padding: var(--space-sm) var(--space-md);
@@ -26,11 +27,13 @@
   font-weight: 700;
   color: var(--theme-text);
   user-select: none;
-  background: var(--theme-bg-card);
+  background: color-mix(in srgb, var(--brand-bordeaux) 9%, var(--theme-bg-card));
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-bordeaux) 26%, var(--theme-border-soft));
+  box-shadow: var(--glass-highlight);
 }
 
 .mr-versions-accordion__summary::marker {
-  color: var(--theme-text-muted);
+  color: color-mix(in srgb, var(--brand-bordeaux) 42%, var(--theme-text-muted));
 }
 
 .mr-versions-accordion__body {
@@ -38,7 +41,6 @@
   flex-direction: column;
   gap: var(--space-md);
   padding: 0 var(--space-md) var(--space-md);
-  border-top: 1px solid var(--theme-border-soft);
   background: var(--theme-bg-card);
 }
 
@@ -275,12 +277,26 @@
   width: 100%;
   max-width: 100%;
   padding: 8px 10px;
-  border-radius: var(--ui-radius-control, 8px);
-  border: 1px solid var(--glass-border, var(--theme-border-subtle));
-  background: var(--theme-bg-card);
+  border-radius: var(--ui-radius-badge);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 32%, var(--theme-dashboard-card-border));
+  background: color-mix(in srgb, var(--theme-accent) 11%, var(--theme-bg-raised));
   color: var(--theme-text);
   font-family: var(--font-body);
   font-size: var(--text-sm, 0.95rem);
+  font-weight: 600;
+  box-shadow: var(--glass-highlight);
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+
+.mr-snapshot-toolbar__version select:hover {
+  border-color: color-mix(in srgb, var(--theme-accent) 48%, var(--theme-dashboard-card-border));
+  background: color-mix(in srgb, var(--theme-accent) 14%, var(--theme-bg-raised));
+}
+
+.mr-snapshot-toolbar__version select:focus-visible {
+  outline: none;
+  border-color: var(--theme-accent);
+  box-shadow: var(--ui-focus-ring), var(--glass-highlight);
 }
 
 .mr-snapshot-toolbar__hint {
@@ -932,7 +948,7 @@
   border-bottom: 1px solid var(--theme-border-soft);
   border-radius: var(--radius-sm);
   box-sizing: border-box;
-  transition: background var(--motion-fast), box-shadow var(--motion-fast);
+  transition: background var(--motion-fast);
 }
 
 .mr-recent-snapshots__list > li:last-child .mr-recent-snapshots__row {
@@ -940,14 +956,12 @@
   padding-bottom: 0;
 }
 
-/* Survol / ligne active : accent marque lisible (pas gris sur gris) */
 .mr-recent-snapshots__row:hover {
-  background: color-mix(in srgb, var(--theme-accent) 14%, var(--theme-bg-raised));
+  background: color-mix(in srgb, var(--theme-accent) 8%, var(--theme-bg-raised));
 }
 
 .mr-recent-snapshots__row[aria-current='true'] {
-  background: color-mix(in srgb, var(--theme-accent) 20%, var(--theme-bg-raised));
-  box-shadow: inset 3px 0 0 var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 11%, var(--theme-bg-raised));
 }
 
 .mr-recent-snapshots__label {
@@ -990,14 +1004,7 @@
 .mr-recent-snapshots__row:focus-visible {
   outline: none;
   border-radius: var(--ui-radius-control);
-}
-
-.mr-recent-snapshots__row:not([aria-current='true']):focus-visible {
   box-shadow: var(--ui-focus-ring);
-}
-
-.mr-recent-snapshots__row[aria-current='true']:focus-visible {
-  box-shadow: inset 3px 0 0 var(--theme-accent), var(--ui-focus-ring);
 }
 
 /* Étroits : empiler sans casser l’alignement date/statut sur une 2ᵉ ligne */
