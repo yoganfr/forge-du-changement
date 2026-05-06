@@ -54,8 +54,6 @@ import {
 import type { RoadmapSnapshot } from './lib/api/roadmapSnapshots'
 import './MaturityRoadmap.css'
 
-const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
-
 function snapshotStatusLabelFr(status: string): string {
   switch (status) {
     case 'draft':
