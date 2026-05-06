@@ -20,9 +20,12 @@ Ensure consistent decisions by reading core business and process documents first
 
 ## Mandatory documents (always read)
 
-1. `docs/# Règles métier — Maturity Roadmap.md`
-2. `docs/git-commit-conventions.md`
-3. `docs/maturity-roadmap-synthese-evolutions-produit.md`
+Read in this order:
+
+1. `docs/doxa-metier-la-forge-du-changement.md` — single narrative spine (method continuum, CODIR / N‑1 reviewers, glossary); short; does not replace detailed rules below.
+2. `docs/# Règles métier — Maturity Roadmap.md`
+3. `docs/git-commit-conventions.md`
+4. `docs/maturity-roadmap-synthese-evolutions-produit.md`
 
 ## Conditional documents (read when relevant)
 
@@ -68,9 +71,12 @@ Garantir des decisions coherentes en lisant d'abord les documents socles metier 
 
 ### Documents obligatoires (toujours lire)
 
-1. `docs/# Règles métier — Maturity Roadmap.md`
-2. `docs/git-commit-conventions.md`
-3. `docs/maturity-roadmap-synthese-evolutions-produit.md`
+Ordre recommande :
+
+1. `docs/doxa-metier-la-forge-du-changement.md` — fil narratif unique (continuum methode, organisation CODIR / reviewers N-1, glossaire) ; court ; ne remplace pas les regles detaillees ci-dessous.
+2. `docs/# Règles métier — Maturity Roadmap.md`
+3. `docs/git-commit-conventions.md`
+4. `docs/maturity-roadmap-synthese-evolutions-produit.md`
 
 ### Documents conditionnels (lire si pertinent)
 

@@ -23,11 +23,12 @@ Source de verite vivante pour la liste des composants, tables et modules : [docs
 
 ## 2. Lecture documentaire obligatoire
 
-A **chaque demande utilisateur**, lire les 3 docs socles avant toute action :
+A **chaque demande utilisateur**, lire les docs socles avant toute action (ordre recommande) :
 
-1. [docs/# Règles métier — Maturity Roadmap.md](docs/#%20Règles%20métier%20—%20Maturity%20Roadmap.md) — regles metier du module coeur (jalons, axes, RACI, dialogue structure).
-2. [docs/git-commit-conventions.md](docs/git-commit-conventions.md) — format `type(scope): action` + trailer `Made-with`.
-3. [docs/maturity-roadmap-synthese-evolutions-produit.md](docs/maturity-roadmap-synthese-evolutions-produit.md) — roadmap produit Phases A a G + etat technique du depot.
+1. [docs/doxa-metier-la-forge-du-changement.md](docs/doxa-metier-la-forge-du-changement.md) — **doxa metier** : continuum methode, organisation CODIR / reviewers N-1, glossaire ; lecture courte pour caler le sens global (ne remplace pas le detail des docs suivantes).
+2. [docs/# Règles métier — Maturity Roadmap.md](docs/#%20Règles%20métier%20—%20Maturity%20Roadmap.md) — regles metier du module coeur (jalons, axes, RACI, dialogue structure).
+3. [docs/git-commit-conventions.md](docs/git-commit-conventions.md) — format `type(scope): action` + trailer `Made-with`.
+4. [docs/maturity-roadmap-synthese-evolutions-produit.md](docs/maturity-roadmap-synthese-evolutions-produit.md) — roadmap produit Phases A a G + etat technique du depot.
 
 ## 3. Lecture conditionnelle selon le type de demande
 
