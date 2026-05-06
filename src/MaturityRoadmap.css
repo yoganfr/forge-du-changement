@@ -19,21 +19,20 @@
   overflow: hidden;
 }
 
-/* Bandeau seul : rouge bordeaux léger (marque), tranche vs gris du corps du panneau */
+/* Bandeau titre : gris neutre (tranche sans teinte chaude) + libellé gris foncé */
 .mr-versions-accordion__summary {
   cursor: pointer;
   padding: var(--space-sm) var(--space-md);
   font-size: var(--text-sm);
   font-weight: 700;
-  color: var(--theme-text);
+  color: color-mix(in srgb, var(--theme-text) 78%, var(--theme-text-muted));
   user-select: none;
-  background: color-mix(in srgb, var(--brand-bordeaux) 9%, var(--theme-bg-card));
-  border-bottom: 1px solid color-mix(in srgb, var(--brand-bordeaux) 26%, var(--theme-border-soft));
-  box-shadow: var(--glass-highlight);
+  background: color-mix(in srgb, var(--theme-text) 10%, var(--theme-bg-card));
+  border-bottom: 1px solid var(--theme-border-soft);
 }
 
 .mr-versions-accordion__summary::marker {
-  color: color-mix(in srgb, var(--brand-bordeaux) 42%, var(--theme-text-muted));
+  color: var(--theme-text-muted);
 }
 
 .mr-versions-accordion__body {
@@ -268,35 +267,28 @@
 
 .mr-snapshot-toolbar__version span {
   font-size: var(--text-xs, 0.75rem);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--theme-text-muted);
 }
 
+/* Même recette que « Axe affiché » (.mr-toolbar select) : pilule grise neutre */
 .mr-snapshot-toolbar__version select {
+  min-width: 0;
   width: 100%;
   max-width: 100%;
   padding: 8px 10px;
   border-radius: var(--ui-radius-badge);
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 32%, var(--theme-dashboard-card-border));
-  background: color-mix(in srgb, var(--theme-accent) 11%, var(--theme-bg-raised));
+  border: 1px solid var(--glass-border);
+  background: var(--theme-bg-card);
   color: var(--theme-text);
   font-family: var(--font-body);
   font-size: var(--text-sm, 0.95rem);
-  font-weight: 600;
-  box-shadow: var(--glass-highlight);
-  transition: border-color var(--motion-fast), background var(--motion-fast);
-}
-
-.mr-snapshot-toolbar__version select:hover {
-  border-color: color-mix(in srgb, var(--theme-accent) 48%, var(--theme-dashboard-card-border));
-  background: color-mix(in srgb, var(--theme-accent) 14%, var(--theme-bg-raised));
 }
 
 .mr-snapshot-toolbar__version select:focus-visible {
   outline: none;
-  border-color: var(--theme-accent);
-  box-shadow: var(--ui-focus-ring), var(--glass-highlight);
+  box-shadow: var(--ui-focus-ring);
 }
 
 .mr-snapshot-toolbar__hint {
@@ -377,11 +369,16 @@
   width: 100%;
   max-width: 320px;
   padding: 8px 10px;
-  border-radius: var(--ui-radius-control);
+  border-radius: var(--ui-radius-badge);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-card);
   color: var(--theme-text);
   font-family: var(--font-body);
+}
+
+.mr-toolbar select:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
 }
 
 .mr-toolbar__projects-panel {
