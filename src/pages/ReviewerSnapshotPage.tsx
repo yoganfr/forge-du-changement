@@ -30,13 +30,17 @@ type Selection =
 function deadlineUrgency(
   deadlineIso: string | null,
   now: number,
-  snapshotStartIso: string,
+  snapshotStartIso: string | null | undefined,
 ): 'overdue' | 'green' | 'orange' | 'red' | 'none' {
   if (!deadlineIso) return 'none'
   const end = Date.parse(deadlineIso)
-  const start = Date.parse(snapshotStartIso)
-  if (!Number.isFinite(end) || !Number.isFinite(start)) return 'none'
+  if (!Number.isFinite(end)) return 'none'
   if (now > end) return 'overdue'
+
+  const startTrim = snapshotStartIso?.trim() ?? ''
+  if (!startTrim) return 'none'
+  const start = Date.parse(startTrim)
+  if (!Number.isFinite(start)) return 'none'
   const total = end - start
   if (total <= 0) return 'red'
   const ratio = (end - now) / total
@@ -90,10 +94,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
   const reviewerStatus = reviewerRow?.status ?? null
   const reviewLocked = reviewerStatus === 'submitted' || reviewerStatus === 'closed'
 
-  const urgency = useMemo(
-    () => deadlineUrgency(deadline, nowTs, frozenAt || new Date(0).toISOString()),
-    [deadline, nowTs, frozenAt],
-  )
+  const urgency = useMemo(() => deadlineUrgency(deadline, nowTs, frozenAt || null), [deadline, nowTs, frozenAt])
 
   const feedbackCounts = useMemo(() => {
     let reactions = 0
