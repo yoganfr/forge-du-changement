@@ -277,7 +277,8 @@
   min-width: 0;
   width: 100%;
   max-width: 100%;
-  padding: 8px 10px;
+  padding-block: var(--space-sm);
+  padding-inline: var(--space-md);
   border-radius: var(--ui-radius-badge);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-card);
@@ -397,7 +398,8 @@
 /* Base commune des <select> pilule (toolbar si besoin + filtre axe grille) */
 .mr-toolbar select,
 .mr-tgrid-axis-filter select {
-  padding: 8px 10px;
+  padding-block: var(--space-sm);
+  padding-inline: var(--space-md);
   border-radius: var(--ui-radius-badge);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-card);
