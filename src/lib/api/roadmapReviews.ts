@@ -68,19 +68,34 @@ export type ReviewerWorkspaceAssignment = {
   frozen_at: string
   reviewer_status: ReviewerStatus
   submitted_at: string | null
+  /** Renseigné si `viewerIsPlatformSuperadmin` : ligne reviewer distincte par assignation. */
+  reviewer_user_id?: string
+  reviewer_email?: string | null
+  reviewer_display_name?: string | null
+}
+
+export type ListReviewerAssignmentsOptions = {
+  /**
+   * Super-admin plateforme (REF-7b.2 §6.4) : liste toutes les assignations reviewers du workspace,
+   * pas seulement celles du compte courant — lecture transverse « partie Manager ».
+   */
+  viewerIsPlatformSuperadmin?: boolean
 }
 
 export async function listReviewerAssignmentsForWorkspace(
   workspaceId: string,
   userId: string,
+  options?: ListReviewerAssignmentsOptions,
 ): Promise<ReviewerWorkspaceAssignment[]> {
-  const { data, error } = await supabase
-    .from('roadmap_snapshot_reviewers')
-    .select(
-      `
+  const viewerIsPlatformSuperadmin = options?.viewerIsPlatformSuperadmin === true
+
+  let q = supabase.from('roadmap_snapshot_reviewers').select(
+    `
+      user_id,
       status,
       submitted_at,
       snapshot_id,
+      users!roadmap_snapshot_reviewers_user_id_fkey ( email, prenom, nom ),
       roadmap_snapshots (
         id,
         workspace_id,
@@ -90,8 +105,12 @@ export async function listReviewerAssignmentsForWorkspace(
         frozen_at
       )
     `,
-    )
-    .eq('user_id', userId)
+  )
+  if (!viewerIsPlatformSuperadmin) {
+    q = q.eq('user_id', userId)
+  }
+
+  const { data, error } = await q
 
   if (error) throw error
 
@@ -104,10 +123,14 @@ export async function listReviewerAssignmentsForWorkspace(
     frozen_at: string
   }
 
+  type UserRow = { email: string | null; prenom: string | null; nom: string | null }
+
   type Row = {
+    user_id: string
     status: ReviewerStatus
     submitted_at: string | null
     snapshot_id: string
+    users: UserRow | UserRow[] | null
     roadmap_snapshots: SnapRow | SnapRow[] | null
   }
 
@@ -117,7 +140,13 @@ export async function listReviewerAssignmentsForWorkspace(
     const raw = r.roadmap_snapshots
     const snap = Array.isArray(raw) ? raw[0] ?? null : raw
     if (!snap || snap.workspace_id !== workspaceId) continue
-    out.push({
+
+    const uRaw = r.users
+    const u = Array.isArray(uRaw) ? uRaw[0] ?? null : uRaw
+    const display =
+      [u?.prenom, u?.nom].filter(Boolean).join(' ').trim() || u?.email?.trim() || null
+
+    const base: ReviewerWorkspaceAssignment = {
       snapshot_id: snap.id,
       snapshot_label: snap.label,
       snapshot_status: snap.status,
@@ -125,7 +154,13 @@ export async function listReviewerAssignmentsForWorkspace(
       frozen_at: snap.frozen_at,
       reviewer_status: r.status,
       submitted_at: r.submitted_at,
-    })
+    }
+    if (viewerIsPlatformSuperadmin) {
+      base.reviewer_user_id = r.user_id
+      base.reviewer_email = u?.email ?? null
+      base.reviewer_display_name = display
+    }
+    out.push(base)
   }
   out.sort((a, b) => Date.parse(b.frozen_at) - Date.parse(a.frozen_at))
   return out

@@ -15,11 +15,16 @@ import type { TimelineColumn } from '../lib/roadmapTimelineColumns'
 import { assignRoadmapProjectColors } from '../lib/projectRoadmapColor'
 import { buildChantiersAndJalonsFromSnapshotItems } from '../lib/reviewerSnapshotRoadmap'
 import type { Axe, Chantier, Jalon } from '../lib/types'
-import { getCurrentUser } from '../lib/auth'
+import { getCurrentUser, isPlatformSuperadmin } from '../lib/auth'
 import '../MaturityRoadmap.css'
+
+const REVIEWER_ROUTE_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 type Props = {
   snapshotId: string
+  /** Super-admin : ouvrir la revue « comme » ce reviewer (`?reviewer=` dans l’URL). */
+  observerReviewerUserId?: string | null
   onExit: () => void
 }
 
@@ -51,7 +56,11 @@ function deadlineUrgency(
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
-export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
+export default function ReviewerSnapshotPage({
+  snapshotId,
+  observerReviewerUserId = null,
+  onExit,
+}: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [label, setLabel] = useState('')
@@ -91,8 +100,11 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
     return assignRoadmapProjectColors(ids)
   }, [chantiers])
 
+  const [observerReadOnly, setObserverReadOnly] = useState(false)
+
   const reviewerStatus = reviewerRow?.status ?? null
   const reviewLocked = reviewerStatus === 'submitted' || reviewerStatus === 'closed'
+  const editsDisabled = reviewLocked || observerReadOnly
 
   const urgency = useMemo(() => deadlineUrgency(deadline, nowTs, frozenAt || null), [deadline, nowTs, frozenAt])
 
@@ -119,17 +131,41 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
     void (async () => {
       setLoading(true)
       setError(null)
+      setObserverReadOnly(false)
       try {
         const me = await getCurrentUser()
         if (!me) throw new Error('Utilisateur introuvable')
+        const superAdmin = await isPlatformSuperadmin()
+        let targetReviewerId = me.id
+        const rawObserver = observerReviewerUserId?.trim() ?? ''
+        if (rawObserver) {
+          if (!REVIEWER_ROUTE_UUID_RE.test(rawObserver)) {
+            throw new Error('Paramètre reviewer invalide.')
+          }
+          if (!superAdmin) {
+            /* Ignore toute tentative de contournement par query string. */
+          } else {
+            targetReviewerId = rawObserver
+          }
+        }
+
         const [snapshot, snapItems, assignment] = await Promise.all([
           getRoadmapSnapshotById(snapshotId),
           listRoadmapSnapshotItems(snapshotId),
-          getReviewerRowForUser(snapshotId, me.id),
+          getReviewerRowForUser(snapshotId, targetReviewerId),
         ])
         if (cancelled) return
         if (!snapshot) throw new Error('Snapshot introuvable')
-        if (!assignment) throw new Error("Vous n'êtes pas invité sur cette revue.")
+        if (!assignment) {
+          if (superAdmin) {
+            throw new Error(
+              'Aucune assignation reviewer pour ce compte sur ce snapshot. Utilisez le hub Review Roadmap ou un lien avec ?reviewer=.',
+            )
+          }
+          throw new Error("Vous n'êtes pas invité sur cette revue.")
+        }
+
+        setObserverReadOnly(superAdmin && targetReviewerId !== me.id)
 
         const { chantiers: chs, jalonsByChantier: jb } = buildChantiersAndJalonsFromSnapshotItems(snapItems)
         const projetIds = [...new Set(chs.map((c) => c.projet_id).filter(Boolean))]
@@ -145,7 +181,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
           }),
         )
 
-        setReviewerUserId(me.id)
+        setReviewerUserId(targetReviewerId)
         setReviewerRow(assignment)
         setLabel(snapshot.label)
         setFrozenAt(snapshot.frozen_at)
@@ -154,7 +190,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
         setJalonsByChantier(jb)
         setProjetNomById(noms)
 
-        const myFb = await listReviewerFeedbacks(snapshotId, me.id)
+        const myFb = await listReviewerFeedbacks(snapshotId, targetReviewerId)
         if (!cancelled) setFeedbacks(myFb)
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Erreur chargement revue'
@@ -166,7 +202,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
     return () => {
       cancelled = true
     }
-  }, [snapshotId])
+  }, [snapshotId, observerReviewerUserId])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTs(Date.now()), 60_000)
@@ -200,7 +236,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
   )
 
   async function handleSaveSidebarFeedback() {
-    if (!reviewerUserId || !selection || reviewLocked) return
+    if (!reviewerUserId || !selection || editsDisabled) return
     setFbSaving(true)
     try {
       const targetType = selection.kind === 'jalon' ? 'jalon' : 'chantier'
@@ -260,7 +296,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
   }
 
   async function handleSubmitPropositionChantier() {
-    if (!reviewerUserId || reviewLocked) return
+    if (!reviewerUserId || editsDisabled) return
     const pid = propProjetId.trim()
     const titre = propTitre.trim()
     const c = propConstat.trim()
@@ -297,7 +333,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
   }
 
   async function confirmSubmitReview() {
-    if (!reviewerUserId) return
+    if (!reviewerUserId || observerReadOnly) return
     setSubmitting(true)
     try {
       await submitReviewerReview(snapshotId, reviewerUserId)
@@ -352,6 +388,23 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
         <h1 className="mr-title">REVUE ROADMAP · {label}</h1>
       </header>
 
+      {observerReadOnly ? (
+        <p
+          className="mr-muted"
+          style={{
+            margin: '0 0 1rem',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-md, 8px)',
+            border: '1px solid var(--theme-border-subtle, rgba(0,0,0,.12))',
+            background: 'var(--theme-bg-elevated, rgba(0,0,0,.03))',
+            maxWidth: '52rem',
+          }}
+        >
+          <strong>Super-admin :</strong> lecture de la revue telle que saisie par le reviewer désigné — pas
+          d’édition ni de soumission à sa place (REF-7b.2 §6.4).
+        </p>
+      ) : null}
+
       <div className={`reviewer-deadline-band ${bandClass}`} role="status">
         <div>
           <strong>Deadline</strong>{' '}
@@ -368,10 +421,10 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
         <button
           type="button"
           className="mr-btn-primary"
-          disabled={reviewLocked || submitting}
+          disabled={editsDisabled || submitting}
           onClick={() => setSubmitModalOpen(true)}
         >
-          {reviewLocked ? 'Revue soumise' : 'Soumettre ma review'}
+          {reviewLocked ? 'Revue soumise' : observerReadOnly ? 'Lecture seule' : 'Soumettre ma review'}
         </button>
       </div>
 
@@ -399,7 +452,9 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
         </div>
 
         <aside className="reviewer-layout__sidebar" aria-label="Commentaires reviewer">
-          <h2 className="reviewer-section-title">Votre commentaire</h2>
+          <h2 className="reviewer-section-title">
+            {observerReadOnly ? 'Commentaires du reviewer (lecture seule)' : 'Votre commentaire'}
+          </h2>
           {!selection ? (
             <p className="mr-muted">Sélectionnez un chantier ou un jalon dans la grille.</p>
           ) : (
@@ -421,7 +476,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
                 <select
                   id="fb-kind"
                   value={fbKind}
-                  disabled={reviewLocked}
+                  disabled={editsDisabled}
                   onChange={(e) => setFbKind(e.target.value as 'reaction' | 'decision')}
                 >
                   <option value="reaction">Réaction</option>
@@ -434,7 +489,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
                   <textarea
                     id="fb-react"
                     value={fbReactionText}
-                    disabled={reviewLocked}
+                    disabled={editsDisabled}
                     onChange={(e) => setFbReactionText(e.target.value)}
                     rows={4}
                   />
@@ -446,7 +501,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
                     <textarea
                       id="fb-constat"
                       value={fbConstat}
-                      disabled={reviewLocked}
+                      disabled={editsDisabled}
                       onChange={(e) => setFbConstat(e.target.value)}
                       rows={3}
                     />
@@ -456,7 +511,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
                     <textarea
                       id="fb-prop"
                       value={fbProposition}
-                      disabled={reviewLocked}
+                      disabled={editsDisabled}
                       onChange={(e) => setFbProposition(e.target.value)}
                       rows={3}
                     />
@@ -466,7 +521,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
                     <textarea
                       id="fb-ben"
                       value={fbBenefice}
-                      disabled={reviewLocked}
+                      disabled={editsDisabled}
                       onChange={(e) => setFbBenefice(e.target.value)}
                       rows={3}
                     />
@@ -476,7 +531,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
               <button
                 type="button"
                 className="mr-btn-primary"
-                disabled={reviewLocked || fbSaving}
+                disabled={editsDisabled || fbSaving}
                 onClick={() => void handleSaveSidebarFeedback()}
               >
                 {fbSaving ? 'Enregistrement…' : 'Enregistrer le feedback'}
@@ -497,7 +552,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
             <select
               id="prop-projet"
               value={propProjetId}
-              disabled={reviewLocked}
+              disabled={editsDisabled}
               onChange={(e) => setPropProjetId(e.target.value)}
             >
               <option value="">— Choisir —</option>
@@ -513,7 +568,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
             <select
               id="prop-axe"
               value={propAxe}
-              disabled={reviewLocked}
+              disabled={editsDisabled}
               onChange={(e) => setPropAxe(e.target.value as Axe)}
             >
               {AXES.map((a) => (
@@ -528,7 +583,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
             <input
               id="prop-titre"
               value={propTitre}
-              disabled={reviewLocked}
+              disabled={editsDisabled}
               onChange={(e) => setPropTitre(e.target.value)}
             />
           </div>
@@ -537,7 +592,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
             <textarea
               id="prop-c"
               value={propConstat}
-              disabled={reviewLocked}
+              disabled={editsDisabled}
               onChange={(e) => setPropConstat(e.target.value)}
               rows={2}
             />
@@ -547,7 +602,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
             <textarea
               id="prop-p"
               value={propProposition}
-              disabled={reviewLocked}
+              disabled={editsDisabled}
               onChange={(e) => setPropProposition(e.target.value)}
               rows={2}
             />
@@ -557,7 +612,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
             <textarea
               id="prop-b"
               value={propBenefice}
-              disabled={reviewLocked}
+              disabled={editsDisabled}
               onChange={(e) => setPropBenefice(e.target.value)}
               rows={2}
             />
@@ -565,7 +620,7 @@ export default function ReviewerSnapshotPage({ snapshotId, onExit }: Props) {
           <button
             type="button"
             className="mr-btn-primary"
-            disabled={reviewLocked || propSaving}
+            disabled={editsDisabled || propSaving}
             onClick={() => void handleSubmitPropositionChantier()}
           >
             {propSaving ? 'Envoi…' : 'Soumettre au CODIR'}

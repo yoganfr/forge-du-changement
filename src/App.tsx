@@ -734,12 +734,21 @@ function ModulePlaceholder({
   )
 }
 
+const REVIEW_ROUTE_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/** Route `/review/:snapshotId` et option super-admin `?reviewer=:userId` (REF-7b.2 §6.4). */
+function parseReviewRoute(): { snapshotId: string | null; observerReviewerId: string | null } {
+  const path = window.location.pathname
+  const m = path.match(/^\/review\/([0-9a-f-]{16,})$/i)
+  const snapshotId = m?.[1] ?? null
+  if (!snapshotId) return { snapshotId: null, observerReviewerId: null }
+  const raw = new URLSearchParams(window.location.search).get('reviewer')
+  const observerReviewerId = raw && REVIEW_ROUTE_UUID_RE.test(raw) ? raw : null
+  return { snapshotId, observerReviewerId }
+}
+
 function App() {
-  const readReviewSnapshotFromUrl = useCallback((): string | null => {
-    const path = window.location.pathname
-    const m = path.match(/^\/review\/([0-9a-f-]{16,})$/i)
-    return m?.[1] ?? null
-  }, [])
   const [authLoading, setAuthLoading] = useState(true)
   const [authUser, setAuthUser] = useState<User | null>(null)
   const [loginForcedMessage, setLoginForcedMessage] = useState<string | null>(null)
@@ -785,11 +794,16 @@ function App() {
   const [serverAccess, setServerAccess] = useState<ServerAccess | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [mfaEnrollmentRequired, setMfaEnrollmentRequired] = useState(false)
-  const [reviewSnapshotId, setReviewSnapshotId] = useState<string | null>(() => {
-    const path = window.location.pathname
-    const m = path.match(/^\/review\/([0-9a-f-]{16,})$/i)
-    return m?.[1] ?? null
-  })
+  const [reviewSnapshotId, setReviewSnapshotId] = useState<string | null>(() => parseReviewRoute().snapshotId)
+  const [reviewObserverReviewerId, setReviewObserverReviewerId] = useState<string | null>(
+    () => parseReviewRoute().observerReviewerId,
+  )
+
+  const syncReviewRouteFromUrl = useCallback(() => {
+    const r = parseReviewRoute()
+    setReviewSnapshotId(r.snapshotId)
+    setReviewObserverReviewerId(r.observerReviewerId)
+  }, [])
 
   const currentUserRole: AppUserRole =
     serverAccess?.source === 'superadmin'
@@ -884,9 +898,13 @@ function App() {
     [exitRoadmap],
   )
 
-  const openReviewSnapshot = useCallback((snapshotId: string) => {
+  const openReviewSnapshot = useCallback((snapshotId: string, opts?: { reviewerUserId?: string }) => {
     setReviewSnapshotId(snapshotId)
-    window.history.pushState({}, '', `/review/${snapshotId}`)
+    const rid =
+      opts?.reviewerUserId && REVIEW_ROUTE_UUID_RE.test(opts.reviewerUserId) ? opts.reviewerUserId : null
+    setReviewObserverReviewerId(rid)
+    const qs = rid ? `?reviewer=${encodeURIComponent(rid)}` : ''
+    window.history.pushState({}, '', `/review/${snapshotId}${qs}`)
   }, [])
 
   const closeMobileNav = useCallback(() => {
@@ -925,10 +943,10 @@ function App() {
   }, [mobileNavOpen])
 
   useEffect(() => {
-    const onPop = () => setReviewSnapshotId(readReviewSnapshotFromUrl())
+    const onPop = () => syncReviewRouteFromUrl()
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
-  }, [readReviewSnapshotFromUrl])
+  }, [syncReviewRouteFromUrl])
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -1750,9 +1768,11 @@ function App() {
             {reviewSnapshotId ? (
               <ReviewerSnapshotPage
                 snapshotId={reviewSnapshotId}
+                observerReviewerUserId={reviewObserverReviewerId}
                 onExit={() => {
                   window.history.pushState({}, '', '/')
                   setReviewSnapshotId(null)
+                  setReviewObserverReviewerId(null)
                 }}
               />
             ) : maturityRoadmapOpen && workspaceId ? (
@@ -1822,6 +1842,7 @@ function App() {
               <ReviewRoadmapHubPage
                 workspaceId={workspaceId}
                 currentAppUserId={currentAppUserId}
+                platformSuperadmin={platformSuperadmin}
                 onOpenReview={openReviewSnapshot}
               />
             ) : normalizedActiveNav === 'feedbacks' ? (

@@ -2,7 +2,7 @@
 
 *Document de référence pour le module **REF-7b.2 : Schéma revue & cycle feedback roadmap**. Spécifie les règles métier, workflow et permissions du cycle de revue collectif (reviewer → propositions → arbitrage CODIR).*
 
-Dernière mise à jour : **5 mai 2026**, 22 h 10 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 20 h 58 (Europe/Paris)
 
 ---
 
@@ -245,6 +245,7 @@ CODIR owner voit **tous les feedbacks du snapshot** (pas d'isolation).
 
 - **Accès total** : lecture/écriture/suppression
 - **Peut supprimer snapshot** même in_review (cascade delete feedbacks)
+- **Lecture transverse produit** : même parcours que les autres rôles, avec visibilité élargie — en particulier le hub **Review Roadmap** liste **toutes** les assignations reviewers du workspace (pas seulement la sienne), et l’ouverture d’une revue « comme » un reviewer donné se fait via l’URL `/review/:snapshotId?reviewer=:userId` (lecture des feedbacks de ce compte ; pas d’édition ni de soumission à sa place côté UI). La **partie CODIR** (roadmap, arbitrage, snapshots) reste accessible comme pour un consultant sur l’espace.
 
 ---
 

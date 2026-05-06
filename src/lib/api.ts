@@ -84,6 +84,7 @@ export {
 } from './api/roadmapReviews'
 export type {
   CodirDecisionStatus,
+  ListReviewerAssignmentsOptions,
   ReviewKind,
   ReviewTargetType,
   ReviewerStatus,
