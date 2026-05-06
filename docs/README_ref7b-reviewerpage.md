@@ -2,7 +2,7 @@
 
 **Point d'entrée unique pour une IA qui commence une session sur REF-7b.2 (backend) ou REF-7b.5 (frontend).**
 
-Dernière mise à jour : **6 mai 2026**, 01 h 05 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 20 h 25 (Europe/Paris)
 
 ---
 
@@ -17,9 +17,9 @@ Dernière mise à jour : **6 mai 2026**, 01 h 05 (Europe/Paris)
 - Partie 3 : Formulaire pour proposer nouveaux chantiers
 - Backend : 4 tables Supabase + 5 API routes + RLS policies
 
-**Où** : `/src/pages/ReviewerSnapshotPage.tsx` (existent, à refactoriser)
+**Où** : `/src/pages/ReviewerSnapshotPage.tsx` (V1 grille + panneau + Partie 3 branchés)
 
-**État** : ✅ Clarifications complètes + plans rédigés → **Prêt pour implémentation**
+**État** : 🚧 **Implémentation démarrée** — UI reviewer alignée architecture 6 mai ; **RLS / migration** à finaliser (voir plan 7b.2)
 
 ---
 
@@ -29,7 +29,7 @@ Dernière mise à jour : **6 mai 2026**, 01 h 05 (Europe/Paris)
 
 **Ce qui existe** :
 - ✅ Règles métier complètes : [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md)
-- ✅ Plan implémentation : [`.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md`](.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md)
+- ✅ Plan implémentation : [`docs/plan-ref-7b.2-schema-revue.md`](docs/plan-ref-7b.2-schema-revue.md)
 
 **À faire** (6 todos du plan) :
 1. Migration Supabase (DDL tables + indexes)
@@ -41,7 +41,7 @@ Dernière mise à jour : **6 mai 2026**, 01 h 05 (Europe/Paris)
 
 **Fichiers clés** :
 - `docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md` — À lire d'abord
-- `.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md` — 6 todos structurés
+- `docs/plan-ref-7b.2-schema-revue.md` — 6 todos structurés
 
 ---
 
@@ -49,7 +49,7 @@ Dernière mise à jour : **6 mai 2026**, 01 h 05 (Europe/Paris)
 
 **Ce qui existe** :
 - ✅ Architecture UX clarifiée : [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md)
-- ✅ Plan implémentation : [`.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md`](.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md)
+- ✅ Plan implémentation : [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](docs/plan-ref-7b.5-reviewerpage-frontend.md)
 - ⚠️ Code existant (incomplet) : `src/pages/ReviewerSnapshotPage.tsx`
 
 **À faire** (8 todos du plan) :
@@ -63,7 +63,7 @@ Dernière mise à jour : **6 mai 2026**, 01 h 05 (Europe/Paris)
 
 **Fichiers clés** :
 - `docs/architecture-ux-reviewerpage-ref7b5.md` — À lire d'abord
-- `.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md` — 8 todos structurés
+- `docs/plan-ref-7b.5-reviewerpage-frontend.md` — 8 todos structurés
 - `src/pages/ReviewerSnapshotPage.tsx` — Cible de refactorisation
 
 ---
@@ -128,22 +128,22 @@ Dernière mise à jour : **6 mai 2026**, 01 h 05 (Europe/Paris)
 **Étape 1** : Lis ce fichier en entier (vous le faites) ✓  
 **Étape 2** : Choisis backend ou frontend  
 **Étape 3** : Ouvre la doc spécialisée (Règles métier ou Architecture UX)  
-**Étape 4** : Ouvre le plan correspondant (dans `.cursor/plans/`)  
+**Étape 4** : Ouvre le plan correspondant (dans `docs/plan-ref-7b.*`)  
 **Étape 5** : Suit les todos du plan  
 
 ### Je dois implémenter le backend (REF-7b.2)
 
 **Chemin** :
 1. Lire [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) (20 min)
-2. Consulter [`.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md`](.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md) (5 min)
+2. Consulter [`docs/plan-ref-7b.2-schema-revue.md`](docs/plan-ref-7b.2-schema-revue.md) (5 min)
 3. Commencer Todo 1 : Migration Supabase
 
 ### Je dois implémenter le frontend (REF-7b.5)
 
 **Chemin** :
 1. Lire [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) (20 min)
-2. Consulter [`.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md`](.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md) (5 min)
-3. Commencer Todo 1 : Refactor RoadmapTimelineGrid
+2. Consulter [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](docs/plan-ref-7b.5-reviewerpage-frontend.md) (5 min)
+3. Enchaîner sur les todos « restants » du plan (PCI figé, responsive drawer, badges)
 
 ### Je dois faire les deux en parallèle
 
@@ -162,19 +162,18 @@ Dernière mise à jour : **6 mai 2026**, 01 h 05 (Europe/Paris)
 - `docs/architecture-ux-reviewerpage-ref7b5.md` (architecture UX)
 - `docs/backlog.md` (REF-7b.2 ligne 135, REF-7b.5 ligne 138)
 
-### Plans (locaux)
-- `.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md` (backend)
-- `.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md` (frontend)
+### Plans (versionnés dans `docs/`)
+- `docs/plan-ref-7b.2-schema-revue.md` (backend)
+- `docs/plan-ref-7b.5-reviewerpage-frontend.md` (frontend)
 
-### Code (à implémenter)
-- `src/pages/ReviewerSnapshotPage.tsx` (cible refactorisation)
-- `src/components/ReviewerRoadmapGrid.tsx` (à créer)
-- `src/components/CommentsPanel.tsx` (à créer)
-- `src/components/PropositionChantierForm.tsx` (à créer)
-- `src/lib/api/reviewer.ts` (à créer, API client)
+### Code
+- `src/pages/ReviewerSnapshotPage.tsx` (V1 : grille + panneau + Partie 3)
+- `src/lib/reviewerSnapshotRoadmap.ts` (hydratation chantiers/jalons depuis items snapshot)
+- `src/lib/api/roadmapReviews.ts` (client Supabase reviewers + feedbacks)
+- `src/RoadmapTimelineGrid.tsx` (clic chantier possible en lecture seule pour la revue)
 
-### Migrations Supabase (à créer)
-- `supabase/migrations/XXXXXXX_create_reviewer_tables.sql`
+### SQL Supabase (référence déploiement)
+- `docs/supabase-roadmap-review-cycle.sql`
 
 ---
 
@@ -208,9 +207,9 @@ Voir [`docs/git-commit-conventions.md`](docs/git-commit-conventions.md) pour dé
 | Workflow de planification | ✅ Documentation | [`docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md`](AI-AGENT-FEATURE-PLANNING-WORKFLOW.md) |
 | Règles métier | ✅ Yogan + AI | [`Règles métier — REF-7b.2...`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) |
 | Architecture UX | ✅ Yogan + AI | [`architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) |
-| Plan backend | ✅ AI | [`.cursor/plans/ref-7b.2...`](.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md) |
-| Plan frontend | ✅ AI | [`.cursor/plans/ref-7b.5...`](.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md) |
-| Implémentation | ⏳ À faire | src/ + supabase/ |
+| Plan backend | ✅ AI | [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) |
+| Plan frontend | ✅ AI | [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md) |
+| Implémentation | 🚧 En cours | `ReviewerSnapshotPage`, `roadmapReviews.ts`, SQL doc |
 
 ---
 
@@ -220,8 +219,8 @@ Voir [`docs/git-commit-conventions.md`](docs/git-commit-conventions.md) pour dé
 |--------|---------|
 | Comprendre le métier | [`Règles métier — REF-7b.2...`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) |
 | Comprendre l'UX | [`architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) |
-| Plan backend complet | [`.cursor/plans/ref-7b.2...`](.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md) |
-| Plan frontend complet | [`.cursor/plans/ref-7b.5...`](.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md) |
+| Plan backend complet | [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) |
+| Plan frontend complet | [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md) |
 | Où ça rentre dans le backlog | [`docs/backlog.md`](docs/backlog.md) (EPIC 3) |
 | Règles git | [`docs/git-commit-conventions.md`](docs/git-commit-conventions.md) |
 

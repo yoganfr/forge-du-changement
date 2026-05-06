@@ -74,6 +74,7 @@ export {
 export {
   arbitrateFeedback,
   createReviewFeedback,
+  getReviewerRowForUser,
   listReviewerFeedbacks,
   listSnapshotFeedbacks,
   listSnapshotReviewers,

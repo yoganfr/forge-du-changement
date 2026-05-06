@@ -1,7 +1,7 @@
 import { supabase } from '../supabase'
 
 export type ReviewKind = 'reaction' | 'decision' | 'proposition_chantier'
-export type ReviewTargetType = 'projet' | 'chantier' | 'jalon' | 'proposition'
+export type ReviewTargetType = 'projet' | 'chantier' | 'jalon' | 'raci_chantier' | 'proposition'
 export type ReviewerStatus = 'pending' | 'draft' | 'submitted' | 'closed'
 export type CodirDecisionStatus = 'pending' | 'noted' | 'ok' | 'nok' | 'sous_condition'
 
@@ -48,6 +48,15 @@ export async function listSnapshotReviewers(snapshotId: string): Promise<Roadmap
     .order('invited_at', { ascending: true })
   if (error) throw error
   return (data ?? []) as RoadmapSnapshotReviewer[]
+}
+
+/** Ligne reviewer pour un utilisateur sur ce snapshot (null si non invité). */
+export async function getReviewerRowForUser(
+  snapshotId: string,
+  userId: string,
+): Promise<RoadmapSnapshotReviewer | null> {
+  const rows = await listSnapshotReviewers(snapshotId)
+  return rows.find((r) => r.user_id === userId) ?? null
 }
 
 export async function openSnapshotReview(params: {

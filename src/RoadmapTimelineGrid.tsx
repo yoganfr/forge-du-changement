@@ -904,11 +904,11 @@ export default function RoadmapTimelineGrid({
                       }
                       onDrop={!readOnly && onChantierDrop ? (e) => void handleChantierCellDrop(e, axe) : undefined}
                     >
-                      {!readOnly && onChantierCellClick ? (
+                      {onChantierCellClick ? (
                         <button
                           type="button"
                           className="mr-tgrid__chantier-name-btn"
-                          draggable={!!onChantierDrop && axe !== 'KPI'}
+                          draggable={!readOnly && !!onChantierDrop && axe !== 'KPI'}
                           onDragStart={(e) => handleChantierNameDragStart(e, ch, axe)}
                           onDragEnd={handleChantierNameDragEnd}
                           onClick={() => onChantierCellClick(ch.id, undefined)}

@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **6 mai 2026**, 00 h 58 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 20 h 25 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -132,10 +132,10 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 7b.1c | Harmonisation sémantique PCI / RACI entre chantier et jalon (labels, aide, docs, backlog) | 🟠 | ⬜ |
 | 7b.1d | Polish UX final du module PCI (remplacement `alert`/`confirm`, feedbacks homogènes, confirmations destructives cohérentes) | 🟡 | ⬜ |
 | 7b.1e | Durcissement technique / performance PCI (bulk updates batch, robustesse gros volumes, recette accessibilité clavier) | 🟡 | ⬜ |
-| 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS) — **spec** [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) + **plan** [`ref-7b.2_schema_revue_final_implementation.plan.md`](.cursor/plans/ref-7b.2_schema_revue_final_implementation.plan.md) | 🔴 | 🚧 |
+| 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS) — **spec** [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) + **plan** [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) + **DDL** [`docs/supabase-roadmap-review-cycle.sql`](supabase-roadmap-review-cycle.sql) | 🔴 | 🚧 |
 | 7b.3 | Modal "Ouvrir la revue" côté CODIR (multi-sélect reviewers + deadline + magic link + transition draft→in_review + audit) | 🔴 | ⬜ |
 | 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers) | 🟠 | ⬜ |
-| 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + autosave commentaires + modal "Soumettre ma review") — **architecture UX** [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) + **plan frontend** [`ref-7b.5_frontend_reviewerpage_implementation.plan.md`](.cursor/plans/ref-7b.5_frontend_reviewerpage_implementation.plan.md) | 🔴 | 🚧 |
+| 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + autosave commentaires + modal "Soumettre ma review") — **architecture UX** [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) + **plan** [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md) | 🔴 | 🚧 |
 | 7b.6 | Panneau flottant déplaçable (migration drawer latéral → `react-rnd` floating panel, multi-ouverture, persistence position) | 🟠 | ⬜ |
 | 7b.7 | Écran récap arbitrages (tableau global + badges inline + email/in-app cumulatif quand 0 feedback pending restant pour le reviewer) | 🟠 | ⬜ |
 | 7c | Propositions reviewers (ajout/suppression/évolution chantiers-jalons) + justification structurée Constat/Proposition/Bénéfice — **intégré à REF-7b.5** | 🔴 | ⬜ |
