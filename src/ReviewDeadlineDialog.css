@@ -47,3 +47,29 @@
   color: var(--theme-text-muted);
   margin: var(--space-sm, 8px) 0 0;
 }
+
+/* Responsive : calendrier lisible sur mobile (réduit maille + scroll horizontal si besoin) */
+.review-deadline-dialog__calendar {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--space-xs, 4px);
+}
+
+@media (max-width: 520px) {
+  .mr-modal .review-deadline-dialog__calendar .rdp-root {
+    --rdp-day-height: 36px;
+    --rdp-day-width: 36px;
+    --rdp-day_button-height: 34px;
+    --rdp-day_button-width: 34px;
+    --rdp-nav-height: 2.25rem;
+    font-size: var(--text-sm, 0.95rem);
+  }
+
+  .mr-modal.review-deadline-dialog {
+    max-width: calc(100vw - var(--space-lg, 24px));
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

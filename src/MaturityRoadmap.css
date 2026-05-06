@@ -9,6 +9,57 @@
   color: var(--theme-text);
 }
 
+/* Barre versions roadmap : boutons + sélecteur empilés proprement sur petit écran */
+.mr-snapshot-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-md, 16px);
+  margin-bottom: var(--space-md, 16px);
+  max-width: 100%;
+}
+
+.mr-snapshot-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm, 8px);
+}
+
+.mr-snapshot-toolbar__version {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: min(100%, 280px);
+  flex: 1 1 220px;
+}
+
+.mr-snapshot-toolbar__version span {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--theme-text-muted);
+}
+
+.mr-snapshot-toolbar__version select {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-control, 8px);
+  border: 1px solid var(--glass-border, var(--theme-border-subtle));
+  background: var(--theme-bg-card);
+  color: var(--theme-text);
+  font-family: var(--font-body);
+  font-size: var(--text-sm, 0.95rem);
+}
+
+.mr-snapshot-toolbar__hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--text-sm, 0.95rem);
+  color: var(--theme-text-muted);
+}
+
 .mr-back {
   appearance: none;
   border: none;

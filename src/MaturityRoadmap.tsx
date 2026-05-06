@@ -31,6 +31,7 @@ import {
 import { getCurrentUser } from './lib/auth'
 import CreateDirectionDialog from './CreateDirectionDialog'
 import ReviewDeadlineDialog, { formatDeadlinePreview } from './ReviewDeadlineDialog'
+import FreezeRoadmapDialog from './FreezeRoadmapDialog'
 import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
 import RoadmapTimelineGrid from './RoadmapTimelineGrid'
@@ -52,6 +53,19 @@ import {
 import './MaturityRoadmap.css'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
+
+function snapshotStatusLabelFr(status: string): string {
+  switch (status) {
+    case 'draft':
+      return 'Brouillon'
+    case 'in_review':
+      return 'En revue'
+    case 'closed':
+      return 'Clôturé'
+    default:
+      return status
+  }
+}
 
 const AXE_META: Record<
   Axe,
@@ -181,6 +195,9 @@ export default function MaturityRoadmap({
     snapshotId: string
     reviewerIds: string[]
   } | null>(null)
+  const [freezeRoadmapDialog, setFreezeRoadmapDialog] = useState<{ suggestedLabel: string } | null>(null)
+  /** `live` = grille éditable ; sinon id de snapshot (revue, arbitrage, cohérence métier). */
+  const [snapshotFocusId, setSnapshotFocusId] = useState<'live' | string>('live')
   const [roadmapToast, setRoadmapToast] = useState<{
     message: string
     variant: 'error' | 'info' | 'warning'
@@ -190,6 +207,13 @@ export default function MaturityRoadmap({
     const t = window.setTimeout(() => setRoadmapToast(null), 4500)
     return () => window.clearTimeout(t)
   }, [roadmapToast])
+
+  useEffect(() => {
+    if (snapshotFocusId === 'live') return
+    if (!snapshots.some((s) => s.id === snapshotFocusId)) {
+      setSnapshotFocusId('live')
+    }
+  }, [snapshots, snapshotFocusId])
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -557,15 +581,16 @@ export default function MaturityRoadmap({
     }
   }
 
-  async function handleCreateSnapshot() {
-    if (snapshotSaving) return
+  function handleOpenFreezeDialog() {
+    if (snapshotSaving || readOnly) return
     const now = new Date()
     const monthLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-    const suggestedLabel = `V1 ${monthLabel}`
-    const label = window
-      .prompt('Libellé du snapshot roadmap (ex. V1 avril 2026)', suggestedLabel)
-      ?.trim()
-    if (!label) return
+    const n = snapshots.length + 1
+    setFreezeRoadmapDialog({ suggestedLabel: `V${n} ${monthLabel}` })
+  }
+
+  async function persistFreezeRoadmapSnapshot(label: string) {
+    if (snapshotSaving) return
     try {
       setSnapshotSaving(true)
       const selectedProjectId = selectedProjectIds.length === 1 ? selectedProjectIds[0] : null
@@ -582,7 +607,7 @@ export default function MaturityRoadmap({
         }))
         return [chantierPayload, ...jalonItems]
       })
-      await createRoadmapSnapshot({
+      const created = await createRoadmapSnapshot({
         workspaceId,
         projetId: selectedProjectId,
         label,
@@ -591,7 +616,8 @@ export default function MaturityRoadmap({
       })
       const list = await listRoadmapSnapshots(workspaceId)
       setSnapshots(list)
-      setSnapshotFeedback(`Snapshot créé : ${label}`)
+      setSnapshotFocusId(created.id)
+      setSnapshotFeedback(`Version figée : ${label}`)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Impossible de créer le snapshot roadmap'
       setSnapshotFeedback(message)
@@ -600,8 +626,14 @@ export default function MaturityRoadmap({
     }
   }
 
-  async function handleOpenReview(snapshotId: string) {
+  async function handleOpenReview() {
     if (readOnly) return
+    const snapshotId =
+      snapshotFocusId !== 'live' ? snapshotFocusId : (snapshots[0]?.id ?? null)
+    if (!snapshotId) {
+      setSnapshotFeedback('Figez d’abord une version de roadmap pour ouvrir une revue.')
+      return
+    }
     if (workspaceUsers.length === 0) {
       setSnapshotFeedback('Aucun membre disponible pour la revue.')
       return
@@ -731,21 +763,55 @@ export default function MaturityRoadmap({
       </button>
       <h1 className="mr-title">Maturity Roadmap</h1>
       {!readOnly && (
-        <div className="mr-snapshot-row">
-          <button type="button" className="mr-back" onClick={() => { void handleCreateSnapshot() }} disabled={snapshotSaving}>
-            {snapshotSaving ? 'Figement…' : 'Figer la V1 (snapshot)'}
-          </button>
-          {snapshots[0] ? (
+        <div className="mr-snapshot-toolbar">
+          <div className="mr-snapshot-toolbar__actions">
             <button
               type="button"
               className="mr-back"
-              onClick={() => { void handleOpenReview(snapshots[0].id) }}
+              onClick={() => handleOpenFreezeDialog()}
               disabled={snapshotSaving}
+            >
+              {snapshotSaving ? 'Figement…' : 'Figer la roadmap en cours'}
+            </button>
+            <button
+              type="button"
+              className="mr-back"
+              onClick={() => { void handleOpenReview() }}
+              disabled={
+                snapshotSaving ||
+                (snapshotFocusId === 'live' ? snapshots.length === 0 : false)
+              }
             >
               Ouvrir la revue
             </button>
+            {snapshotFeedback ? <span className="mr-muted">{snapshotFeedback}</span> : null}
+          </div>
+          <div className="mr-snapshot-toolbar__version">
+            <span id="mr-snapshot-version-label">Version roadmap</span>
+            <select
+              id="mr-snapshot-version"
+              aria-labelledby="mr-snapshot-version-label"
+              value={snapshotFocusId}
+              onChange={(e) => {
+                const v = e.target.value
+                setSnapshotFocusId(v === 'live' ? 'live' : v)
+              }}
+            >
+              <option value="live">Roadmap en cours (édition)</option>
+              {snapshots.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label} · {snapshotStatusLabelFr(s.status)} ·{' '}
+                  {new Date(s.created_at).toLocaleDateString('fr-FR')}
+                </option>
+              ))}
+            </select>
+          </div>
+          {snapshotFocusId !== 'live' ? (
+            <p className="mr-snapshot-toolbar__hint">
+              La grille affiche toujours la roadmap éditable ; la sélection indique la version figée utilisée pour les
+              actions revue et, plus tard, les rattachements PAE / plans de charge.
+            </p>
           ) : null}
-          {snapshotFeedback && <span className="mr-muted">{snapshotFeedback}</span>}
         </div>
       )}
       <p className="mr-sub">
@@ -998,6 +1064,16 @@ export default function MaturityRoadmap({
           {roadmapToast.message}
         </div>
       ) : null}
+
+      <FreezeRoadmapDialog
+        open={freezeRoadmapDialog !== null}
+        suggestedLabel={freezeRoadmapDialog?.suggestedLabel ?? ''}
+        onCancel={() => setFreezeRoadmapDialog(null)}
+        onConfirm={(label) => {
+          setFreezeRoadmapDialog(null)
+          void persistFreezeRoadmapSnapshot(label)
+        }}
+      />
 
       <ReviewDeadlineDialog
         open={reviewDeadlineDialog !== null}
