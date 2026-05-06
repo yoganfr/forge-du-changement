@@ -922,7 +922,7 @@
   align-items: center;
   width: 100%;
   margin: 0;
-  padding: var(--space-xs) 0;
+  padding: var(--space-xs) var(--space-xs);
   text-align: left;
   font: inherit;
   color: inherit;
@@ -930,8 +930,9 @@
   background: transparent;
   border: none;
   border-bottom: 1px solid var(--theme-border-soft);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
+  transition: background var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .mr-recent-snapshots__list > li:last-child .mr-recent-snapshots__row {
@@ -939,12 +940,14 @@
   padding-bottom: 0;
 }
 
+/* Survol / ligne active : accent marque lisible (pas gris sur gris) */
 .mr-recent-snapshots__row:hover {
-  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 6%, transparent);
+  background: color-mix(in srgb, var(--theme-accent) 14%, var(--theme-bg-raised));
 }
 
 .mr-recent-snapshots__row[aria-current='true'] {
-  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 10%, transparent);
+  background: color-mix(in srgb, var(--theme-accent) 20%, var(--theme-bg-raised));
+  box-shadow: inset 3px 0 0 var(--theme-accent);
 }
 
 .mr-recent-snapshots__label {
@@ -986,8 +989,15 @@
 
 .mr-recent-snapshots__row:focus-visible {
   outline: none;
-  box-shadow: var(--ui-focus-ring);
   border-radius: var(--ui-radius-control);
+}
+
+.mr-recent-snapshots__row:not([aria-current='true']):focus-visible {
+  box-shadow: var(--ui-focus-ring);
+}
+
+.mr-recent-snapshots__row[aria-current='true']:focus-visible {
+  box-shadow: inset 3px 0 0 var(--theme-accent), var(--ui-focus-ring);
 }
 
 /* Étroits : empiler sans casser l’alignement date/statut sur une 2ᵉ ligne */
