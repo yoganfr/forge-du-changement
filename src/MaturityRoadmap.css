@@ -1494,9 +1494,8 @@
 
 .mr-tgrid__axis-cell-inner {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  align-items: stretch;
   width: 100%;
   height: 100%;
   min-height: 100%;
@@ -1524,31 +1523,24 @@
 /*
  * Axe KPI : deux bandes verticales. Lecture verticale type « colonnes » : la colonne de droite d’abord.
  * `row-reverse` place split[0] à droite sans bidirectionnel sur le conteneur (plus prévisible que rtl).
- * Le bloc occupe la hauteur de la cellule (rowspan) ; chaque bande centre le texte entre le haut et le bas.
  */
 .mr-tgrid__axis-cell-title.mr-tgrid__axis-cell-title--split {
-  display: flex;
+  display: inline-flex;
   flex-direction: row-reverse;
   direction: ltr;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 0.35rem;
   writing-mode: horizontal-tb;
   max-height: none;
-  flex: 1 1 auto;
-  min-height: 0;
-  align-self: stretch;
 }
 
 .mr-tgrid__axis-cell-title--split .mr-tgrid__axis-cell-title-line {
-  display: grid;
-  place-content: center;
+  display: block;
   direction: ltr;
   unicode-bidi: isolate;
   writing-mode: vertical-lr;
   text-orientation: mixed;
   text-align: center;
-  height: 100%;
-  min-height: 0;
   font-family: inherit;
   font-size: inherit;
   font-weight: inherit;
