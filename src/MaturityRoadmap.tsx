@@ -843,7 +843,7 @@ export default function MaturityRoadmap({
       </button>
       <h1 className="mr-title">Maturity Roadmap</h1>
       {(!readOnly || snapshots.length > 0) && (
-        <details className="mr-versions-accordion" open>
+        <details className="mr-versions-accordion">
           <summary className="mr-versions-accordion__summary">Gestion des versions & revue</summary>
           <div className="mr-versions-accordion__body">
             {!readOnly && (
