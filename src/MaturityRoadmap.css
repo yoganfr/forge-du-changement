@@ -394,18 +394,35 @@
   margin-top: -2px;
 }
 
-/* Pilule légende + même traitement pour l’axe sous l’aide grille (hors .mr-toolbar) */
+/* Base commune des <select> pilule (toolbar si besoin + filtre axe grille) */
 .mr-toolbar select,
 .mr-tgrid-axis-filter select {
-  min-width: 200px;
-  width: 100%;
-  max-width: 320px;
   padding: 8px 10px;
   border-radius: var(--ui-radius-badge);
   border: 1px solid var(--glass-border);
   background: var(--theme-bg-card);
   color: var(--theme-text);
   font-family: var(--font-body);
+}
+
+.mr-toolbar select {
+  min-width: 200px;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* Colle à l’intitulé le plus large (évolue avec les libellés d’options) */
+.mr-tgrid-axis-filter {
+  margin: 0 0 var(--space-md);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.mr-tgrid-axis-filter select {
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  field-sizing: content;
 }
 
 .mr-toolbar select:focus-visible,
@@ -1196,12 +1213,6 @@
 /* Intro grille : même aide à puces que le bloc au-dessus de la légende */
 .mr-help-list.mr-tgrid-intro {
   margin: 0 0 var(--space-md);
-}
-
-/* Sélecteur d’axe : sous l’aide à puces, au-dessus du défilement du tableau */
-.mr-tgrid-axis-filter {
-  margin: 0 0 var(--space-md);
-  max-width: 320px;
 }
 
 .mr-tgrid__chantier-cell--empty .mr-tgrid__chantier-empty {
