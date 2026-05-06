@@ -2,7 +2,7 @@
 
 **Document de synthèse narrative** pour aligner produit, implémentations et agents IA sur le **sens métier** de l’outil. Il **ne remplace pas** les règles détaillées (`docs/# Règles métier — Maturity Roadmap.md`, `docs/# Règles métier — REF-7b.2 …`, matrice permissions, backlog) : il les **ordonne** et en donne la **lecture d’ensemble**.
 
-Dernière mise à jour : **6 mai 2026**, 21 h 47 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 21 h 49 (Europe/Paris)
 
 ---
 
@@ -149,7 +149,7 @@ Pour chaque personne assignée comme **reviewer** sur une campagne (snapshot), l
 
 1. **E-mail envoyé** — l’invitation à participer à cette revue a été envoyée.  
 2. **Compte créé** — la personne a un **accès actif** à l’espace (compte rattaché au workspace / invitation honorée côté identité).  
-3. **Revue commencée** — la personne est entrée dans le **travail de revue** sur ce snapshot (équivalent métier du passage en **brouillon actif** / premier geste de contribution — à aligner sur `reviewer.status` et l’activité réelle côté implémentation).  
+3. **Revue commencée** — **premier feedback enregistré** par ce reviewer sur cette campagne (snapshot), quel que soit le type de feedback (réaction, demande de décision, proposition chantier, etc.).  
 4. **Revue soumise** — la personne a actionné **« Soumettre ma revue »** pour cette campagne (aligné sur le cycle REF-7b.2).
 
 **Principe** : responsabiliser les acteurs et donner au CODIR une **vision d’avancement** ; **pas** d’outil de contrôle horaire ni de journal individuel timestampé dans ce tableau.
