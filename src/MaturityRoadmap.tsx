@@ -751,23 +751,31 @@ export default function MaturityRoadmap({
     )
   }, [drawerChantierId, canonicalStakeholders, getRowFor])
 
-  const activeReviewSnapshot = useMemo(
-    () => snapshots.find((s) => s.status === 'in_review') ?? null,
+  /** Snapshots dont la revue est encore ouverte (peut être > 1 si plusieurs figements + ouvertures). */
+  const snapshotsInReview = useMemo(
+    () => snapshots.filter((s) => s.status === 'in_review'),
     [snapshots],
   )
 
+  /** Référence principale pour le bandeau : le plus récent en revue (liste déjà triée du plus récent au plus ancien). */
+  const activeReviewSnapshot = snapshotsInReview[0] ?? null
+
   async function handleCloseReview() {
     if (readOnly) return
-    const snap = snapshots.find((s) => s.status === 'in_review')
-    if (!snap) return
+    const toClose = snapshots.filter((s) => s.status === 'in_review')
+    if (toClose.length === 0) return
     if (
       !window.confirm(
-        'Fermer la revue ? La campagne ne sera plus indiquée comme ouverte pour les participants.',
+        toClose.length > 1
+          ? `Fermer les ${toClose.length} revues encore indiquées comme ouvertes ? Les campagnes ne seront plus actives pour les participants.`
+          : 'Fermer la revue ? La campagne ne sera plus indiquée comme ouverte pour les participants.',
       )
     )
       return
     try {
-      await closeSnapshotReview(snap.id)
+      for (const snap of toClose) {
+        await closeSnapshotReview(snap.id)
+      }
       const list = await listRoadmapSnapshots(workspaceId)
       setSnapshots(list)
       const idsToFetch = new Set(list.slice(0, 5).map((s) => s.id))
@@ -904,6 +912,12 @@ export default function MaturityRoadmap({
                   Revue collective
                 </h2>
                 <p className="mr-review-banner__snapshot-label">{activeReviewSnapshot.label}</p>
+                {snapshotsInReview.length > 1 ? (
+                  <p className="mr-review-banner__multi">
+                    + {snapshotsInReview.length - 1} autre(s) version(s) encore en revue — « Fermer la revue » les
+                    clôture toutes.
+                  </p>
+                ) : null}
               </div>
               <ul className="mr-review-banner__stats">
                 <li>
