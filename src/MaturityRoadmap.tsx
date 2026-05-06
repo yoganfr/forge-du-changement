@@ -69,10 +69,11 @@ function snapshotStatusLabelFr(status: string): string {
   }
 }
 
+/** Libellés courts pour tenir sur une ligne dans la grille des versions figées. */
 function formatRevReviewersCount(n: number): string {
-  if (n <= 0) return 'Aucune personne assignée à la revue'
-  if (n === 1) return '1 personne assignée à la revue'
-  return `${n} personnes assignées à la revue`
+  if (n <= 0) return 'Aucun assigné'
+  if (n === 1) return '1 assigné'
+  return `${n} assignés`
 }
 
 const AXE_META: Record<
@@ -841,141 +842,185 @@ export default function MaturityRoadmap({
         ← Retour aux projets
       </button>
       <h1 className="mr-title">Maturity Roadmap</h1>
-      {!readOnly && (
-        <div className="mr-snapshot-toolbar">
-          <div className="mr-snapshot-toolbar__top">
-            <div className="mr-snapshot-toolbar__actions">
-              <button
-                type="button"
-                className="mr-btn-primary"
-                onClick={() => handleOpenFreezeDialog()}
-                disabled={snapshotSaving}
-              >
-                {snapshotSaving ? 'Figement…' : 'Figer la roadmap en cours'}
-              </button>
-              {activeReviewSnapshot ? (
-                <>
-                  <span className="mr-review-status-badge">Revue en cours</span>
-                  <button
-                    type="button"
-                    className="mr-btn-review-close"
-                    onClick={() => {
-                      void handleCloseReview()
-                    }}
-                    disabled={snapshotSaving}
+      {(!readOnly || snapshots.length > 0) && (
+        <details className="mr-versions-accordion" open>
+          <summary className="mr-versions-accordion__summary">Gestion des versions & revue</summary>
+          <div className="mr-versions-accordion__body">
+            {!readOnly && (
+              <div className="mr-snapshot-toolbar">
+                <div className="mr-snapshot-toolbar__top">
+                  <div className="mr-snapshot-toolbar__actions">
+                    <button
+                      type="button"
+                      className="mr-btn-primary"
+                      onClick={() => handleOpenFreezeDialog()}
+                      disabled={snapshotSaving}
+                    >
+                      {snapshotSaving ? 'Figement…' : 'Figer la roadmap en cours'}
+                    </button>
+                    {activeReviewSnapshot ? (
+                      <>
+                        <span className="mr-review-status-badge">Revue en cours</span>
+                        <button
+                          type="button"
+                          className="mr-btn-review-close"
+                          onClick={() => {
+                            void handleCloseReview()
+                          }}
+                          disabled={snapshotSaving}
+                        >
+                          Fermer la revue
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="mr-btn-open-review"
+                        onClick={() => {
+                          void handleOpenReview()
+                        }}
+                        disabled={
+                          snapshotSaving ||
+                          (snapshotFocusId === 'live' ? snapshots.length === 0 : false)
+                        }
+                      >
+                        Ouvrir la revue
+                      </button>
+                    )}
+                  </div>
+                  <div className="mr-snapshot-toolbar__version">
+                    <span id="mr-snapshot-version-label">Version roadmap</span>
+                    <select
+                      id="mr-snapshot-version"
+                      aria-labelledby="mr-snapshot-version-label"
+                      value={snapshotFocusId}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setSnapshotFocusId(v === 'live' ? 'live' : v)
+                      }}
+                    >
+                      <option value="live">Roadmap en cours (édition)</option>
+                      {snapshots.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.label} · {snapshotStatusLabelFr(s.status)} ·{' '}
+                          {new Date(s.created_at).toLocaleDateString('fr-FR')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="mr-snapshot-toolbar__feedback-row" aria-live="polite">
+                  {snapshotFeedback ? (
+                    <span
+                      className={
+                        snapshotFeedback === 'Revue fermée.'
+                          ? 'mr-snapshot-toolbar__feedback mr-snapshot-toolbar__feedback--closed'
+                          : 'mr-muted mr-snapshot-toolbar__feedback'
+                      }
+                    >
+                      {snapshotFeedback}
+                    </span>
+                  ) : (
+                    <span className="mr-snapshot-toolbar__feedback-slot" aria-hidden="true" />
+                  )}
+                </div>
+                {activeReviewSnapshot ? (
+                  <div
+                    className="mr-review-banner"
+                    role="region"
+                    aria-labelledby="mr-review-banner-title"
                   >
-                    Fermer la revue
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="mr-btn-open-review"
-                  onClick={() => {
-                    void handleOpenReview()
-                  }}
-                  disabled={
-                    snapshotSaving ||
-                    (snapshotFocusId === 'live' ? snapshots.length === 0 : false)
-                  }
-                >
-                  Ouvrir la revue
-                </button>
-              )}
-            </div>
-            <div className="mr-snapshot-toolbar__version">
-              <span id="mr-snapshot-version-label">Version roadmap</span>
-              <select
-                id="mr-snapshot-version"
-                aria-labelledby="mr-snapshot-version-label"
-                value={snapshotFocusId}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setSnapshotFocusId(v === 'live' ? 'live' : v)
-                }}
-              >
-                <option value="live">Roadmap en cours (édition)</option>
-                {snapshots.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label} · {snapshotStatusLabelFr(s.status)} ·{' '}
-                    {new Date(s.created_at).toLocaleDateString('fr-FR')}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="mr-snapshot-toolbar__feedback-row" aria-live="polite">
-            {snapshotFeedback ? (
-              <span
-                className={
-                  snapshotFeedback === 'Revue fermée.'
-                    ? 'mr-snapshot-toolbar__feedback mr-snapshot-toolbar__feedback--closed'
-                    : 'mr-muted mr-snapshot-toolbar__feedback'
-                }
-              >
-                {snapshotFeedback}
-              </span>
-            ) : (
-              <span className="mr-snapshot-toolbar__feedback-slot" aria-hidden="true" />
-            )}
-          </div>
-          {activeReviewSnapshot ? (
-            <div
-              className="mr-review-banner"
-              role="region"
-              aria-labelledby="mr-review-banner-title"
-            >
-              <div className="mr-review-banner__head">
-                <h2 id="mr-review-banner-title" className="mr-review-banner__title">
-                  Revue collective
-                </h2>
-                <p className="mr-review-banner__snapshot-label">{activeReviewSnapshot.label}</p>
-                {snapshotsInReview.length > 1 ? (
-                  <p className="mr-review-banner__multi">
-                    + {snapshotsInReview.length - 1} autre(s) version(s) encore en revue — « Fermer la revue » les
-                    clôture toutes.
+                    <div className="mr-review-banner__head">
+                      <h2 id="mr-review-banner-title" className="mr-review-banner__title">
+                        Revue collective
+                      </h2>
+                      <p className="mr-review-banner__snapshot-label">{activeReviewSnapshot.label}</p>
+                      {snapshotsInReview.length > 1 ? (
+                        <p className="mr-review-banner__multi">
+                          + {snapshotsInReview.length - 1} autre(s) version(s) encore en revue — « Fermer la revue » les
+                          clôture toutes.
+                        </p>
+                      ) : null}
+                    </div>
+                    <ul className="mr-review-banner__stats">
+                      <li>
+                        <span className="mr-review-banner__k">Reviewers</span>
+                        <span className="mr-review-banner__v">
+                          {reviewersBySnapshot[activeReviewSnapshot.id] ?? '—'}
+                        </span>
+                      </li>
+                      <li>
+                        <span className="mr-review-banner__k">Deadline</span>
+                        <span className="mr-review-banner__v">
+                          {activeReviewSnapshot.review_deadline
+                            ? formatDeadlinePreview(activeReviewSnapshot.review_deadline)
+                            : '—'}
+                        </span>
+                      </li>
+                      <li>
+                        <span className="mr-review-banner__k">Lien reviewers</span>
+                        <button
+                          type="button"
+                          className="mr-review-banner__copy"
+                          onClick={() => {
+                            const reviewerUrl = `${window.location.origin}/review/${activeReviewSnapshot.id}`
+                            void navigator.clipboard?.writeText(reviewerUrl)
+                            setSnapshotFeedback('Lien copié dans le presse-papiers.')
+                          }}
+                        >
+                          Copier le lien
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                ) : null}
+                {snapshotFocusId !== 'live' ? (
+                  <p className="mr-snapshot-toolbar__hint">
+                    La grille affiche toujours la roadmap éditable ; la sélection indique la version figée utilisée pour les
+                    actions revue et, plus tard, les rattachements PAE / plans de charge.
                   </p>
                 ) : null}
               </div>
-              <ul className="mr-review-banner__stats">
-                <li>
-                  <span className="mr-review-banner__k">Reviewers</span>
-                  <span className="mr-review-banner__v">
-                    {reviewersBySnapshot[activeReviewSnapshot.id] ?? '—'}
-                  </span>
-                </li>
-                <li>
-                  <span className="mr-review-banner__k">Deadline</span>
-                  <span className="mr-review-banner__v">
-                    {activeReviewSnapshot.review_deadline
-                      ? formatDeadlinePreview(activeReviewSnapshot.review_deadline)
-                      : '—'}
-                  </span>
-                </li>
-                <li>
-                  <span className="mr-review-banner__k">Lien reviewers</span>
-                  <button
-                    type="button"
-                    className="mr-review-banner__copy"
-                    onClick={() => {
-                      const reviewerUrl = `${window.location.origin}/review/${activeReviewSnapshot.id}`
-                      void navigator.clipboard?.writeText(reviewerUrl)
-                      setSnapshotFeedback('Lien copié dans le presse-papiers.')
-                    }}
-                  >
-                    Copier le lien
-                  </button>
-                </li>
-              </ul>
-            </div>
-          ) : null}
-          {snapshotFocusId !== 'live' ? (
-            <p className="mr-snapshot-toolbar__hint">
-              La grille affiche toujours la roadmap éditable ; la sélection indique la version figée utilisée pour les
-              actions revue et, plus tard, les rattachements PAE / plans de charge.
-            </p>
-          ) : null}
-        </div>
+            )}
+            {snapshots.length > 0 && (
+              <div className="mr-recent-snapshots">
+                <p className="mr-recent-snapshots__title">Dernières versions figées</p>
+                <ul className="mr-recent-snapshots__list">
+                  {snapshots.slice(0, 3).map((s) => {
+                    const n = reviewersBySnapshot[s.id] ?? 0
+                    const created = new Date(s.created_at).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })
+                    const focused = snapshotFocusId === s.id
+                    return (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          className="mr-recent-snapshots__row"
+                          onClick={() => {
+                            setSnapshotFocusId(s.id)
+                          }}
+                          aria-current={focused ? 'true' : undefined}
+                          aria-label={`Afficher « ${s.label} » dans le menu Version roadmap`}
+                        >
+                          <span className="mr-recent-snapshots__label">{s.label}</span>
+                          <span className="mr-recent-snapshots__date">{created}</span>
+                          <span className="mr-recent-snapshots__status">{snapshotStatusLabelFr(s.status)}</span>
+                          <span className="mr-recent-snapshots__reviewers">{formatRevReviewersCount(n)}</span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+                <p className="mr-recent-snapshots__hint">
+                  Cliquez une ligne pour l’aligner sur le menu « Version roadmap » (ci-dessus dans ce panneau).
+                </p>
+              </div>
+            )}
+          </div>
+        </details>
       )}
       <p className="mr-sub">
         {memberDirectionLabel ? (
@@ -991,43 +1036,6 @@ export default function MaturityRoadmap({
         <strong>glisser-déposer l’intitulé du chantier</strong> vers une autre ligne d’axe (Processus, Organisation ou
         Outils) pour déplacer tout le chantier ; l’axe KPI reste réservé aux jalons synchronisés automatiquement.
       </p>
-      {snapshots.length > 0 && (
-        <div className="mr-recent-snapshots">
-          <p className="mr-recent-snapshots__title">Dernières versions figées</p>
-          <ul className="mr-recent-snapshots__list">
-            {snapshots.slice(0, 3).map((s) => {
-              const n = reviewersBySnapshot[s.id] ?? 0
-              const created = new Date(s.created_at).toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })
-              const focused = snapshotFocusId === s.id
-              return (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    className="mr-recent-snapshots__row"
-                    onClick={() => {
-                      setSnapshotFocusId(s.id)
-                    }}
-                    aria-current={focused ? 'true' : undefined}
-                    aria-label={`Afficher « ${s.label} » dans le menu Version roadmap`}
-                  >
-                    <span className="mr-recent-snapshots__label">{s.label}</span>
-                    <span className="mr-recent-snapshots__date">{created}</span>
-                    <span className="mr-recent-snapshots__status">{snapshotStatusLabelFr(s.status)}</span>
-                    <span className="mr-recent-snapshots__reviewers">{formatRevReviewersCount(n)}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-          <p className="mr-recent-snapshots__hint">
-            Cliquez une ligne pour l’aligner sur le menu « Version roadmap » ci-dessus.
-          </p>
-        </div>
-      )}
       {!readOnly && snapshotFeedbacks.length > 0 && (
         <div className="mr-panel" style={{ marginBottom: 16 }}>
           <h3 style={{ margin: '0 0 8px' }}>Arbitrage CODIR (feedbacks en revue)</h3>

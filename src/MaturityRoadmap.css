@@ -9,6 +9,44 @@
   color: var(--theme-text);
 }
 
+/* Accordéon : figement, revue, sélecteur de version, liste des figements récents */
+.mr-versions-accordion {
+  margin-bottom: var(--space-md);
+  border-radius: var(--ui-radius-panel, 12px);
+  border: 1px solid var(--glass-border, var(--theme-border-subtle));
+  background: color-mix(in srgb, var(--theme-text) 3%, var(--theme-bg-card, var(--theme-bg-page)));
+  overflow: hidden;
+}
+
+.mr-versions-accordion__summary {
+  cursor: pointer;
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--theme-text);
+  user-select: none;
+}
+
+.mr-versions-accordion__summary::marker {
+  color: var(--theme-text-muted);
+}
+
+.mr-versions-accordion__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: 0 var(--space-md) var(--space-md);
+  border-top: 1px solid color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.mr-versions-accordion .mr-snapshot-toolbar {
+  margin-bottom: 0;
+}
+
+.mr-versions-accordion .mr-recent-snapshots {
+  margin-bottom: 0;
+}
+
 /* Barre versions roadmap : boutons + sélecteur empilés proprement sur petit écran */
 .mr-snapshot-toolbar {
   display: flex;
@@ -880,7 +918,7 @@
     minmax(0, 1.25fr);
   column-gap: var(--space-sm);
   row-gap: var(--space-2xs);
-  align-items: start;
+  align-items: center;
   width: 100%;
   margin: 0;
   padding: var(--space-xs) 0;
@@ -931,10 +969,11 @@
 }
 
 .mr-recent-snapshots__reviewers {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs, 0.75rem);
   color: var(--theme-text-muted);
-  line-height: 1.3;
+  line-height: 1.25;
   min-width: 0;
+  white-space: nowrap;
 }
 
 .mr-recent-snapshots__hint {
@@ -2113,6 +2152,7 @@
   background: color-mix(in srgb, var(--theme-text) 2%, transparent);
 }
 
+.mr-versions-accordion__summary:focus-visible,
 .rcm-btn:focus-visible,
 .mr-btn-primary:focus-visible,
 .mr-btn-ghost:focus-visible,
