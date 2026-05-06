@@ -198,6 +198,16 @@ export async function openSnapshotReview(params: {
   if (snapshotError) throw snapshotError
 }
 
+/** Repasse le snapshot en brouillon : fin de la campagne « revue ouverte » (statut `in_review`). */
+export async function closeSnapshotReview(snapshotId: string): Promise<void> {
+  const { error } = await supabase
+    .from('roadmap_snapshots')
+    .update({ status: 'draft' })
+    .eq('id', snapshotId)
+    .eq('status', 'in_review')
+  if (error) throw error
+}
+
 export async function listSnapshotFeedbacks(snapshotId: string): Promise<RoadmapReviewFeedback[]> {
   const { data, error } = await supabase
     .from('roadmap_review_feedbacks')

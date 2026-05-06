@@ -17,6 +17,7 @@ import {
   getWorkspaceDirections,
   listSnapshotFeedbacks,
   listSnapshotReviewers,
+  closeSnapshotReview,
   listRoadmapSnapshots,
   monthToQuarter,
   openSnapshotReview,
@@ -50,6 +51,7 @@ import {
   findKpiMirrorJalonByParent,
   syncKpiMirrorForParentJalon,
 } from './lib/kpiMirrorSync'
+import type { RoadmapSnapshot } from './lib/api/roadmapSnapshots'
 import './MaturityRoadmap.css'
 
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
@@ -185,7 +187,7 @@ export default function MaturityRoadmap({
   const [quickAddSaving, setQuickAddSaving] = useState(false)
   const [snapshotSaving, setSnapshotSaving] = useState(false)
   const [snapshotFeedback, setSnapshotFeedback] = useState<string | null>(null)
-  const [snapshots, setSnapshots] = useState<Array<{ id: string; label: string; created_at: string; status: string }>>([])
+  const [snapshots, setSnapshots] = useState<RoadmapSnapshot[]>([])
   const [workspaceUsers, setWorkspaceUsers] = useState<User[]>([])
   const [snapshotFeedbacks, setSnapshotFeedbacks] = useState<
     Array<{ id: string; kind: string; codir_status: string | null; reviewer_user_id: string; comment: string | null; constat: string | null; proposition: string | null; benefice: string | null }>
@@ -300,15 +302,18 @@ export default function MaturityRoadmap({
         if (cancelled) return
         setSnapshots(list)
         const reviewerCounts: Record<string, number> = {}
-        for (const s of list.slice(0, 5)) {
+        const idsToFetch = new Set(list.slice(0, 5).map((s) => s.id))
+        const inReviewSnap = list.find((x) => x.status === 'in_review')
+        if (inReviewSnap) idsToFetch.add(inReviewSnap.id)
+        for (const sid of idsToFetch) {
           try {
-            const reviewers = await listSnapshotReviewers(s.id)
-            reviewerCounts[s.id] = reviewers.length
+            const reviewers = await listSnapshotReviewers(sid)
+            reviewerCounts[sid] = reviewers.length
           } catch {
-            reviewerCounts[s.id] = 0
+            reviewerCounts[sid] = 0
           }
         }
-        if (!cancelled) setReviewersBySnapshot(reviewerCounts)
+        if (!cancelled) setReviewersBySnapshot((prev) => ({ ...prev, ...reviewerCounts }))
         const targetSnapshot = list.find((s) => s.status === 'in_review') ?? list[0]
         if (targetSnapshot) {
           const feedbacks = await listSnapshotFeedbacks(targetSnapshot.id)
@@ -674,13 +679,27 @@ export default function MaturityRoadmap({
       })
       const reviewerUrl = `${window.location.origin}/review/${snapshotId}`
       void navigator.clipboard?.writeText(reviewerUrl)
-      const deadlineHint =
-        reviewDeadline != null ? ` · Deadline : ${formatDeadlinePreview(reviewDeadline)}` : ''
-      setSnapshotFeedback(
-        `Revue ouverte (${reviewerIds.length} reviewer${reviewerIds.length > 1 ? 's' : ''}).${deadlineHint} Lien copié : ${reviewerUrl}`,
-      )
+      setSnapshotFeedback(null)
       const list = await listRoadmapSnapshots(workspaceId)
       setSnapshots(list)
+      const idsToFetch = new Set(list.slice(0, 5).map((s) => s.id))
+      const openedInReview = list.find((x) => x.status === 'in_review')
+      if (openedInReview) idsToFetch.add(openedInReview.id)
+      const merged: Record<string, number> = {}
+      for (const sid of idsToFetch) {
+        try {
+          const reviewers = await listSnapshotReviewers(sid)
+          merged[sid] = reviewers.length
+        } catch {
+          merged[sid] = 0
+        }
+      }
+      setReviewersBySnapshot((prev) => ({ ...prev, ...merged }))
+      const targetSnapshot = list.find((s) => s.status === 'in_review') ?? list[0]
+      if (targetSnapshot) {
+        const feedbacks = await listSnapshotFeedbacks(targetSnapshot.id)
+        setSnapshotFeedbacks(feedbacks)
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Impossible d’ouvrir la revue'
       setSnapshotFeedback(msg)
@@ -732,6 +751,52 @@ export default function MaturityRoadmap({
     )
   }, [drawerChantierId, canonicalStakeholders, getRowFor])
 
+  const activeReviewSnapshot = useMemo(
+    () => snapshots.find((s) => s.status === 'in_review') ?? null,
+    [snapshots],
+  )
+
+  async function handleCloseReview() {
+    if (readOnly) return
+    const snap = snapshots.find((s) => s.status === 'in_review')
+    if (!snap) return
+    if (
+      !window.confirm(
+        'Fermer la revue ? La campagne ne sera plus indiquée comme ouverte pour les participants.',
+      )
+    )
+      return
+    try {
+      await closeSnapshotReview(snap.id)
+      const list = await listRoadmapSnapshots(workspaceId)
+      setSnapshots(list)
+      const idsToFetch = new Set(list.slice(0, 5).map((s) => s.id))
+      const inReviewSnap = list.find((x) => x.status === 'in_review')
+      if (inReviewSnap) idsToFetch.add(inReviewSnap.id)
+      const merged: Record<string, number> = {}
+      for (const sid of idsToFetch) {
+        try {
+          const reviewers = await listSnapshotReviewers(sid)
+          merged[sid] = reviewers.length
+        } catch {
+          merged[sid] = 0
+        }
+      }
+      setReviewersBySnapshot((prev) => ({ ...prev, ...merged }))
+      const targetSnapshot = list.find((s) => s.status === 'in_review') ?? list[0]
+      if (targetSnapshot) {
+        const feedbacks = await listSnapshotFeedbacks(targetSnapshot.id)
+        setSnapshotFeedbacks(feedbacks)
+      } else {
+        setSnapshotFeedbacks([])
+      }
+      setSnapshotFeedback('Revue fermée.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Impossible de fermer la revue'
+      setSnapshotFeedback(msg)
+    }
+  }
+
   if (loading) {
     return (
       <div className="mr-root">
@@ -764,48 +829,114 @@ export default function MaturityRoadmap({
       <h1 className="mr-title">Maturity Roadmap</h1>
       {!readOnly && (
         <div className="mr-snapshot-toolbar">
-          <div className="mr-snapshot-toolbar__actions">
-            <button
-              type="button"
-              className="mr-btn-primary"
-              onClick={() => handleOpenFreezeDialog()}
-              disabled={snapshotSaving}
-            >
-              {snapshotSaving ? 'Figement…' : 'Figer la roadmap en cours'}
-            </button>
-            <button
-              type="button"
-              className="mr-btn-ghost"
-              onClick={() => { void handleOpenReview() }}
-              disabled={
-                snapshotSaving ||
-                (snapshotFocusId === 'live' ? snapshots.length === 0 : false)
-              }
-            >
-              Ouvrir la revue
-            </button>
-            {snapshotFeedback ? <span className="mr-muted">{snapshotFeedback}</span> : null}
+          <div className="mr-snapshot-toolbar__top">
+            <div className="mr-snapshot-toolbar__actions">
+              <button
+                type="button"
+                className="mr-btn-primary"
+                onClick={() => handleOpenFreezeDialog()}
+                disabled={snapshotSaving}
+              >
+                {snapshotSaving ? 'Figement…' : 'Figer la roadmap en cours'}
+              </button>
+              {activeReviewSnapshot ? (
+                <>
+                  <span className="mr-review-status-badge">Revue en cours</span>
+                  <button
+                    type="button"
+                    className="mr-btn-review-close"
+                    onClick={() => {
+                      void handleCloseReview()
+                    }}
+                    disabled={snapshotSaving}
+                  >
+                    Fermer la revue
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="mr-btn-ghost"
+                  onClick={() => {
+                    void handleOpenReview()
+                  }}
+                  disabled={
+                    snapshotSaving ||
+                    (snapshotFocusId === 'live' ? snapshots.length === 0 : false)
+                  }
+                >
+                  Ouvrir la revue
+                </button>
+              )}
+              {snapshotFeedback ? (
+                <span className="mr-muted mr-snapshot-toolbar__feedback">{snapshotFeedback}</span>
+              ) : null}
+            </div>
+            <div className="mr-snapshot-toolbar__version">
+              <span id="mr-snapshot-version-label">Version roadmap</span>
+              <select
+                id="mr-snapshot-version"
+                aria-labelledby="mr-snapshot-version-label"
+                value={snapshotFocusId}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setSnapshotFocusId(v === 'live' ? 'live' : v)
+                }}
+              >
+                <option value="live">Roadmap en cours (édition)</option>
+                {snapshots.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label} · {snapshotStatusLabelFr(s.status)} ·{' '}
+                    {new Date(s.created_at).toLocaleDateString('fr-FR')}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="mr-snapshot-toolbar__version">
-            <span id="mr-snapshot-version-label">Version roadmap</span>
-            <select
-              id="mr-snapshot-version"
-              aria-labelledby="mr-snapshot-version-label"
-              value={snapshotFocusId}
-              onChange={(e) => {
-                const v = e.target.value
-                setSnapshotFocusId(v === 'live' ? 'live' : v)
-              }}
+          {activeReviewSnapshot ? (
+            <div
+              className="mr-review-banner"
+              role="region"
+              aria-labelledby="mr-review-banner-title"
             >
-              <option value="live">Roadmap en cours (édition)</option>
-              {snapshots.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label} · {snapshotStatusLabelFr(s.status)} ·{' '}
-                  {new Date(s.created_at).toLocaleDateString('fr-FR')}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div className="mr-review-banner__head">
+                <h2 id="mr-review-banner-title" className="mr-review-banner__title">
+                  Revue collective
+                </h2>
+                <p className="mr-review-banner__snapshot-label">{activeReviewSnapshot.label}</p>
+              </div>
+              <ul className="mr-review-banner__stats">
+                <li>
+                  <span className="mr-review-banner__k">Reviewers</span>
+                  <span className="mr-review-banner__v">
+                    {reviewersBySnapshot[activeReviewSnapshot.id] ?? '—'}
+                  </span>
+                </li>
+                <li>
+                  <span className="mr-review-banner__k">Deadline</span>
+                  <span className="mr-review-banner__v">
+                    {activeReviewSnapshot.review_deadline
+                      ? formatDeadlinePreview(activeReviewSnapshot.review_deadline)
+                      : '—'}
+                  </span>
+                </li>
+                <li>
+                  <span className="mr-review-banner__k">Lien reviewers</span>
+                  <button
+                    type="button"
+                    className="mr-review-banner__copy"
+                    onClick={() => {
+                      const reviewerUrl = `${window.location.origin}/review/${activeReviewSnapshot.id}`
+                      void navigator.clipboard?.writeText(reviewerUrl)
+                      setSnapshotFeedback('Lien copié dans le presse-papiers.')
+                    }}
+                  >
+                    Copier le lien
+                  </button>
+                </li>
+              </ul>
+            </div>
+          ) : null}
           {snapshotFocusId !== 'live' ? (
             <p className="mr-snapshot-toolbar__hint">
               La grille affiche toujours la roadmap éditable ; la sélection indique la version figée utilisée pour les

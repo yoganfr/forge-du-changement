@@ -78,6 +78,7 @@ export {
   listReviewerAssignmentsForWorkspace,
   listReviewerFeedbacks,
   listSnapshotFeedbacks,
+  closeSnapshotReview,
   listSnapshotReviewers,
   openSnapshotReview,
   submitReviewerReview,

@@ -12,11 +12,19 @@
 /* Barre versions roadmap : boutons + sélecteur empilés proprement sur petit écran */
 .mr-snapshot-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--space-md, 16px);
   margin-bottom: var(--space-md, 16px);
   max-width: 100%;
+}
+
+.mr-snapshot-toolbar__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-md, 16px);
+  width: 100%;
 }
 
 .mr-snapshot-toolbar__actions {
@@ -39,9 +47,132 @@
 }
 
 .mr-snapshot-toolbar__actions .mr-btn-ghost:disabled,
-.mr-snapshot-toolbar__actions .mr-btn-primary:disabled {
+.mr-snapshot-toolbar__actions .mr-btn-primary:disabled,
+.mr-snapshot-toolbar__actions .mr-btn-review-close:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.mr-snapshot-toolbar__feedback {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.mr-review-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--ui-radius-badge, 999px);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--theme-text);
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 28%, transparent);
+}
+
+.mr-btn-review-close {
+  appearance: none;
+  border-radius: var(--ui-radius-control);
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  margin-left: 0;
+  border: 1px solid color-mix(in srgb, var(--caramel-candy-700) 45%, transparent);
+  background: color-mix(in srgb, var(--caramel-candy-600) 88%, black);
+  color: var(--theme-on-accent, #fff);
+}
+
+.mr-btn-review-close:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.mr-review-banner {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-md, 16px) var(--space-lg, 20px);
+  border-radius: var(--ui-radius-panel, 12px);
+  border: 1px solid var(--glass-border, var(--theme-border-subtle));
+  border-left-width: 4px;
+  border-left-color: var(--theme-accent, var(--caramel-candy-600));
+  background: color-mix(
+    in srgb,
+    var(--theme-accent, var(--caramel-candy-600)) 7%,
+    var(--theme-bg-card, var(--theme-bg-page))
+  );
+  box-shadow: var(--glass-shadow, 0 2px 12px rgba(0, 0, 0, 0.05));
+}
+
+.mr-review-banner__head {
+  margin-bottom: var(--space-sm, 10px);
+}
+
+.mr-review-banner__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-base, 1rem);
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.mr-review-banner__snapshot-label {
+  margin: 4px 0 0;
+  font-size: var(--text-sm, 0.95rem);
+  font-weight: 600;
+  color: var(--theme-text-muted);
+}
+
+.mr-review-banner__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-md, 16px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mr-review-banner__stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mr-review-banner__k {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
+.mr-review-banner__v {
+  font-size: var(--text-sm, 0.95rem);
+  font-weight: 600;
+  color: var(--theme-text);
+  word-break: break-word;
+}
+
+.mr-review-banner__copy {
+  appearance: none;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 8px 14px;
+  border-radius: var(--ui-radius-control);
+  border: 1px solid var(--glass-border);
+  background: var(--theme-bg-card);
+  color: var(--theme-accent, var(--caramel-candy-600));
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.mr-review-banner__copy:hover {
+  background: color-mix(in srgb, var(--theme-text) 5%, var(--theme-bg-card));
 }
 
 .mr-snapshot-toolbar__version {
@@ -1802,6 +1933,8 @@
 .rcm-btn:focus-visible,
 .mr-btn-primary:focus-visible,
 .mr-btn-ghost:focus-visible,
+.mr-btn-review-close:focus-visible,
+.mr-review-banner__copy:focus-visible,
 .mr-btn-danger:focus-visible,
 .mr-field input:focus-visible,
 .mr-field textarea:focus-visible,
