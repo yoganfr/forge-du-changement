@@ -12,9 +12,10 @@
 /* Accordéon : figement, revue, sélecteur de version, liste des figements récents */
 .mr-versions-accordion {
   margin-bottom: var(--space-md);
-  border-radius: var(--ui-radius-panel, 12px);
-  border: 1px solid var(--glass-border, var(--theme-border-subtle));
-  background: color-mix(in srgb, var(--theme-text) 3%, var(--theme-bg-card, var(--theme-bg-page)));
+  border-radius: var(--ui-radius-panel);
+  border: 1px solid var(--theme-dashboard-card-border);
+  background: var(--theme-bg-card);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -25,6 +26,7 @@
   font-weight: 700;
   color: var(--theme-text);
   user-select: none;
+  background: var(--theme-bg-card);
 }
 
 .mr-versions-accordion__summary::marker {
@@ -36,7 +38,8 @@
   flex-direction: column;
   gap: var(--space-md);
   padding: 0 var(--space-md) var(--space-md);
-  border-top: 1px solid color-mix(in srgb, var(--theme-text) 8%, transparent);
+  border-top: 1px solid var(--theme-border-soft);
+  background: var(--theme-bg-card);
 }
 
 .mr-versions-accordion .mr-snapshot-toolbar {
@@ -45,6 +48,7 @@
 
 .mr-versions-accordion .mr-recent-snapshots {
   margin-bottom: 0;
+  border-color: var(--theme-border-soft);
 }
 
 /* Barre versions roadmap : boutons + sélecteur empilés proprement sur petit écran */
@@ -168,16 +172,12 @@
   width: 100%;
   box-sizing: border-box;
   padding: var(--space-md, 16px) var(--space-lg, 20px);
-  border-radius: var(--ui-radius-panel, 12px);
-  border: 1px solid var(--glass-border, var(--theme-border-subtle));
+  border-radius: var(--ui-radius-panel);
+  border: 1px solid var(--theme-border-soft);
   border-left-width: 4px;
-  border-left-color: var(--theme-accent, var(--caramel-candy-600));
-  background: color-mix(
-    in srgb,
-    var(--theme-accent, var(--caramel-candy-600)) 7%,
-    var(--theme-bg-card, var(--theme-bg-page))
-  );
-  box-shadow: var(--glass-shadow, 0 2px 12px rgba(0, 0, 0, 0.05));
+  border-left-color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 10%, var(--theme-bg-raised));
+  box-shadow: var(--shadow-sm);
 }
 
 .mr-review-banner__head {
@@ -881,9 +881,10 @@
 .mr-recent-snapshots {
   margin: 0 0 var(--space-lg);
   padding: var(--space-sm) var(--space-md);
-  border-radius: var(--ui-radius-panel, 12px);
-  border: 1px solid var(--glass-border, var(--theme-border-subtle));
-  background: color-mix(in srgb, var(--theme-text) 4%, var(--theme-bg-card, var(--theme-bg-page)));
+  border-radius: var(--ui-radius-panel);
+  border: 1px solid var(--theme-dashboard-card-border);
+  background: var(--theme-bg-raised);
+  box-shadow: var(--glass-highlight);
   box-sizing: border-box;
   max-width: 100%;
 }
@@ -928,7 +929,7 @@
   cursor: pointer;
   background: transparent;
   border: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--theme-text) 10%, transparent);
+  border-bottom: 1px solid var(--theme-border-soft);
   border-radius: 0;
   box-sizing: border-box;
 }
