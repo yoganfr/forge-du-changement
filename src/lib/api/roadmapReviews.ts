@@ -200,12 +200,18 @@ export async function openSnapshotReview(params: {
 
 /** Repasse le snapshot en brouillon : fin de la campagne « revue ouverte » (statut `in_review`). */
 export async function closeSnapshotReview(snapshotId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('roadmap_snapshots')
     .update({ status: 'draft' })
     .eq('id', snapshotId)
     .eq('status', 'in_review')
+    .select('id')
   if (error) throw error
+  if (!data?.length) {
+    throw new Error(
+      'Impossible de fermer la revue : aucune mise à jour effectuée. Cause fréquente : politique RLS UPDATE sur roadmap_snapshots absente en base — appliquer la migration REF-7b.2 (`roadmap_snapshots_update`). Sinon rafraîchir la page ou vérifier vos droits (CODIR / pilote / consultant du dossier).',
+    )
+  }
 }
 
 export async function listSnapshotFeedbacks(snapshotId: string): Promise<RoadmapReviewFeedback[]> {

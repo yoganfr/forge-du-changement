@@ -81,3 +81,38 @@ create policy roadmap_snapshot_items_insert
         )
     )
   );
+
+-- UPDATE — ouverture / fermeture de revue (statut draft ↔ in_review). Livré dans la migration REF-7b.2 :
+-- `supabase/migrations/20260506120000_ref_7b2_roadmap_review_cycle.sql`
+-- À appliquer sur Supabase si la fermeture de revue ne persiste pas (0 ligne mise à jour côté client).
+drop policy if exists roadmap_snapshots_update on public.roadmap_snapshots;
+create policy roadmap_snapshots_update on public.roadmap_snapshots
+  for update
+  using (
+    public.is_platform_superadmin()
+    or public.has_workspace_consultant_access(workspace_id)
+    or public.is_workspace_org_admin(workspace_id)
+    or (
+      workspace_id = public.current_member_workspace_id()
+      and exists (
+        select 1 from public.users u
+        where u.id = public.current_app_user_id()
+          and u.workspace_id = roadmap_snapshots.workspace_id
+          and u.role in ('codir', 'pilote')
+      )
+    )
+  )
+  with check (
+    public.is_platform_superadmin()
+    or public.has_workspace_consultant_access(workspace_id)
+    or public.is_workspace_org_admin(workspace_id)
+    or (
+      workspace_id = public.current_member_workspace_id()
+      and exists (
+        select 1 from public.users u
+        where u.id = public.current_app_user_id()
+          and u.workspace_id = roadmap_snapshots.workspace_id
+          and u.role in ('codir', 'pilote')
+      )
+    )
+  );
