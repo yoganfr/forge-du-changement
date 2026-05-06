@@ -1406,7 +1406,8 @@
   position: sticky;
   left: 0;
   z-index: 2;
-  background: var(--theme-bg-card);
+  /* Même lecture que les cellules échéances : masque le fond tbody teinté par axe */
+  background: color-mix(in srgb, var(--theme-bg-raised) 22%, var(--theme-bg-card));
   box-shadow: 4px 0 14px color-mix(in srgb, var(--theme-text) 8%, transparent);
 }
 
@@ -1783,12 +1784,19 @@
   min-width: 176px;
   max-width: 280px;
   text-align: left;
-  /* stretch : les titres utilisent toute la largeur de colonne (évite le rétrécissement type « align-items: flex-start ») */
+  vertical-align: top;
+  /* Ne pas mettre display:flex sur th : le fond ne repeint pas toute la hauteur et le tbody teinté par axe transparaît */
+}
+
+/* Bloc interne : flex pour largeur titre + cohérence titre / projet (le th reste table-cell) */
+.mr-tgrid__chantier-stack {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: flex-start;
   gap: 3px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .mr-tgrid__time-head {

@@ -802,7 +802,9 @@ export default function RoadmapTimelineGrid({
                         scope="row"
                         className="mr-tgrid__sticky mr-tgrid__sticky--chantier mr-tgrid__chantier-cell mr-tgrid__chantier-cell--empty"
                       >
-                        <span className="mr-tgrid__chantier-empty">—</span>
+                        <div className="mr-tgrid__chantier-stack">
+                          <span className="mr-tgrid__chantier-empty">—</span>
+                        </div>
                       </th>
                       {headerCells.map((h) => (
                         <td key={h.key} className="mr-tgrid__cell mr-tgrid__cell--filler" aria-hidden />
@@ -862,15 +864,17 @@ export default function RoadmapTimelineGrid({
                         }
                         onDrop={!readOnly && onChantierDrop ? (e) => void handleChantierCellDrop(e, axe) : undefined}
                       >
-                        <button
-                          type="button"
-                          className="mr-tgrid__chantier-add-placeholder"
-                          onClick={() => onChantierCellClick?.(null, axe)}
-                          disabled={!onChantierCellClick}
-                          aria-label="Ajouter un chantier — nom et projet transformant"
-                        >
-                          Ajoutez un chantier
-                        </button>
+                        <div className="mr-tgrid__chantier-stack">
+                          <button
+                            type="button"
+                            className="mr-tgrid__chantier-add-placeholder"
+                            onClick={() => onChantierCellClick?.(null, axe)}
+                            disabled={!onChantierCellClick}
+                            aria-label="Ajouter un chantier — nom et projet transformant"
+                          >
+                            Ajoutez un chantier
+                          </button>
+                        </div>
                       </th>
                       {headerCells.map((h) => (
                         <td key={h.key} className="mr-tgrid__cell mr-tgrid__cell--filler" aria-hidden />
@@ -935,32 +939,34 @@ export default function RoadmapTimelineGrid({
                       }
                       onDrop={!readOnly && onChantierDrop ? (e) => void handleChantierCellDrop(e, axe) : undefined}
                     >
-                      {onChantierCellClick ? (
-                        <button
-                          type="button"
-                          className="mr-tgrid__chantier-name-btn"
-                          draggable={!readOnly && !!onChantierDrop && axe !== 'KPI'}
-                          onDragStart={(e) => handleChantierNameDragStart(e, ch, axe)}
-                          onDragEnd={handleChantierNameDragEnd}
-                          onClick={() => onChantierCellClick(ch.id, undefined)}
-                        >
-                          <span className="mr-tgrid__chantier-name">{ch.nom}</span>
-                          {projetLabel ? (
-                            <span className="mr-tgrid__chantier-projet" title="Projet parent">
-                              {projetLabel}
-                            </span>
-                          ) : null}
-                        </button>
-                      ) : (
-                        <>
-                          <span className="mr-tgrid__chantier-name">{ch.nom}</span>
-                          {projetLabel ? (
-                            <span className="mr-tgrid__chantier-projet" title="Projet parent">
-                              {projetLabel}
-                            </span>
-                          ) : null}
-                        </>
-                      )}
+                      <div className="mr-tgrid__chantier-stack">
+                        {onChantierCellClick ? (
+                          <button
+                            type="button"
+                            className="mr-tgrid__chantier-name-btn"
+                            draggable={!readOnly && !!onChantierDrop && axe !== 'KPI'}
+                            onDragStart={(e) => handleChantierNameDragStart(e, ch, axe)}
+                            onDragEnd={handleChantierNameDragEnd}
+                            onClick={() => onChantierCellClick(ch.id, undefined)}
+                          >
+                            <span className="mr-tgrid__chantier-name">{ch.nom}</span>
+                            {projetLabel ? (
+                              <span className="mr-tgrid__chantier-projet" title="Projet parent">
+                                {projetLabel}
+                              </span>
+                            ) : null}
+                          </button>
+                        ) : (
+                          <>
+                            <span className="mr-tgrid__chantier-name">{ch.nom}</span>
+                            {projetLabel ? (
+                              <span className="mr-tgrid__chantier-projet" title="Projet parent">
+                                {projetLabel}
+                              </span>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
                     </th>
                     {headerCells.map((h) => {
                       const cellJalons = buckets.get(h.key) ?? []
