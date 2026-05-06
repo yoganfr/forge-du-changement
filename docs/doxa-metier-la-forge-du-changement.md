@@ -2,7 +2,7 @@
 
 **Document de synthèse narrative** pour aligner produit, implémentations et agents IA sur le **sens métier** de l’outil. Il **ne remplace pas** les règles détaillées (`docs/# Règles métier — Maturity Roadmap.md`, `docs/# Règles métier — REF-7b.2 …`, matrice permissions, backlog) : il les **ordonne** et en donne la **lecture d’ensemble**.
 
-Dernière mise à jour : **6 mai 2026**, 21 h 31 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 21 h 44 (Europe/Paris)
 
 ---
 
@@ -70,7 +70,8 @@ Les **rôles métier** sont portés par la table `users.role` et la matrice docu
 
 - Un **workspace** = une **entreprise cliente** (dossier fermé, isolation par RLS).  
 - Les **directions** segmentent les roadmaps (ex. DRH, DAF) ; les utilisateurs peuvent avoir un `direction_id` (fondations REF-7b.0, invitations CSV).  
-- La **roadmap par direction** est le support naturel du **CODIR** qui pilote ce domaine ; les roadmaps **transverses** (multi-domaines) sont un cas **plus tard** (co‑owners, REF synthèse §6).
+- La **roadmap par direction** est le support naturel du **CODIR** qui pilote ce domaine.  
+- Les roadmaps **transverses** (projets transformants qui couvrent **plusieurs** directions) sont un **cas de gouvernance distinct** (co‑owners, voir synthèse roadmap et backlog). Pour le **premier livrable** du **tableau de pilotage de revue**, la logique est la **même** que pour une roadmap « classique » : seules les règles de **qui lance la campagne** et de **qui est reviewer** changent — pas un écran entièrement différent.
 
 ---
 
@@ -129,6 +130,28 @@ Points **structurels** *(détail exhaustif dans `docs/# Règles métier — REF-
 - **Soumission unique** de la revue par reviewer ; arbitrage **OK / NOK / sous condition** sur les demandes structurées ; **réactions** gérées autrement (accusé réception).  
 
 **Point d’entrée technique REF-7b** : `docs/README_ref7b-reviewerpage.md`.
+
+### 8.1 Décisions produit — pilotage de la revue (cadrage validé)
+
+*Synthèse de sessions Q&R ; à tenir alignée avec la matrice permissions et les REF d’implémentation.*
+
+| Thème | Décision |
+|--------|----------|
+| **Première victoire visible** | Le **CODIR** dispose d’un **tableau simple** par campagne de revue : qui a été **invité**, qui s’est **connecté** (voir §8.2), qui a **terminé sa revue** — sans attendre un chantier « organisation hiérarchique » complet en base. |
+| **Constitution de l’équipe de revue (MVP)** | **Suggestion** par **domaine / direction** dans l’outil ; **choix final** des reviewers par le **CODIR** au moment d’**ouvrir** la revue (personnes explicitement assignées à **ce** snapshot / cette campagne). La **mémoire longue** du type « sous quel CODIR hiérarchique » pourra compléter plus tard sans bloquer ce MVP. |
+| **Visibilité du tableau de pilotage** | **CODIR** concerné ; **consultants** rattachés au dossier ; **super admin** plateforme ; **administrateur de l’espace entreprise** (`admin`) lorsqu’il existe ; **chef de projet** (`pilote`) lorsqu’il existe. *(À recouper avec `docs/proposition-regles-matrice-permissions.md` lors de l’implémentation RLS / écran.)* |
+| **Roadmap transverse** | **Même type de tableau** de pilotage ; adaptation des règles **qui lance** / **qui est reviewer** (gouvernance transverse), pas un produit « à part » pour la consultation d’état de campagne. |
+| **Indicateur « connecté »** | **Plusieurs indicateurs** peuvent être pertinents (ex. compte créé, première connexion après invitation, dernière activité). **Décision produit à affiner** avant figement des colonnes UI ; ne pas réduire à une seule définition sans validation métier. |
+
+#### §8.2 Pistes d’indicateurs « connexion / engagement » (à trancher)
+
+À valider avec le métier avant de figer une colonne unique :
+
+- **Compte existant** dans l’espace (profil créé, invitation honorée côté identité).
+- **Première connexion** après l’invitation à cette revue (signal fort « la personne est entrée »).
+- **Dernière activité** dans la fenêtre de la campagne (utile pour relances ; plus sensible vie privée / interprétation).
+
+L’UI peut afficher **une colonne principale** + **détail au survol** ou secondaires si plusieurs critères sont retenus.
 
 ---
 
