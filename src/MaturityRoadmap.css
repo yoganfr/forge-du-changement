@@ -1520,10 +1520,11 @@
   margin: 0 auto;
 }
 
-/* Axe « Mesure des effets » : deux bandes verticales côte à côte → moins de hauteur que tout sur une colonne */
+/* Axe KPI : deux bandes verticales, ordre de lecture gauche → droite (ltr), alignées au début du titre */
 .mr-tgrid__axis-cell-title.mr-tgrid__axis-cell-title--split {
   display: inline-flex;
   flex-direction: row;
+  direction: ltr;
   align-items: flex-start;
   gap: 0.35rem;
   writing-mode: horizontal-tb;

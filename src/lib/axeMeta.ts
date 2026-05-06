@@ -55,6 +55,7 @@ export const AXE_META: Record<Axe, AxeDisplayMeta> = {
     color: '#B45309',
     description:
       'À chaque jalon : observer les effets réels et tangibles du changement produit.',
+    /* Colonne gauche → colonne droite : même ordre que la lecture du titre complet */
     axisColumnSplit: ['4. Mesure des Effets', '& indicateurs de suivi'],
   },
 }
