@@ -2,7 +2,7 @@
 
 **Document de synthèse narrative** pour aligner produit, implémentations et agents IA sur le **sens métier** de l’outil. Il **ne remplace pas** les règles détaillées (`docs/# Règles métier — Maturity Roadmap.md`, `docs/# Règles métier — REF-7b.2 …`, matrice permissions, backlog) : il les **ordonne** et en donne la **lecture d’ensemble**.
 
-Dernière mise à jour : **6 mai 2026**, 21 h 44 (Europe/Paris)
+Dernière mise à jour : **6 mai 2026**, 21 h 47 (Europe/Paris)
 
 ---
 
@@ -137,21 +137,22 @@ Points **structurels** *(détail exhaustif dans `docs/# Règles métier — REF-
 
 | Thème | Décision |
 |--------|----------|
-| **Première victoire visible** | Le **CODIR** dispose d’un **tableau simple** par campagne de revue : qui a été **invité**, qui s’est **connecté** (voir §8.2), qui a **terminé sa revue** — sans attendre un chantier « organisation hiérarchique » complet en base. |
+| **Première victoire visible** | Le **CODIR** dispose d’un **tableau simple** par campagne de revue basé sur une **chaîne d’états** lisible (voir §8.2) — sans attendre un chantier « organisation hiérarchique » complet en base. |
 | **Constitution de l’équipe de revue (MVP)** | **Suggestion** par **domaine / direction** dans l’outil ; **choix final** des reviewers par le **CODIR** au moment d’**ouvrir** la revue (personnes explicitement assignées à **ce** snapshot / cette campagne). La **mémoire longue** du type « sous quel CODIR hiérarchique » pourra compléter plus tard sans bloquer ce MVP. |
 | **Visibilité du tableau de pilotage** | **CODIR** concerné ; **consultants** rattachés au dossier ; **super admin** plateforme ; **administrateur de l’espace entreprise** (`admin`) lorsqu’il existe ; **chef de projet** (`pilote`) lorsqu’il existe. *(À recouper avec `docs/proposition-regles-matrice-permissions.md` lors de l’implémentation RLS / écran.)* |
 | **Roadmap transverse** | **Même type de tableau** de pilotage ; adaptation des règles **qui lance** / **qui est reviewer** (gouvernance transverse), pas un produit « à part » pour la consultation d’état de campagne. |
-| **Indicateur « connecté »** | **Plusieurs indicateurs** peuvent être pertinents (ex. compte créé, première connexion après invitation, dernière activité). **Décision produit à affiner** avant figement des colonnes UI ; ne pas réduire à une seule définition sans validation métier. |
+| **Pilotage sans « flicage »** | **Pas d’horodatage** (heure / minute) sur les états pour les managers : l’objectif est la **clarté du pilotage** et la **responsabilisation**, pas la surveillance fine. Les échéances métier (deadline de revue) restent un cadre **collectif** affiché ailleurs, pas une traque individuelle. |
 
-#### §8.2 Pistes d’indicateurs « connexion / engagement » (à trancher)
+#### §8.2 Chaîne d’états — pilotage reviewer (décision produit)
 
-À valider avec le métier avant de figer une colonne unique :
+Pour chaque personne assignée comme **reviewer** sur une campagne (snapshot), le tableau suit **quatre jalons** successifs (affichage **état courant** ou pastilles cochées, sans heure) :
 
-- **Compte existant** dans l’espace (profil créé, invitation honorée côté identité).
-- **Première connexion** après l’invitation à cette revue (signal fort « la personne est entrée »).
-- **Dernière activité** dans la fenêtre de la campagne (utile pour relances ; plus sensible vie privée / interprétation).
+1. **E-mail envoyé** — l’invitation à participer à cette revue a été envoyée.  
+2. **Compte créé** — la personne a un **accès actif** à l’espace (compte rattaché au workspace / invitation honorée côté identité).  
+3. **Revue commencée** — la personne est entrée dans le **travail de revue** sur ce snapshot (équivalent métier du passage en **brouillon actif** / premier geste de contribution — à aligner sur `reviewer.status` et l’activité réelle côté implémentation).  
+4. **Revue soumise** — la personne a actionné **« Soumettre ma revue »** pour cette campagne (aligné sur le cycle REF-7b.2).
 
-L’UI peut afficher **une colonne principale** + **détail au survol** ou secondaires si plusieurs critères sont retenus.
+**Principe** : responsabiliser les acteurs et donner au CODIR une **vision d’avancement** ; **pas** d’outil de contrôle horaire ni de journal individuel timestampé dans ce tableau.
 
 ---
 
