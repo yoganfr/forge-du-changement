@@ -864,7 +864,7 @@ export default function MaturityRoadmap({
               ) : (
                 <button
                   type="button"
-                  className="mr-btn-ghost"
+                  className="mr-btn-open-review"
                   onClick={() => {
                     void handleOpenReview()
                   }}
@@ -876,9 +876,6 @@ export default function MaturityRoadmap({
                   Ouvrir la revue
                 </button>
               )}
-              {snapshotFeedback ? (
-                <span className="mr-muted mr-snapshot-toolbar__feedback">{snapshotFeedback}</span>
-              ) : null}
             </div>
             <div className="mr-snapshot-toolbar__version">
               <span id="mr-snapshot-version-label">Version roadmap</span>
@@ -900,6 +897,21 @@ export default function MaturityRoadmap({
                 ))}
               </select>
             </div>
+          </div>
+          <div className="mr-snapshot-toolbar__feedback-row" aria-live="polite">
+            {snapshotFeedback ? (
+              <span
+                className={
+                  snapshotFeedback === 'Revue fermée.'
+                    ? 'mr-snapshot-toolbar__feedback mr-snapshot-toolbar__feedback--closed'
+                    : 'mr-muted mr-snapshot-toolbar__feedback'
+                }
+              >
+                {snapshotFeedback}
+              </span>
+            ) : (
+              <span className="mr-snapshot-toolbar__feedback-slot" aria-hidden="true" />
+            )}
           </div>
           {activeReviewSnapshot ? (
             <div
