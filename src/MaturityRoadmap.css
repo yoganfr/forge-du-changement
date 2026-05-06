@@ -327,6 +327,36 @@
   margin: 0 0 var(--space-lg);
 }
 
+.mr-help-block {
+  margin: 0 0 var(--space-lg);
+}
+
+.mr-sub-lead {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}
+
+.mr-help-list {
+  margin: 0;
+  padding-left: 1.35em;
+  list-style: disc;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.mr-help-list li::marker {
+  color: color-mix(in srgb, var(--theme-text-muted) 85%, var(--theme-text));
+}
+
+.mr-help-list strong {
+  color: var(--theme-text);
+}
+
 .mr-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1160,11 +1190,9 @@
   border: 1px solid color-mix(in srgb, var(--theme-text) 15%, transparent);
 }
 
-.mr-tgrid-intro {
+/* Intro grille : même aide à puces que le bloc au-dessus de la légende */
+.mr-help-list.mr-tgrid-intro {
   margin: 0 0 var(--space-md);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--theme-text-muted);
 }
 
 .mr-tgrid__chantier-cell--empty .mr-tgrid__chantier-empty {

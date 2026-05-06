@@ -578,13 +578,23 @@ export default function RoadmapTimelineGrid({
 
   return (
     <div className="mr-tgrid-wrap">
-      <p className="mr-tgrid-intro">
-        Chaque <strong>chantier</strong> n’apparaît que dans le <strong>bloc d’axe</strong> où vous le créez (pas de doublon
-        sur les autres axes). Rattachement au projet transformant ; les <strong>jalons</strong> reprennent la couleur du
-        projet. Un seul jalon par case temps — le <strong>+</strong> disparaît une fois le jalon créé. Les colonnes
-        <strong>échéances</strong> et <strong>parties prenantes</strong> peuvent dépasser la largeur de l’écran : utilisez le{' '}
-        <strong>défilement horizontal</strong> du tableau (barre en bas ou flèches sur les côtés) pour les parcourir.
-      </p>
+      <ul className="mr-help-list mr-tgrid-intro">
+        <li>
+          Chaque <strong>chantier</strong> n’apparaît que dans le <strong>bloc d’axe</strong> où vous le créez (pas de
+          doublon sur les autres axes).
+        </li>
+        <li>
+          Rattachement au projet transformant ; les <strong>jalons</strong> reprennent la couleur du projet.
+        </li>
+        <li>
+          Un seul jalon par case temps — le <strong>+</strong> disparaît une fois le jalon créé.
+        </li>
+        <li>
+          Les colonnes <strong>échéances</strong> et <strong>parties prenantes</strong> peuvent dépasser la largeur de
+          l’écran : utilisez le <strong>défilement horizontal</strong> du tableau (barre en bas ou flèches sur les côtés)
+          pour les parcourir.
+        </li>
+      </ul>
 
       <div
         className={[

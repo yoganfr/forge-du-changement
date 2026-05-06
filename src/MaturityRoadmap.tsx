@@ -1022,20 +1022,31 @@ export default function MaturityRoadmap({
           </div>
         </details>
       )}
-      <p className="mr-sub">
-        {memberDirectionLabel ? (
-          <>
-            Direction : <strong>{memberDirectionLabel}</strong>
-            {' — '}
-          </>
-        ) : null}
-        {roadmapProjects.length} projet{roadmapProjects.length > 1 ? 's' : ''} transformant
-        {roadmapProjects.length > 1 ? 's' : ''}. Cochez les projets dans la légende ci-dessous (couleurs sur la
-        grille). Choisissez ensuite l’axe affiché. Cliquez sur l’intitulé d’une ligne (ou sur la ligne dédiée en bas
-        de chaque axe) pour le nom et le rattachement au projet. Vous pouvez aussi{' '}
-        <strong>glisser-déposer l’intitulé du chantier</strong> vers une autre ligne d’axe (Processus, Organisation ou
-        Outils) pour déplacer tout le chantier ; l’axe KPI reste réservé aux jalons synchronisés automatiquement.
-      </p>
+      <div className="mr-help-block">
+        <p className="mr-sub-lead">
+          {memberDirectionLabel ? (
+            <>
+              Direction : <strong>{memberDirectionLabel}</strong>
+              {' — '}
+            </>
+          ) : null}
+          {roadmapProjects.length} projet{roadmapProjects.length > 1 ? 's' : ''} transformant
+          {roadmapProjects.length > 1 ? 's' : ''}.
+        </p>
+        <ul className="mr-help-list">
+          <li>Cochez les projets dans la légende ci-dessous (couleurs sur la grille).</li>
+          <li>Choisissez ensuite l’axe affiché.</li>
+          <li>
+            Cliquez sur l’intitulé d’une ligne (ou sur la ligne dédiée en bas de chaque axe) pour le nom et le
+            rattachement au projet.
+          </li>
+          <li>
+            Vous pouvez aussi <strong>glisser-déposer l’intitulé du chantier</strong> vers une autre ligne d’axe
+            (Processus, Organisation ou Outils) pour déplacer tout le chantier.
+          </li>
+          <li>L’axe KPI reste réservé aux jalons synchronisés automatiquement.</li>
+        </ul>
+      </div>
       {!readOnly && snapshotFeedbacks.length > 0 && (
         <div className="mr-panel" style={{ marginBottom: 16 }}>
           <h3 style={{ margin: '0 0 8px' }}>Arbitrage CODIR (feedbacks en revue)</h3>
