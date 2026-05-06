@@ -1427,12 +1427,12 @@
   box-shadow: 4px 0 14px color-mix(in srgb, var(--theme-text) 8%, transparent);
 }
 
-/* En-têtes « Axe » et « Chantiers » — alignés sur le bandeau « Échéances » */
+/* En-têtes « Axe » et « Chantiers » — Satoshi : meilleure lisibilité dense (tables / Windows) que Clash en taille UI */
 .mr-tgrid__axis-head,
 .mr-tgrid__chantier-head {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--theme-text);
   vertical-align: middle;
@@ -1487,12 +1487,13 @@
 
 .mr-tgrid__axis-cell-title {
   display: block;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  /* vertical-lr évite rotate(180deg) + vertical-rl (double transform = artefacts de rendu sur certains navigateurs) */
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
   text-align: center;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 0.88rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.3;
   letter-spacing: 0;
   color: var(--theme-text);
@@ -1582,9 +1583,9 @@
   text-align: center;
   vertical-align: middle;
   padding: 8px 12px;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--theme-text);
   background: color-mix(in srgb, var(--theme-bg-raised) 65%, var(--theme-bg-card));
@@ -1600,9 +1601,9 @@
   text-align: center;
   vertical-align: middle;
   padding: 8px 12px;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--theme-text);
   background: color-mix(in srgb, var(--theme-bg-raised) 65%, var(--theme-bg-card));
@@ -1817,7 +1818,7 @@
 
 .mr-tgrid__chantier-name {
   font-weight: 700;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 0.88rem;
   line-height: 1.3;
 }
@@ -1853,7 +1854,7 @@
 .mr-tgrid__chantier-add-line {
   font: inherit;
   font-weight: 700;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 0.88rem;
   color: var(--theme-accent, #8e3b46);
   background: none;
@@ -1952,7 +1953,7 @@
   display: grid;
   place-items: center;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .mr-tgrid__pill-name {
