@@ -1,7 +1,7 @@
 /* Maturity Roadmap — Phase 1 */
 
 .mr-root {
-  max-width: min(1200px, 100%);
+  max-width: min(var(--mr-root-max-width), 100%);
   margin: 0 auto;
   padding: var(--space-xl) var(--space-lg);
   box-sizing: border-box;
@@ -847,7 +847,7 @@
   border: 1px solid var(--glass-border, var(--theme-border-subtle));
   background: color-mix(in srgb, var(--theme-text) 4%, var(--theme-bg-card, var(--theme-bg-page)));
   box-sizing: border-box;
-  max-width: min(1200px, 100%);
+  max-width: 100%;
 }
 
 .mr-recent-snapshots__title {
