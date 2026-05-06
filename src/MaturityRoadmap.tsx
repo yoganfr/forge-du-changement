@@ -50,6 +50,24 @@ import {
 } from './lib/kpiMirrorSync'
 import './MaturityRoadmap.css'
 
+/** ISO 8601 pour `review_deadline` : +14 jours, 23:59 heure locale (stockée en UTC côté Postgres). */
+function suggestedReviewDeadlineIso(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 14)
+  d.setHours(23, 59, 0, 0)
+  return d.toISOString()
+}
+
+/** Saisie prompt → valeur persistable (ISO) ou null si vide. */
+function coerceReviewDeadlineForDb(raw: string | null): string | null {
+  if (raw == null) return null
+  const t = raw.trim()
+  if (!t) return null
+  const ms = Date.parse(t)
+  if (Number.isFinite(ms)) return new Date(ms).toISOString()
+  return t
+}
+
 const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
 const AXE_META: Record<
@@ -618,7 +636,12 @@ export default function MaturityRoadmap({
       setSnapshotFeedback('Aucun reviewer valide trouvé pour ces emails.')
       return
     }
-    const deadlineRaw = window.prompt('Deadline revue (ISO datetime ou vide)', '')
+    const suggestedDeadline = suggestedReviewDeadlineIso()
+    const deadlineRaw = window.prompt(
+      'Date limite de fin de revue (modifiable). Entrée = garder la suggestion ; une date reconnue par le navigateur fonctionne aussi.',
+      suggestedDeadline,
+    )
+    const reviewDeadline = coerceReviewDeadlineForDb(deadlineRaw)
     try {
       const me = await getCurrentUser()
       await openSnapshotReview({
@@ -626,12 +649,16 @@ export default function MaturityRoadmap({
         reviewerUserIds: reviewerIds,
         invitedBy: me?.id ?? null,
         invitedByEmail: me?.email ?? null,
-        reviewDeadline: deadlineRaw?.trim() ? deadlineRaw.trim() : null,
+        reviewDeadline,
       })
       const reviewerUrl = `${window.location.origin}/review/${snapshotId}`
       void navigator.clipboard?.writeText(reviewerUrl)
+      const deadlineHint =
+        reviewDeadline != null
+          ? ` · Deadline : ${new Date(reviewDeadline).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}`
+          : ''
       setSnapshotFeedback(
-        `Revue ouverte (${reviewerIds.length} reviewer${reviewerIds.length > 1 ? 's' : ''}). Lien copié: ${reviewerUrl}`,
+        `Revue ouverte (${reviewerIds.length} reviewer${reviewerIds.length > 1 ? 's' : ''}).${deadlineHint} Lien copié : ${reviewerUrl}`,
       )
       const list = await listRoadmapSnapshots(workspaceId)
       setSnapshots(list)
