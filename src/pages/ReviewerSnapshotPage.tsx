@@ -15,6 +15,7 @@ import type { TimelineColumn } from '../lib/roadmapTimelineColumns'
 import { assignRoadmapProjectColors } from '../lib/projectRoadmapColor'
 import { buildChantiersAndJalonsFromSnapshotItems } from '../lib/reviewerSnapshotRoadmap'
 import type { Axe, Chantier, Jalon } from '../lib/types'
+import { AXES } from '../lib/axeMeta'
 import { getCurrentUser, isPlatformSuperadmin } from '../lib/auth'
 import '../MaturityRoadmap.css'
 
@@ -53,8 +54,6 @@ function deadlineUrgency(
   if (ratio >= 0.3) return 'orange'
   return 'red'
 }
-
-const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
 
 export default function ReviewerSnapshotPage({
   snapshotId,

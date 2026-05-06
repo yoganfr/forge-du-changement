@@ -8,15 +8,7 @@ import {
   sortJalonsForCell,
   type TimelineColumn,
 } from './lib/roadmapTimelineColumns'
-
-const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
-
-const AXE_META: Record<Axe, { short: string; title: string }> = {
-  PROCESSUS: { short: 'P', title: '1. Processus métiers' },
-  ORGANISATION: { short: 'O', title: '2. Organisation' },
-  OUTILS: { short: 'I', title: '3. Outils IT' },
-  KPI: { short: 'K', title: "4. KPI's" },
-}
+import { AXES, AXE_META, MSG_CHANTIER_DROP_INTERDIT_AXE_MESURE } from './lib/axeMeta'
 
 /** Modificateur CSS `mr-tgrid__axis-cell--*` (couleurs axe = tokens dans `MaturityRoadmap.css`). */
 function mrAxisCellModifier(axe: Axe): string {
@@ -243,7 +235,7 @@ export default function RoadmapTimelineGrid({
       }
       if (blockAxe === 'KPI') {
         onRoadmapToast?.(
-          'Un chantier ne peut pas être déplacé vers l’axe KPI (réservé aux jalons auto-créés).',
+          MSG_CHANTIER_DROP_INTERDIT_AXE_MESURE,
           'error',
         )
         return
@@ -581,6 +573,15 @@ export default function RoadmapTimelineGrid({
 
   return (
     <div className="mr-tgrid-wrap">
+      <p className="mr-sub-lead mr-tgrid-intro-lead">Les quatre axes</p>
+      <ul className="mr-help-list mr-tgrid-intro mr-tgrid-intro--axes">
+        {AXES.map((a) => (
+          <li key={a}>
+            <strong>{AXE_META[a].title}</strong>
+            <span className="mr-tgrid-axis-desc"> — {AXE_META[a].description}</span>
+          </li>
+        ))}
+      </ul>
       <ul className="mr-help-list mr-tgrid-intro">
         <li>
           Chaque <strong>chantier</strong> n’apparaît que dans le <strong>bloc d’axe</strong> où vous le créez (pas de

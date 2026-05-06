@@ -2,15 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Axe } from './lib/types'
 import { buildTimelineColumns, defaultTargetMonthYearForColumn } from './lib/roadmapTimelineColumns'
 import { mrBackdropProps, useBackdropPointerClose } from './lib/useBackdropPointerClose'
-
-const AXES: Axe[] = ['PROCESSUS', 'ORGANISATION', 'OUTILS', 'KPI']
-
-const AXE_LABELS: Record<Axe, string> = {
-  PROCESSUS: '1. Processus métiers',
-  ORGANISATION: '2. Organisation',
-  OUTILS: '3. Outils IT',
-  KPI: "4. KPI's",
-}
+import { AXES, AXE_META } from './lib/axeMeta'
 
 type Props = {
   open: boolean
@@ -117,7 +109,7 @@ export default function JalonQuickAddModal({
           </label>
           {fixedAxe ? (
             <p className="mr-modal__meta">
-              Axe : <strong>{AXE_LABELS[fixedAxe]}</strong>
+              Axe : <strong>{AXE_META[fixedAxe].title}</strong>
             </p>
           ) : (
             <label className="mr-modal__field">
@@ -125,7 +117,7 @@ export default function JalonQuickAddModal({
               <select value={axe} onChange={(e) => setAxe(e.target.value as Axe)}>
                 {AXES.map((a) => (
                   <option key={a} value={a}>
-                    {AXE_LABELS[a]}
+                    {AXE_META[a].title}
                   </option>
                 ))}
               </select>

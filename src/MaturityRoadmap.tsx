@@ -52,6 +52,7 @@ import {
   syncKpiMirrorForParentJalon,
 } from './lib/kpiMirrorSync'
 import type { RoadmapSnapshot } from './lib/api/roadmapSnapshots'
+import { AXE_META, MSG_CHANTIER_DROP_INTERDIT_AXE_MESURE } from './lib/axeMeta'
 import './MaturityRoadmap.css'
 
 function snapshotStatusLabelFr(status: string): string {
@@ -72,16 +73,6 @@ function formatRevReviewersCount(n: number): string {
   if (n <= 0) return 'Aucun assigné'
   if (n === 1) return '1 assigné'
   return `${n} assignés`
-}
-
-const AXE_META: Record<
-  Axe,
-  { title: string; color: string }
-> = {
-  PROCESSUS: { title: '1. Processus métiers', color: '#8E3B46' },
-  ORGANISATION: { title: '2. Organisation', color: '#4C86A8' },
-  OUTILS: { title: '3. Outils IT', color: '#477890' },
-  KPI: { title: "4. KPI's", color: '#B45309' },
 }
 
 const STATUT_LABEL: Record<JalonStatut, string> = {
@@ -403,10 +394,7 @@ export default function MaturityRoadmap({
     async (chantierId: string, newAxe: Axe) => {
       if (readOnly) return
       if (newAxe === 'KPI') {
-        pushRoadmapToast(
-          'Un chantier ne peut pas être déplacé vers l’axe KPI (réservé aux jalons auto-créés).',
-          'error',
-        )
+        pushRoadmapToast(MSG_CHANTIER_DROP_INTERDIT_AXE_MESURE, 'error')
         return
       }
       const c = chantiers.find((x) => x.id === chantierId)
@@ -493,7 +481,7 @@ export default function MaturityRoadmap({
       const axeForCreate = chantierModal?.axeForCreate
       if (axeForCreate == null) {
         window.alert(
-          'L’axe du chantier est obligatoire. Fermez cette fenêtre et utilisez la ligne en bas du bloc d’axe souhaité (Processus, Organisation, Outils ou KPI).',
+          'L’axe du chantier est obligatoire. Fermez cette fenêtre et utilisez la ligne en bas du bloc d’axe souhaité (Processus / Métier, Organisation, Leviers d’exécution ou Mesure des effets).',
         )
         return
       }
@@ -1040,9 +1028,12 @@ export default function MaturityRoadmap({
           </li>
           <li>
             Vous pouvez aussi <strong>glisser-déposer l’intitulé du chantier</strong> vers une autre ligne d’axe
-            (Processus, Organisation ou Outils) pour déplacer tout le chantier.
+            (Processus / Métier, Organisation ou Leviers d’exécution) pour déplacer tout le chantier.
           </li>
-          <li>L’axe KPI reste réservé aux jalons synchronisés automatiquement.</li>
+          <li>
+            L’axe <strong>Mesure des effets &amp; indicateurs de suivi</strong> reste réservé aux jalons
+            synchronisés automatiquement.
+          </li>
         </ul>
       </div>
       {!readOnly && snapshotFeedbacks.length > 0 && (
@@ -1674,7 +1665,7 @@ function JalonDrawer({
           />
         </div>
 
-        <h3 className="mr-drawer-section-title">KPI de suivi</h3>
+        <h3 className="mr-drawer-section-title">Mesure des effets (indicateur)</h3>
         <div className="mr-field">
           <label htmlFor="kpi-desc">Indicateur</label>
           <input
@@ -1701,7 +1692,8 @@ function JalonDrawer({
         </div>
         {jalon.kpi_source_jalon_id ? (
           <p className="mr-hint">
-            Ce jalon KPI est lié au jalon parent: modifier l'indicateur ou la cible ici met aussi à jour le parent.
+            Ce jalon de mesure est lié au jalon parent : modifier l’indicateur ou la cible ici met aussi à jour le
+            parent.
           </p>
         ) : null}
 

@@ -22,13 +22,13 @@ Ce n'est pas un outil de reporting. C'est un outil de **dialogue structuré** en
 PROJET BUILD (retenu pour la transformation)
   └── CHANTIER (regroupement thématique du projet)
       └── 4 AXES — chaque axe raconte le cheminement du chantier
-          ├── AXE 1. PROCESSUS MÉTIERS
+          ├── AXE 1. PROCESSUS / MÉTIER
           │   └── séquence de jalons (1.1 → 1.2 → 1.3)
           ├── AXE 2. ORGANISATION
           │   └── séquence de jalons
-          ├── AXE 3. OUTILS (IT et autres)
+          ├── AXE 3. LEVIERS D'EXÉCUTION
           │   └── séquence de jalons
-          └── AXE 4. KPI'S (mesure du changement)
+          └── AXE 4. MESURE DES EFFETS & INDICATEURS DE SUIVI
               └── séquence de jalons
 ```
 
@@ -50,20 +50,20 @@ Un jalon définit **ce qu'on veut atteindre et quand**. Le PAE définira **comme
 
 Chaque chantier se décline sur 4 dimensions complémentaires. Un chantier ne peut pas être une vraie transformation s'il ignore l'un des axes.
 
-### Axe 1 — Processus métiers
-La manière de réaliser les tâches métiers de l'entreprise. Les façons de faire concrètes du quotidien opérationnel.
+### Axe 1 — Processus / Métier
+Centré sur les évolutions de fonctionnement, les standards, les interfaces, l'innovation et la conformité.
 **Couleur** : bordeaux `#8E3B46` (caramel-candy-600)
 
 ### Axe 2 — Organisation
-La comitologie, les circuits de décision, le découpage des rôles et responsabilités, la synchronisation des informations.
+Coordination, gouvernance, structuration des équipes, compétences, culture et accompagnement du changement.
 **Couleur** : bleu acier `#4C86A8` (steel-blue-400)
 
-### Axe 3 — Outils
-Les supports de travail, qu'ils soient IT ou non (applicatifs, équipements, documents de référence, matériels).
+### Axe 3 — Leviers d'exécution
+Regroupe les moyens concrets, méthodologiques, digitaux, visuels et financiers nécessaires à la mise en œuvre.
 **Couleur** : vert canard `#477890`
 
-### Axe 4 — KPI's
-La mesure du changement. Les indicateurs qui permettent de savoir si la transformation produit ses effets.
+### Axe 4 — Mesure des effets & indicateurs de suivi
+Permet d'observer, à chaque jalon, les effets réels et tangibles du changement produit.
 **Couleur** : ambre `#B45309` (orecchiette-600)
 
 ---
@@ -238,7 +238,7 @@ Chaque échange est horodaté et nominatif. C'est ça l'intelligence collective 
 **Projet** : Obtenir un excellent niveau de service
 **Chantier** : Améliorer la prise de réservations téléphoniques
 
-**Axe Processus métiers — séquence de jalons** :
+**Axe Processus / Métier — séquence de jalons** :
 - 1.1 « Les supports du standard ont été créés et distribués » (Juillet 2017)
 - 1.2 « L'ensemble de l'équipe a été formée » (Août 2017)
 - 1.3 « La procédure de contrôle a été déployée et le respect du standard est opérationnel » (Septembre 2017)
