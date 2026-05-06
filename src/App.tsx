@@ -53,6 +53,7 @@ import {
   persistTheme,
   type ThemeMode,
 } from './themeStorage'
+import ReviewRoadmapHubPage from './pages/ReviewRoadmapHubPage'
 
 const Login = lazy(() => import('./pages/Login'))
 const SettingsPage = lazy(() => import('./pages/Settings'))
@@ -882,6 +883,11 @@ function App() {
     },
     [exitRoadmap],
   )
+
+  const openReviewSnapshot = useCallback((snapshotId: string) => {
+    setReviewSnapshotId(snapshotId)
+    window.history.pushState({}, '', `/review/${snapshotId}`)
+  }, [])
 
   const closeMobileNav = useCallback(() => {
     setMobileNavOpen(false)
@@ -1813,9 +1819,10 @@ function App() {
                 />
               ) : <></>
             ) : normalizedActiveNav === 'review' ? (
-              <ModulePlaceholder
-                title="Review Roadmap"
-                message="Cette page est dédiée à la revue roadmap. Vous pourrez y retrouver vos revues assignées et leur statut."
+              <ReviewRoadmapHubPage
+                workspaceId={workspaceId}
+                currentAppUserId={currentAppUserId}
+                onOpenReview={openReviewSnapshot}
               />
             ) : normalizedActiveNav === 'feedbacks' ? (
               <ModulePlaceholder

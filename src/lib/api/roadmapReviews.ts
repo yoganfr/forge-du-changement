@@ -59,6 +59,78 @@ export async function getReviewerRowForUser(
   return rows.find((r) => r.user_id === userId) ?? null
 }
 
+/** Revues où l'utilisateur est reviewer, restreint au workspace (après jointure snapshot). */
+export type ReviewerWorkspaceAssignment = {
+  snapshot_id: string
+  snapshot_label: string
+  snapshot_status: string
+  review_deadline: string | null
+  frozen_at: string
+  reviewer_status: ReviewerStatus
+  submitted_at: string | null
+}
+
+export async function listReviewerAssignmentsForWorkspace(
+  workspaceId: string,
+  userId: string,
+): Promise<ReviewerWorkspaceAssignment[]> {
+  const { data, error } = await supabase
+    .from('roadmap_snapshot_reviewers')
+    .select(
+      `
+      status,
+      submitted_at,
+      snapshot_id,
+      roadmap_snapshots (
+        id,
+        workspace_id,
+        label,
+        status,
+        review_deadline,
+        frozen_at
+      )
+    `,
+    )
+    .eq('user_id', userId)
+
+  if (error) throw error
+
+  type SnapRow = {
+    id: string
+    workspace_id: string
+    label: string
+    status: string
+    review_deadline: string | null
+    frozen_at: string
+  }
+
+  type Row = {
+    status: ReviewerStatus
+    submitted_at: string | null
+    snapshot_id: string
+    roadmap_snapshots: SnapRow | SnapRow[] | null
+  }
+
+  const rows = (data ?? []) as Row[]
+  const out: ReviewerWorkspaceAssignment[] = []
+  for (const r of rows) {
+    const raw = r.roadmap_snapshots
+    const snap = Array.isArray(raw) ? raw[0] ?? null : raw
+    if (!snap || snap.workspace_id !== workspaceId) continue
+    out.push({
+      snapshot_id: snap.id,
+      snapshot_label: snap.label,
+      snapshot_status: snap.status,
+      review_deadline: snap.review_deadline,
+      frozen_at: snap.frozen_at,
+      reviewer_status: r.status,
+      submitted_at: r.submitted_at,
+    })
+  }
+  out.sort((a, b) => Date.parse(b.frozen_at) - Date.parse(a.frozen_at))
+  return out
+}
+
 export async function openSnapshotReview(params: {
   snapshotId: string
   reviewerUserIds: string[]

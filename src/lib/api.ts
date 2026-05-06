@@ -75,6 +75,7 @@ export {
   arbitrateFeedback,
   createReviewFeedback,
   getReviewerRowForUser,
+  listReviewerAssignmentsForWorkspace,
   listReviewerFeedbacks,
   listSnapshotFeedbacks,
   listSnapshotReviewers,
@@ -86,6 +87,7 @@ export type {
   ReviewKind,
   ReviewTargetType,
   ReviewerStatus,
+  ReviewerWorkspaceAssignment,
   RoadmapReviewFeedback,
   RoadmapSnapshotReviewer,
 } from './api/roadmapReviews'
