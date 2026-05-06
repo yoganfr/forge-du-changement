@@ -69,6 +69,12 @@ function snapshotStatusLabelFr(status: string): string {
   }
 }
 
+function formatRevReviewersCount(n: number): string {
+  if (n <= 0) return 'Aucune personne assignée à la revue'
+  if (n === 1) return '1 personne assignée à la revue'
+  return `${n} personnes assignées à la revue`
+}
+
 const AXE_META: Record<
   Axe,
   { title: string; color: string }
@@ -986,9 +992,49 @@ export default function MaturityRoadmap({
         Outils) pour déplacer tout le chantier ; l’axe KPI reste réservé aux jalons synchronisés automatiquement.
       </p>
       {snapshots.length > 0 && (
-        <p className="mr-muted">
-          Snapshots récents : {snapshots.slice(0, 3).map((s) => `${s.label} (${new Date(s.created_at).toLocaleDateString('fr-FR')}) · ${s.status} · ${reviewersBySnapshot[s.id] ?? 0} reviewers`).join(' · ')}
-        </p>
+        <div className="mr-recent-snapshots">
+          <p className="mr-recent-snapshots__title">Dernières versions figées</p>
+          <ul className="mr-recent-snapshots__list">
+            {snapshots.slice(0, 3).map((s) => {
+              const n = reviewersBySnapshot[s.id] ?? 0
+              const created = new Date(s.created_at).toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })
+              const focused = snapshotFocusId === s.id
+              return (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    className="mr-recent-snapshots__row"
+                    onClick={() => {
+                      setSnapshotFocusId(s.id)
+                    }}
+                    aria-current={focused ? 'true' : undefined}
+                    aria-label={`Afficher « ${s.label} » dans le menu Version roadmap`}
+                  >
+                    <span className="mr-recent-snapshots__label">{s.label}</span>
+                    <span className="mr-recent-snapshots__meta">
+                      <span className="mr-recent-snapshots__date">{created}</span>
+                      <span className="mr-recent-snapshots__sep" aria-hidden="true">
+                        ·
+                      </span>
+                      <span className="mr-recent-snapshots__status">{snapshotStatusLabelFr(s.status)}</span>
+                      <span className="mr-recent-snapshots__sep" aria-hidden="true">
+                        ·
+                      </span>
+                      <span>{formatRevReviewersCount(n)}</span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="mr-recent-snapshots__hint">
+            Cliquez une ligne pour l’aligner sur le menu « Version roadmap » ci-dessus.
+          </p>
+        </div>
       )}
       {!readOnly && snapshotFeedbacks.length > 0 && (
         <div className="mr-panel" style={{ marginBottom: 16 }}>

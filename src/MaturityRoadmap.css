@@ -839,6 +839,120 @@
   font-size: var(--text-sm);
 }
 
+/* Aperçu des versions figées (lisible + clic → sélecteur Version roadmap) */
+.mr-recent-snapshots {
+  margin: 0 0 var(--space-lg);
+  padding: var(--space-md);
+  border-radius: var(--ui-radius-panel, 12px);
+  border: 1px solid var(--glass-border, var(--theme-border-subtle));
+  background: color-mix(in srgb, var(--theme-text) 4%, var(--theme-bg-card, var(--theme-bg-page)));
+  box-sizing: border-box;
+  max-width: min(1200px, 100%);
+}
+
+.mr-recent-snapshots__title {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.mr-recent-snapshots__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.mr-recent-snapshots__list > li {
+  margin: 0;
+  padding: 0;
+}
+
+.mr-recent-snapshots__row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-sm) 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-text) 10%, transparent);
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.mr-recent-snapshots__list > li:last-child .mr-recent-snapshots__row {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.mr-recent-snapshots__row:hover {
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 6%, transparent);
+}
+
+.mr-recent-snapshots__row[aria-current='true'] {
+  background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 10%, transparent);
+}
+
+.mr-recent-snapshots__label {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--theme-text);
+}
+
+.mr-recent-snapshots__meta {
+  font-size: var(--text-sm);
+  color: var(--theme-text-muted);
+  line-height: 1.45;
+}
+
+.mr-recent-snapshots__sep {
+  margin: 0 0.2em;
+}
+
+.mr-recent-snapshots__status {
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.mr-recent-snapshots__hint {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--theme-text-muted);
+  line-height: 1.4;
+}
+
+.mr-recent-snapshots__row:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+  border-radius: var(--ui-radius-control);
+}
+
+@media (min-width: 640px) {
+  .mr-recent-snapshots__row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-sm) var(--space-md);
+  }
+
+  .mr-recent-snapshots__meta {
+    text-align: right;
+    flex: 1;
+    min-width: min(100%, 280px);
+  }
+}
+
 /* ─── Vue tableau temps (jalons en colonnes) ─── */
 .mr-tgrid-wrap {
   margin-bottom: var(--space-xl);
