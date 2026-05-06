@@ -64,10 +64,10 @@ create index if not exists roadmap_review_feedbacks_reviewer_idx
 --   check (target_type in ('projet', 'chantier', 'jalon', 'raci_chantier', 'proposition'));
 
 -- ---------------------------------------------------------------------------
--- RLS — à compléter selon `docs/proposition-regles-matrice-permissions.md`
--- Esquisse : reviewer lit/écrit ses lignes ; CODIR lit tout le snapshot concerné.
+-- RLS — source de vérité versionnée : `supabase/migrations/*ref_7b2_roadmap_review_cycle*.sql`
+-- (policies complètes appliquées sur la prod Supabase ; aligner ce fichier si le schéma diverge.)
 -- ---------------------------------------------------------------------------
 alter table public.roadmap_snapshot_reviewers enable row level security;
 alter table public.roadmap_review_feedbacks enable row level security;
 
--- TODO policies explicites (ne pas laisser « all » en production)
+-- Les CREATE POLICY sont dans la migration ; ne pas dupliquer ici sans mise à jour conjointe.
