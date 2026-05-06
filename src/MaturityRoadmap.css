@@ -842,7 +842,7 @@
 /* Aperçu des versions figées (lisible + clic → sélecteur Version roadmap) */
 .mr-recent-snapshots {
   margin: 0 0 var(--space-lg);
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   border-radius: var(--ui-radius-panel, 12px);
   border: 1px solid var(--glass-border, var(--theme-border-subtle));
   background: color-mix(in srgb, var(--theme-text) 4%, var(--theme-bg-card, var(--theme-bg-page)));
@@ -851,7 +851,7 @@
 }
 
 .mr-recent-snapshots__title {
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 var(--space-xs);
   font-size: var(--text-sm);
   font-weight: 700;
   color: var(--theme-text);
@@ -875,10 +875,10 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--space-2xs);
   width: 100%;
   margin: 0;
-  padding: var(--space-sm) 0;
+  padding: var(--space-xs) 0;
   text-align: left;
   font: inherit;
   color: inherit;
@@ -912,7 +912,7 @@
 .mr-recent-snapshots__meta {
   font-size: var(--text-sm);
   color: var(--theme-text-muted);
-  line-height: 1.45;
+  line-height: 1.3;
 }
 
 .mr-recent-snapshots__sep {
@@ -925,10 +925,10 @@
 }
 
 .mr-recent-snapshots__hint {
-  margin: var(--space-sm) 0 0;
+  margin: var(--space-xs) 0 0;
   font-size: var(--text-xs, 0.75rem);
   color: var(--theme-text-muted);
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 .mr-recent-snapshots__row:focus-visible {
@@ -943,7 +943,7 @@
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: var(--space-sm) var(--space-md);
+    gap: var(--space-2xs) var(--space-sm);
   }
 
   .mr-recent-snapshots__meta {
