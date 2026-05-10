@@ -7,6 +7,9 @@ export type WorkspaceSnapshot = {
   sector: string | null
   size: string | null
   logo_url: string | null
+  /** Mis à jour quand l’API renvoie le workspace complet (évite tout « Bientôt » si la RLS a un trou temporaire). */
+  current_step_codir?: number | null
+  current_step_contributeur?: number | null
 }
 
 /** URL publique du logo telle que renvoyée par l’API / la sauvegarde. */

@@ -847,6 +847,15 @@ function App() {
         ? serverAccess.dbProfile?.id ?? null
         : null
 
+  /** Invité sans ligne `users` → la lecture `workspaces` peut échouer (RLS) ; après onboarding la signature change et on recharge les phases. */
+  const workspaceMemberSignature = useMemo(() => {
+    if (!serverAccess) return 'none'
+    if (serverAccess.source === 'invitation') return 'invitation'
+    if (serverAccess.source === 'users') return `users:${serverAccess.dbUser.id}`
+    if (serverAccess.source === 'superadmin') return `super:${serverAccess.dbProfile?.id ?? 'na'}`
+    return 'unknown'
+  }, [serverAccess])
+
   /** L'utilisateur courant est-il le membre CODIR « dirigeant » désigné pour ce workspace ? */
   const isWorkspaceDirigeant: boolean =
     currentAppUserId != null &&
@@ -1373,6 +1382,8 @@ function App() {
           sector: workspace.sector,
           size: workspace.size,
           logo_url: logoMerged,
+          current_step_codir: workspace.current_step_codir,
+          current_step_contributeur: workspace.current_step_contributeur,
         })
         setWorkspaceData((prev) => ({
           workspace: { ...workspace, logo_url: logoMerged },
@@ -1400,8 +1411,10 @@ function App() {
               logo_url: snap.logo_url,
               created_at: prev?.workspace?.created_at ?? '',
               trigram_convention: 'prenom_nom_3',
-              current_step_codir: prev?.workspace?.current_step_codir ?? null,
-              current_step_contributeur: prev?.workspace?.current_step_contributeur ?? null,
+              current_step_codir:
+                snap.current_step_codir ?? prev?.workspace?.current_step_codir ?? null,
+              current_step_contributeur:
+                snap.current_step_contributeur ?? prev?.workspace?.current_step_contributeur ?? null,
               dirigeant_user_id: prev?.workspace?.dirigeant_user_id ?? null,
             }
             return {
@@ -1423,7 +1436,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [authUser, workspaceId])
+  }, [authUser, workspaceId, workspaceMemberSignature])
 
   if (authLoading) {
     return APP_SHELL_FALLBACK
@@ -1557,6 +1570,7 @@ function App() {
           dbRole={wizardDbRole}
           existingUserId={wizardExistingId}
           onCompleted={async () => {
+            invalidateCache([`workspace:${inviteWizardWorkspaceId}`])
             const {
               data: { session },
             } = await supabase.auth.getSession()
