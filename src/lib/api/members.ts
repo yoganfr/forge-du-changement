@@ -1,4 +1,8 @@
-import { supabase } from '../supabase'
+import {
+  supabase,
+  VITE_CONFIG_SUPABASE_ANON_KEY,
+  VITE_CONFIG_SUPABASE_URL,
+} from '../supabase'
 import { insertAuditEvent } from './audit'
 import { invalidateCache } from './cache'
 import { setWorkspaceDirigeant } from './discoursTransformation'
@@ -6,7 +10,8 @@ import { deleteInvitationsForWorkspaceEmail } from './invitations'
 
 /**
  * Retire un membre de l’espace : invitations puis rattachement consultant éventuel, puis ligne `users`.
- * Ne supprime pas le compte Supabase Auth (traitement séparé si besoin).
+ * La suppression éventuelle du compte Supabase Auth est déclenchée ensuite par
+ * {@link invokeRemoveMemberAuthCleanup} (Edge Function `remove-member-auth-cleanup`).
  */
 export async function removeWorkspaceMember(params: {
   workspaceId: string
@@ -54,4 +59,59 @@ export async function removeWorkspaceMember(params: {
     action: 'workspace_member_removed',
     payload: { email: normalized, user_id: userId },
   })
+}
+
+export type RemoveMemberAuthCleanupResult =
+  | { ok: true; auth_deleted?: boolean; skipped?: string }
+  | { ok?: false; error?: string }
+
+/**
+ * Appelle l’Edge Function qui supprime le compte Auth si l’email n’a plus de profil ni d’invitation active.
+ * Ne bloque pas le retrait membre en cas d’échec réseau : à utiliser après succès de {@link removeWorkspaceMember}.
+ */
+export async function invokeRemoveMemberAuthCleanup(params: {
+  workspaceId: string
+  email: string
+}): Promise<RemoveMemberAuthCleanupResult> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) {
+    return { ok: false, error: 'Session expirée ou absente.' }
+  }
+
+  const base = VITE_CONFIG_SUPABASE_URL?.replace(/\/$/, '') ?? ''
+  const anon = VITE_CONFIG_SUPABASE_ANON_KEY
+  if (!base || !anon) {
+    return { ok: false, error: 'Configuration Supabase manquante (URL ou clé).' }
+  }
+
+  const res = await fetch(`${base}/functions/v1/remove-member-auth-cleanup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: anon,
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      workspace_id: params.workspaceId,
+      email: params.email.trim().toLowerCase(),
+    }),
+  })
+
+  let payload: unknown
+  try {
+    payload = await res.json()
+  } catch {
+    return { ok: false, error: `Nettoyage Auth indisponible (réponse ${res.status}).` }
+  }
+
+  if (!res.ok) {
+    const err = payload as { message?: string; error?: string }
+    const msg = err?.message || err?.error || `Nettoyage Auth indisponible (${res.status})`
+    return { ok: false, error: msg }
+  }
+
+  return payload as RemoveMemberAuthCleanupResult
 }

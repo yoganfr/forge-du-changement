@@ -9,6 +9,7 @@ import {
   insertAuditEvent,
   listWorkspaceAuditEvents,
   listWorkspaces,
+  invokeRemoveMemberAuthCleanup,
   removeWorkspaceMember,
   setWorkspaceDirigeant,
   updateWorkspace,
@@ -409,6 +410,8 @@ export default function CompanySheet({
   const [inviteWarning, setInviteWarning] = useState<string | null>(null)
   const [resendingEmail, setResendingEmail] = useState<string | null>(null)
   const [removingEmail, setRemovingEmail] = useState<string | null>(null)
+  const [removeMemberConfirm, setRemoveMemberConfirm] = useState<CompanyMember | null>(null)
+  const [removeMemberBlocking, setRemoveMemberBlocking] = useState(false)
   const [resendBanner, setResendBanner] = useState<{ ok: boolean; text: string } | null>(null)
   const [csvText, setCsvText] = useState('')
   const [batchDefaultRole, setBatchDefaultRole] = useState<InviteFormRole>('Contributeur')
@@ -811,7 +814,7 @@ export default function CompanySheet({
     }
   }
 
-  async function handleRemoveMember(member: CompanyMember) {
+  function openRemoveMemberConfirm(member: CompanyMember) {
     if (!workspaceId) return
     const emailNorm = member.email.trim().toLowerCase()
     if (currentUserEmail && emailNorm === currentUserEmail.trim().toLowerCase()) {
@@ -825,10 +828,14 @@ export default function CompanySheet({
       )
       return
     }
-    const ok = window.confirm(
-      `Retirer définitivement « ${member.email} » de cet espace ?\n\nLa ligne profil (table utilisateurs) et les invitations liées seront supprimées en base. Le compte Supabase Auth peut subsister : désactivez-le côté projet si nécessaire.`,
-    )
-    if (!ok) return
+    setRemoveMemberConfirm(member)
+  }
+
+  async function executeRemoveMember(member: CompanyMember) {
+    if (!workspaceId || removeMemberBlocking) return
+    const emailNorm = member.email.trim().toLowerCase()
+    setRemoveMemberBlocking(true)
+    setRemoveMemberConfirm(null)
     setRemovingEmail(emailNorm)
     try {
       const wasDirigeant = Boolean(
@@ -842,9 +849,22 @@ export default function CompanySheet({
       })
       if (wasDirigeant) onDirigeantChange?.(null)
       setMembersRefreshKey((k) => k + 1)
+
+      const cleanup = await invokeRemoveMemberAuthCleanup({
+        workspaceId,
+        email: member.email,
+      })
+      let suffix = ''
+      if (cleanup.ok === false) {
+        suffix =
+          ' Le compte de connexion n’a pas pu être supprimé automatiquement — réessayez plus tard ou depuis le tableau Supabase si besoin.'
+      } else if (cleanup.ok && cleanup.auth_deleted) {
+        suffix = ' Le compte de connexion a été supprimé.'
+      }
+
       setResendBanner({
         ok: true,
-        text: `${member.email} a été retiré(e) de l’espace.`,
+        text: `${member.email} a été retiré(e) de l’espace.${suffix}`,
       })
     } catch (err) {
       const message =
@@ -857,6 +877,7 @@ export default function CompanySheet({
       )
     } finally {
       setRemovingEmail(null)
+      setRemoveMemberBlocking(false)
     }
   }
 
@@ -949,9 +970,67 @@ export default function CompanySheet({
     }
   }
 
+  useEffect(() => {
+    if (!removeMemberConfirm) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setRemoveMemberConfirm(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [removeMemberConfirm])
+
   return (
     <div className="cs-root">
       <style>{CSS}</style>
+      {removeMemberConfirm && (
+        <div
+          className="cs-remove-modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setRemoveMemberConfirm(null)
+          }}
+        >
+          <div
+            className="cs-remove-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="cs-remove-modal-title"
+            aria-describedby="cs-remove-modal-desc"
+          >
+            <h4 id="cs-remove-modal-title" className="cs-remove-modal-title">
+              Retirer ce participant ?
+            </h4>
+            <p id="cs-remove-modal-desc" className="cs-remove-modal-desc">
+              <strong>{removeMemberConfirm.email}</strong> sera retiré(e) de cet espace : profil applicatif
+              et invitations liées à cet espace seront supprimés en base.
+            </p>
+            <p className="cs-remove-modal-note">
+              Si cette personne n’a plus aucun profil ni invitation active sur la plateforme, son compte de
+              connexion Supabase sera supprimé automatiquement. Sinon (ex. consultant sur un autre espace),
+              seul le rattachement à cet espace est retiré.
+            </p>
+            <div className="cs-remove-modal-actions">
+              <button
+                type="button"
+                className="cs-remove-modal-btn cs-remove-modal-btn--ghost"
+                onClick={() => setRemoveMemberConfirm(null)}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="cs-remove-modal-btn cs-remove-modal-btn--danger"
+                disabled={removeMemberBlocking}
+                onClick={() => {
+                  void executeRemoveMember(removeMemberConfirm)
+                }}
+              >
+                Retirer définitivement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <section className="cs-card">
         <header className="cs-header">
           <div className="cs-logo-block">
@@ -1226,7 +1305,7 @@ export default function CompanySheet({
                                     className="cs-member-remove"
                                     disabled={removingEmail === emailKey}
                                     onClick={() => {
-                                      void handleRemoveMember(member)
+                                      openRemoveMemberConfirm(member)
                                     }}
                                   >
                                     {removingEmail === emailKey ? 'Suppression…' : 'Retirer'}
@@ -1446,8 +1525,98 @@ export default function CompanySheet({
 const CSS = `
 .cs-root {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   padding: 10px 0 24px;
+  position: relative;
+}
+
+.cs-remove-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--theme-text) 35%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.cs-remove-modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border);
+  border-radius: 16px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+}
+
+.cs-remove-modal-title {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.cs-remove-modal-desc {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--theme-text);
+}
+
+.cs-remove-modal-note {
+  margin: 0 0 18px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}
+
+.cs-remove-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.cs-remove-modal-btn {
+  appearance: none;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  border: 1px solid transparent;
+}
+
+.cs-remove-modal-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cs-remove-modal-btn--ghost {
+  background: transparent;
+  border-color: var(--theme-border);
+  color: var(--theme-text-muted);
+}
+
+.cs-remove-modal-btn--ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-text) 6%, transparent);
+  color: var(--theme-text);
+}
+
+.cs-remove-modal-btn--danger {
+  background: color-mix(in srgb, #B91C1C 12%, transparent);
+  border-color: color-mix(in srgb, #B91C1C 45%, var(--theme-border));
+  color: #B91C1C;
+}
+
+.cs-remove-modal-btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, #B91C1C 20%, transparent);
 }
 
 .cs-card {
