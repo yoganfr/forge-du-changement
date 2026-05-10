@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **6 mai 2026**, 23 h 43 (Europe/Paris)
+Dernière mise à jour : **10 mai 2026**, 17 h 42 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -89,6 +89,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 44 | **NEW** Cache/deduplication côté API (scaling) | ✅ |
 | 45 | **NEW** Documentation permissions en langage métier | ✅ |
 | 46 | **NEW** Scripts SQL de vérification RLS | ✅ |
+| 47 | RLS **DELETE** — retrait membre : policies sur `users`, `invitations`, `workspace_consultants` (migration `supabase/migrations/20260510153751_member_removal_rls_delete_policies.sql`) ; aligné `can_manage_workspace` + superadmin ; pas d’auto-suppression sur `users` | ✅ |
 
 ---
 
@@ -102,6 +103,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 50 | MFA sur comptes super-admin | 🟠 | ✅ |
 | 51 | Journal "qui a lancé le lot" visible UI | 🟡 | ✅ |
 | 51b | Extension CSV d'invitation : colonnes optionnelles `direction` (résolue en direction_id) + `trigram` (sinon dérivé via convention workspace) — couvre les fondations utilisateur nécessaires à REF-7b | 🟠 | ✅ |
+| 52 | Retrait membre depuis **CompanySheet** (invitations, ligne membre, rattachement consultant si besoin) — aligné **EPIC 10 · REF-47** | — | ✅ |
 
 ---
 
@@ -593,9 +595,9 @@ Objectif : permettre à un administrateur de **piloter l'avancement du parcours 
 ## Tables Supabase (métier)
 
 - `workspaces` — espaces entreprise
-- `users` — profils (avec `is_platform_superadmin`, `role: admin/consultant/codir/pilote/contributeur`)
-- `invitations` — invitations en attente
-- `workspace_consultants` — rattachement consultant ↔ workspace (owner/collaborator)
+- `users` — profils (avec `is_platform_superadmin`, `role: admin/consultant/codir/pilote/contributeur`) ; **DELETE** autorisé pour retrait membre selon RLS **EPIC 10 · REF-47** (pas d’auto-suppression)
+- `invitations` — invitations en attente ; **DELETE** pour nettoyage / retrait (même REF)
+- `workspace_consultants` — rattachement consultant ↔ workspace (owner/collaborator) ; **DELETE** pour retirer le rattachement (owner dossier ou admin client, + superadmin)
 - `audit_events` — traçabilité actions sensibles
 - `directions` — directions/périmètres
 - `projets` — projets RUN/BUILD avec scoring (`dg_validated_transfo`, etc.)
@@ -611,7 +613,7 @@ Objectif : permettre à un administrateur de **piloter l'avancement du parcours 
 - `App.tsx` — dashboard, navigation, garde d'auth, entrées La Fabrique / Vue décideur / roadmap
 - `OnboardingFlow.tsx` — création espace entreprise + invitations
 - `ProjectSelector.tsx` — outil saisie/scoring projets (Supabase)
-- `CompanySheet.tsx` — fiche entreprise + invitations unitaires/CSV
+- `CompanySheet.tsx` — fiche entreprise + invitations unitaires/CSV + **retrait membre** (**EPIC 11 · REF-52**, RLS **EPIC 10 · REF-47**)
 - `ProfileSheet.tsx` — drawer profil utilisateur
 - `MemberOnboarding.tsx` — espace membre
 - `pages/DashboardDG.tsx` — synthèse décideur

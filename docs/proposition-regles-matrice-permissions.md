@@ -134,13 +134,36 @@ Après **discussion avec le client** (ou validation interne en mode autonome) su
 2. **Autres consultants** ajoutés sur le dossier → ils peuvent **aussi inviter** des membres client (quand le conseil est dans la boucle).
 3. **Administrateur de l’espace** ou **membres CODIR** invitent les **équipes** sur la base d’accords internes au client.
 4. **Liste validée** → possible d’utiliser l’**import CSV** pour inviter en une fois.
-5. **Retrait d’une personne** → elle ne doit plus accéder au dossier (à matérialiser côté technique et procédure).
+5. **Retrait d’une personne** → elle ne doit plus accéder au dossier ; côté app, action depuis la **fiche entreprise** pour les profils autorisés (voir ci-dessous).
+
+---
+
+## Retrait d’un membre ou d’une invitation (langage métier)
+
+**Objectif** : enlever l’accès d’une personne au **dossier** de l’entreprise (compte membre, ligne d’invitation encore en attente, ou rattachement consultant au besoin).
+
+**Qui peut retirer un membre « côté client » ?**
+
+- **Super admin plateforme** : toujours, pour support ou urgence (à tracer).
+- **Consultant responsable du dossier** (*owner*) ou **administrateur de l’espace entreprise** (rôle **admin**) : **oui**, c’est le même périmètre que « **piloter les accès** » sur ce workspace (en base : fonction **`can_manage_workspace`**).
+- **Consultant simplement invité sur le dossier** (*collaborateur*) : **non** pour ce geste de retrait membre — même idée que pour la **fiche entreprise** seule : le collaborateur n’est pas le référent des droits sur le client.
+- **CODIR / pilote / contributeur** : **non** pour ce bouton de retrait (évite les ambiguïtés sur qui « révoque » un accès).
+
+**Garde-fous** : on ne peut **pas** se **retirer soi-même** via ce flux (évite l’auto-suppression par erreur).
+
+**Rattachement d’un autre consultant** au dossier : le retirer relève du **propriétaire consultant** (*owner*) ou de l’**administrateur de l’espace entreprise**, pas du simple collaborateur consultant.
+
+**Trace** : les actions sensibles restent concernées par le **journal** (`audit_events`) lorsque l’app enregistre l’événement ; les lots d’invitation restent le sujet du journal dédié **REF-51** lorsqu’il sera complété côté UI.
+
+### Ancrage technique (Supabase)
+
+Les suppressions côté base passent par des politiques RLS **DELETE** sur les tables `users`, `invitations` et `workspace_consultants`. Fichier versionné : `supabase/migrations/20260510153751_member_removal_rls_delete_policies.sql`.
 
 ---
 
 ## Pourquoi on parle aussi de « technique » plus tard
 
-Pour que les règles ci-dessus soient **vraies** dans l’app : table des **rattachements consultant ↔ workspace**, rôle **admin** côté client, règles de sécurité en base, et **journal** des actions sensibles (lots d’invitations, retraits, super admin **plateforme**). Voir le script SQL dédié `docs/supabase-evolution-org-admin-rls.sql` pour aligner Supabase.
+Pour que les règles ci-dessus soient **vraies** dans l’app : table des **rattachements consultant ↔ workspace**, rôle **admin** côté client, règles de sécurité en base, et **journal** des actions sensibles (lots d’invitations, retraits, super admin **plateforme**). Voir le script SQL dédié `docs/supabase-evolution-org-admin-rls.sql` pour aligner Supabase ; complété pour le **retrait membre** par la migration **member_removal_rls_delete_policies** (chemins ci-dessus).
 
 ---
 
@@ -166,3 +189,5 @@ Pour que les règles ci-dessus soient **vraies** dans l’app : table des **ratt
 ---
 
 *Document La Forge du Changement — règles de gestion en langage clair.*
+
+Dernière mise à jour : **10 mai 2026**, 17 h 42 (Europe/Paris)
