@@ -28,7 +28,7 @@ export default function InviteeSetupWizard({
   existingUserId,
   onCompleted,
 }: InviteeSetupWizardProps) {
-  const [step, setStep] = useState<1 | 2>(mode === 'invitation' ? 2 : 1)
+  const [step, setStep] = useState<1 | 2>(1)
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -123,7 +123,7 @@ export default function InviteeSetupWizard({
 
     setSubmitting(true)
     try {
-      if (pwd && mode !== 'invitation') {
+      if (pwd) {
         const { error: pwdErr } = await supabase.auth.updateUser({ password: pwd })
         if (pwdErr) throw pwdErr
       }
