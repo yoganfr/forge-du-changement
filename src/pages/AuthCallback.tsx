@@ -1,10 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { userCanAccessApp, signOut } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 
+const STALL_MS = 45_000
+
 export default function AuthCallback() {
+  const [stallError, setStallError] = useState(false)
+
   useEffect(() => {
     let cancelled = false
+    let finished = false
     let unsubscribe: (() => void) | undefined
 
     async function allowThenRedirect(sessionUserEmail: string) {
@@ -18,25 +23,41 @@ export default function AuthCallback() {
       window.location.replace('/')
     }
 
-    void supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (cancelled) return
-      if (session?.user?.email) {
-        await allowThenRedirect(session.user.email)
-        return
+    function tryContinueWithSession(session: { user?: { email?: string | null } } | null) {
+      const email = session?.user?.email?.trim()
+      if (!email || cancelled || finished) return
+      finished = true
+      unsubscribe?.()
+      void allowThenRedirect(email)
+    }
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled || finished) return
+      if (event === 'PASSWORD_RECOVERY') return
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'INITIAL_SESSION' ||
+        (event === 'TOKEN_REFRESHED' && session?.user?.email)
+      ) {
+        tryContinueWithSession(session)
       }
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
-        if (cancelled || event !== 'SIGNED_IN' || !nextSession?.user?.email) return
-        subscription.unsubscribe()
-        await allowThenRedirect(nextSession.user.email)
-      })
-      unsubscribe = () => subscription.unsubscribe()
     })
+    unsubscribe = () => subscription.unsubscribe()
+
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      tryContinueWithSession(session)
+    })
+
+    const stallTimer = window.setTimeout(() => {
+      if (!cancelled && !finished) setStallError(true)
+    }, STALL_MS)
 
     return () => {
       cancelled = true
-      unsubscribe?.()
+      window.clearTimeout(stallTimer)
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -50,19 +71,43 @@ export default function AuthCallback() {
       fontFamily: 'var(--font-body)',
       background: 'var(--theme-bg-page, #121212)',
       color: 'var(--theme-text, #f0f0f0)',
-      gap: '16px'
+      gap: '16px',
+      padding: '24px',
+      textAlign: 'center',
     }}>
-      <div style={{
-        width: '36px',
-        height: '36px',
-        borderRadius: '50%',
-        border: '3px solid #8E3B46',
-        borderTopColor: 'transparent',
-        animation: 'spin 0.8s linear infinite'
-      }} />
-      <p style={{ fontSize: '14px', opacity: 0.6 }}>
-        Connexion en cours...
-      </p>
+      {!stallError ? (
+        <>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            border: '3px solid #8E3B46',
+            borderTopColor: 'transparent',
+            animation: 'spin 0.8s linear infinite'
+          }} />
+          <p style={{ fontSize: '14px', opacity: 0.6 }}>
+            Connexion en cours...
+          </p>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: '15px', maxWidth: '320px', lineHeight: 1.5 }}>
+            La connexion via le lien prend trop de temps. Ouvrez le lien depuis le navigateur
+            de votre téléphone (Safari, Chrome) plutôt que depuis l’application mail, ou
+            demandez un nouvel email d’invitation.
+          </p>
+          <a
+            href="/"
+            style={{
+              fontSize: '14px',
+              color: 'var(--theme-accent, #8E3B46)',
+              textDecoration: 'underline',
+            }}
+          >
+            Retour à la connexion
+          </a>
+        </>
+      )}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }

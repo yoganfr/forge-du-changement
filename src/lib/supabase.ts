@@ -17,7 +17,13 @@ export const VITE_CONFIG_SUPABASE_ANON_KEY = SUPABASE_KEY
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
-    flowType: 'pkce',
+    /**
+     * Flux implicite : les magic links (invitations, mot de passe oublié) portent les jetons
+     * dans le fragment d’URL et fonctionnent sur un autre appareil que celui qui a appelé
+     * `signInWithOtp`. Avec PKCE, le `code_verifier` reste sur le navigateur initiateur :
+     * l’invité qui ouvre l’e-mail sur mobile reste bloqué sur `/auth/callback`.
+     */
+    flowType: 'implicit',
     detectSessionInUrl: true,
   },
 })
