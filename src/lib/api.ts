@@ -21,6 +21,7 @@ export {
 } from './api/workspaces'
 export type { WorkspaceConsultantLevel } from './api/workspaces'
 export { createUser, getWorkspaceUsers, updateUser } from './api/users'
+export { removeWorkspaceMember } from './api/members'
 export {
   createDirection,
   getRoadmapEligibleProjects,

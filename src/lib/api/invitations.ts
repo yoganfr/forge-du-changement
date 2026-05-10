@@ -137,6 +137,18 @@ export async function getAcceptedInvitationAwaitingUserRow(email: string): Promi
   return data as Invitation | null
 }
 
+/** Supprime toutes les lignes `invitations` pour cet email dans l’espace (nettoyage avant/après retrait du membre). */
+export async function deleteInvitationsForWorkspaceEmail(workspaceId: string, email: string): Promise<void> {
+  const normalized = email.trim().toLowerCase()
+  const { error } = await supabase
+    .from('invitations')
+    .delete()
+    .eq('workspace_id', workspaceId)
+    .eq('email', normalized)
+  if (error) throw error
+  invalidateCache([`workspace-invitations:${workspaceId}`])
+}
+
 /** Passe les invitations `en_attente` à `acceptee` pour cet email dans cet espace (après confirmation email ou profil). */
 export async function markInvitationsAcceptedForWorkspaceEmail(
   workspaceId: string,

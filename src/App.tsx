@@ -1958,6 +1958,7 @@ function App() {
                 size={workspaceData?.size ?? 'Non renseigné'}
                 members={workspaceData?.members ?? []}
                 currentUserRole={currentUserRole}
+                currentUserEmail={authUser?.email ?? null}
                 companyLogo={companyLogo}
                 dirigeantUserId={workspaceData?.workspace?.dirigeant_user_id ?? null}
                 onDirigeantChange={(userId) => {

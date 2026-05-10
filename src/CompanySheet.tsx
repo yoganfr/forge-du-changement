@@ -9,6 +9,7 @@ import {
   insertAuditEvent,
   listWorkspaceAuditEvents,
   listWorkspaces,
+  removeWorkspaceMember,
   setWorkspaceDirigeant,
   updateWorkspace,
   uploadImageToStorage,
@@ -23,6 +24,8 @@ export interface CompanyMember {
   detail?: string
   pillLabel?: string
   pillVariant?: 'active' | 'invited' | 'pending' | 'expired' | 'inactive'
+  /** `public.users.id` lorsque la personne a un profil dans l’espace */
+  userRecordId?: string
 }
 
 type InviteFormRole = 'Membre CODIR' | 'Pilote de projet' | 'Contributeur'
@@ -140,6 +143,7 @@ function mergeUsersAndInvitations(users: User[], invitations: Invitation[]): Com
       detail,
       pillLabel,
       pillVariant,
+      userRecordId: user.id,
     })
   }
   for (const inv of invitations) {
@@ -187,6 +191,8 @@ export interface CompanySheetProps {
   size: string
   members: CompanyMember[]
   currentUserRole: 'consultant' | 'admin' | 'codir' | 'pilote' | 'contributeur'
+  /** Pour empêcher le retrait de soi-même et les contrôles métier */
+  currentUserEmail?: string | null
   companyLogo?: string | null
   /** Membre CODIR désigné comme « dirigeant » porteur du Discours de transformation. */
   dirigeantUserId?: string | null
@@ -230,6 +236,11 @@ function memberAvatarColor(role: string) {
 }
 
 function canEditCompany(role: CompanySheetProps['currentUserRole']) {
+  return role === 'consultant' || role === 'admin'
+}
+
+/** Retrait membre (suppression en base) : consultant + admin entreprise. */
+function canRemoveMembers(role: CompanySheetProps['currentUserRole']) {
   return role === 'consultant' || role === 'admin'
 }
 
@@ -368,6 +379,7 @@ export default function CompanySheet({
   size,
   members,
   currentUserRole,
+  currentUserEmail = null,
   companyLogo: companyLogoProp = null,
   dirigeantUserId = null,
   onCompanyUpdate,
@@ -396,6 +408,7 @@ export default function CompanySheet({
   // REF-7b.0 : bandeau orange pour succes partiel (ex. invitation enregistree mais email non envoye)
   const [inviteWarning, setInviteWarning] = useState<string | null>(null)
   const [resendingEmail, setResendingEmail] = useState<string | null>(null)
+  const [removingEmail, setRemovingEmail] = useState<string | null>(null)
   const [resendBanner, setResendBanner] = useState<{ ok: boolean; text: string } | null>(null)
   const [csvText, setCsvText] = useState('')
   const [batchDefaultRole, setBatchDefaultRole] = useState<InviteFormRole>('Contributeur')
@@ -429,6 +442,7 @@ export default function CompanySheet({
   const initials = useMemo(() => getInitials(draftName), [draftName])
   const canEdit = canEditCompany(currentUserRole)
   const canInvite = canInviteMembers(currentUserRole)
+  const canRemove = canRemoveMembers(currentUserRole)
   const mergedMembers = remoteMembers ?? members
 
   /** Membres CODIR actifs, éligibles au rôle de « dirigeant » porteur du discours. */
@@ -797,6 +811,55 @@ export default function CompanySheet({
     }
   }
 
+  async function handleRemoveMember(member: CompanyMember) {
+    if (!workspaceId) return
+    const emailNorm = member.email.trim().toLowerCase()
+    if (currentUserEmail && emailNorm === currentUserEmail.trim().toLowerCase()) {
+      window.alert('Vous ne pouvez pas retirer votre propre compte depuis cet écran.')
+      return
+    }
+    const row = remoteUsers.find((u) => u.email.trim().toLowerCase() === emailNorm)
+    if (row?.is_platform_superadmin) {
+      window.alert(
+        'Les comptes super-admin plateforme ne peuvent pas être retirés depuis la fiche entreprise.',
+      )
+      return
+    }
+    const ok = window.confirm(
+      `Retirer définitivement « ${member.email} » de cet espace ?\n\nLa ligne profil (table utilisateurs) et les invitations liées seront supprimées en base. Le compte Supabase Auth peut subsister : désactivez-le côté projet si nécessaire.`,
+    )
+    if (!ok) return
+    setRemovingEmail(emailNorm)
+    try {
+      const wasDirigeant = Boolean(
+        member.userRecordId && dirigeantUserId && member.userRecordId === dirigeantUserId,
+      )
+      await removeWorkspaceMember({
+        workspaceId,
+        email: member.email,
+        userId: member.userRecordId ?? null,
+        workspaceDirigeantUserId: dirigeantUserId ?? null,
+      })
+      if (wasDirigeant) onDirigeantChange?.(null)
+      setMembersRefreshKey((k) => k + 1)
+      setResendBanner({
+        ok: true,
+        text: `${member.email} a été retiré(e) de l’espace.`,
+      })
+    } catch (err) {
+      const message =
+        typeof err === 'object' && err && 'message' in err
+          ? String((err as { message?: unknown }).message ?? '')
+          : ''
+      window.alert(
+        message ||
+          'Impossible de retirer ce membre. Vérifiez vos droits ou des données liées en base (contrôle RLS).',
+      )
+    } finally {
+      setRemovingEmail(null)
+    }
+  }
+
   async function submitDirigeantChange(nextUserId: string | null) {
     if (!workspaceId) return
     if ((dirigeantUserId ?? null) === nextUserId) return
@@ -1157,6 +1220,18 @@ export default function CompanySheet({
                                 <span className={pillClass(pillVariant)}>
                                   {pillLabel}
                                 </span>
+                                {canRemove && workspaceId ? (
+                                  <button
+                                    type="button"
+                                    className="cs-member-remove"
+                                    disabled={removingEmail === emailKey}
+                                    onClick={() => {
+                                      void handleRemoveMember(member)
+                                    }}
+                                  >
+                                    {removingEmail === emailKey ? 'Suppression…' : 'Retirer'}
+                                  </button>
+                                ) : null}
                               </div>
                             )
                           })}
@@ -1604,7 +1679,7 @@ const CSS = `
 
 .cs-member-row {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto auto;
   gap: 10px;
   align-items: start;
   border: 1px solid var(--theme-border);
@@ -1625,8 +1700,32 @@ const CSS = `
 }
 
 .cs-member-row > .cs-member-role,
-.cs-member-row > .cs-status {
+.cs-member-row > .cs-status,
+.cs-member-row > .cs-member-remove {
   align-self: center;
+}
+
+.cs-member-remove {
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 65%, var(--theme-border));
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  white-space: nowrap;
+}
+
+.cs-member-remove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent) 18%, transparent);
+}
+
+.cs-member-remove:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .cs-member-email {
