@@ -96,6 +96,18 @@ function readBrowserMemberUserId(): string | null {
   return id || null
 }
 
+// Logs de diagnostic activables a la demande via `localStorage.setItem('lfdc:debug:auth-boot','1')`.
+// Garder silencieux par defaut pour ne pas polluer la console en prod / preview.
+function lfdcLog(...args: unknown[]): void {
+  try {
+    if (typeof localStorage === 'undefined') return
+    if (localStorage.getItem('lfdc:debug:auth-boot') !== '1') return
+    console.log(...(args as [unknown, ...unknown[]]))
+  } catch {
+    /* localStorage inaccessible — silent */
+  }
+}
+
 /**
  * Ligne `public.users` pour l’email de la session.
  * Plusieurs lignes peuvent exister (même email, espaces différents) : on évite de prendre
@@ -108,13 +120,13 @@ function readBrowserMemberUserId(): string | null {
 export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
   const resolvedSessionUser = sessionUser ?? (await getSession())?.user ?? null
   if (!resolvedSessionUser?.email) {
-    console.log('[lfdc:auth] getCurrentUser: no email in session')
+    lfdcLog('[lfdc:auth] getCurrentUser: no email in session')
     return null
   }
 
   const email = resolvedSessionUser.email.trim().toLowerCase()
   const authId = resolvedSessionUser.id
-  console.log('[lfdc:auth] getCurrentUser start: email=%s, authId=%s', email, authId)
+  lfdcLog('[lfdc:auth] getCurrentUser start: email=%s, authId=%s', email, authId)
 
   const emailMatches = (r: { email?: string | null } | null) =>
     r?.email?.trim().toLowerCase() === email
@@ -126,9 +138,9 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
     .maybeSingle()
 
   if (authErr) {
-    console.log('[lfdc:auth] getCurrentUser authRow query error: %O', authErr)
+    lfdcLog('[lfdc:auth] getCurrentUser authRow query error: %O', authErr)
   } else {
-    console.log('[lfdc:auth] getCurrentUser authRow result: %O (match=%s)', authRow, authRow ? emailMatches(authRow) : false)
+    lfdcLog('[lfdc:auth] getCurrentUser authRow result: %O (match=%s)', authRow, authRow ? emailMatches(authRow) : false)
   }
 
   const storedUserId = readBrowserMemberUserId()
@@ -139,23 +151,23 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
       .eq('id', storedUserId)
       .maybeSingle()
     if (errId) {
-      console.log('[lfdc:auth] getCurrentUser byId query error: %O', errId)
+      lfdcLog('[lfdc:auth] getCurrentUser byId query error: %O', errId)
     } else if (byId) {
-      console.log('[lfdc:auth] getCurrentUser byId result found, match=%s', emailMatches(byId))
+      lfdcLog('[lfdc:auth] getCurrentUser byId result found, match=%s', emailMatches(byId))
     }
     if (!errId && byId && emailMatches(byId)) {
-      console.log('[lfdc:auth] getCurrentUser returning storedUserId match')
+      lfdcLog('[lfdc:auth] getCurrentUser returning storedUserId match')
       return byId
     }
   }
 
   if (!authErr && authRow && emailMatches(authRow)) {
-    console.log('[lfdc:auth] getCurrentUser returning authId match')
+    lfdcLog('[lfdc:auth] getCurrentUser returning authId match')
     return authRow
   }
 
   const ws = readBrowserWorkspaceId()
-  console.log('[lfdc:auth] getCurrentUser workspace=%s', ws)
+  lfdcLog('[lfdc:auth] getCurrentUser workspace=%s', ws)
   if (ws) {
     const { data: byWs, error: errWs } = await supabase
       .from('users')
@@ -164,9 +176,9 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
       .eq('workspace_id', ws)
       .maybeSingle()
     if (errWs) {
-      console.log('[lfdc:auth] getCurrentUser byWs query error: %O', errWs)
+      lfdcLog('[lfdc:auth] getCurrentUser byWs query error: %O', errWs)
     } else if (byWs) {
-      console.log('[lfdc:auth] getCurrentUser byWs result found')
+      lfdcLog('[lfdc:auth] getCurrentUser byWs result found')
       return byWs
     }
   }
@@ -179,19 +191,19 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
     .limit(25)
 
   if (error) {
-    console.log('[lfdc:auth] getCurrentUser candidates query error: %O', error)
+    lfdcLog('[lfdc:auth] getCurrentUser candidates query error: %O', error)
     return null
   }
   if (!candidates?.length) {
-    console.log('[lfdc:auth] getCurrentUser no candidates found')
+    lfdcLog('[lfdc:auth] getCurrentUser no candidates found')
     return null
   }
 
-  console.log('[lfdc:auth] getCurrentUser candidates count: %d', candidates.length)
+  lfdcLog('[lfdc:auth] getCurrentUser candidates count: %d', candidates.length)
 
   const withAvatar = candidates.find((r) => Boolean(r.avatar_url?.trim()))
   if (withAvatar) {
-    console.log('[lfdc:auth] getCurrentUser returning candidate with avatar')
+    lfdcLog('[lfdc:auth] getCurrentUser returning candidate with avatar')
     return withAvatar
   }
 
@@ -202,7 +214,7 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
     + (u.direction_nom?.trim() ? 2 : 0)
 
   const result = [...candidates].sort((a, b) => scoreProfile(b) - scoreProfile(a))[0] ?? null
-  console.log('[lfdc:auth] getCurrentUser returning highest-scored candidate: %s', result ? 'found' : 'none')
+  lfdcLog('[lfdc:auth] getCurrentUser returning highest-scored candidate: %s', result ? 'found' : 'none')
   return result
 }
 
@@ -213,11 +225,11 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
 export async function isPlatformSuperadmin(): Promise<boolean> {
   const { data, error } = await supabase.rpc('is_platform_superadmin')
   if (error) {
-    console.log('[lfdc:auth] isPlatformSuperadmin error: %O', error)
+    lfdcLog('[lfdc:auth] isPlatformSuperadmin error: %O', error)
     return false
   }
   const result = data === true
-  console.log('[lfdc:auth] isPlatformSuperadmin result: %s', result)
+  lfdcLog('[lfdc:auth] isPlatformSuperadmin result: %s', result)
   return result
 }
 

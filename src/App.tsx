@@ -1176,7 +1176,9 @@ function App() {
         isPlatformSuperadmin(),
       ])
       logAuthBoot(debugEnabled, 'identity + superadmin checks', startedAt)
-      console.log('[lfdc:wizard] reconcileAuthSession: invitedUser=%s, platformSuper=%s, email=%s', invitedUser ? invitedUser.id : 'null', platformSuper, emailNorm)
+      if (debugEnabled) {
+        console.log('[lfdc:wizard] reconcileAuthSession: invitedUser=%s, platformSuper=%s, email=%s', invitedUser ? invitedUser.id : 'null', platformSuper, emailNorm)
+      }
       const skipInvFetch = Boolean(invitedUser) || platformSuper
       const [pendingInv, acceptedInv] = skipInvFetch
         ? [null, null]
@@ -1186,7 +1188,9 @@ function App() {
           ])
       if (!skipInvFetch) {
         logAuthBoot(debugEnabled, 'invitation checks', startedAt)
-        console.log('[lfdc:wizard] reconcileAuthSession invitation results: pendingInv=%s, acceptedInv=%s', pendingInv ? pendingInv.id : 'null', acceptedInv ? acceptedInv.id : 'null')
+        if (debugEnabled) {
+          console.log('[lfdc:wizard] reconcileAuthSession invitation results: pendingInv=%s, acceptedInv=%s', pendingInv ? pendingInv.id : 'null', acceptedInv ? acceptedInv.id : 'null')
+        }
       }
       const invBootstrap = pendingInv ?? acceptedInv
 
@@ -1202,7 +1206,9 @@ function App() {
         setAuthUser(user)
         if (invitedUser) {
           setServerAccess({ source: 'users', dbUser: invitedUser })
-          console.log('[lfdc:wizard] setServerAccess: source=users, workspace_id=%s, role=%s', invitedUser.workspace_id, invitedUser.role)
+          if (debugEnabled) {
+            console.log('[lfdc:wizard] setServerAccess: source=users, workspace_id=%s, role=%s', invitedUser.workspace_id, invitedUser.role)
+          }
           if (invitedUser.workspace_id) {
             const isConsultantMember = invitedUser.role === 'consultant'
             const syncWorkspace = (id: string) => {
@@ -1237,7 +1243,9 @@ function App() {
           }
         } else if (platformSuper) {
           setServerAccess({ source: 'superadmin', dbProfile: invitedUser ?? null })
-          console.log('[lfdc:wizard] setServerAccess: source=superadmin')
+          if (debugEnabled) {
+            console.log('[lfdc:wizard] setServerAccess: source=superadmin')
+          }
         } else {
           setServerAccess(null)
         }
@@ -1262,12 +1270,16 @@ function App() {
           workspaceId: invBootstrap.workspace_id,
         })
         logAuthBoot(debugEnabled, 'session reconciled (invitation bootstrap)', startedAt)
-        console.log('[lfdc:wizard] reconcileAuthSession completed: source=invitation, workspace_id=%s, role=%s', invBootstrap.workspace_id, invBootstrap.role)
+        if (debugEnabled) {
+          console.log('[lfdc:wizard] reconcileAuthSession completed: source=invitation, workspace_id=%s, role=%s', invBootstrap.workspace_id, invBootstrap.role)
+        }
         return
       }
       setLoginForcedMessage(ACCESS_DENIED_LOGIN_MESSAGE)
       setServerAccess(null)
-      console.log('[lfdc:wizard] reconcileAuthSession ACCESS_DENIED: no user, no superadmin, no invitation')
+      if (debugEnabled) {
+        console.log('[lfdc:wizard] reconcileAuthSession ACCESS_DENIED: no user, no superadmin, no invitation')
+      }
       void signOut().catch(() => {
         /* déconnexion silencieuse best-effort */
       })
@@ -1552,9 +1564,14 @@ function App() {
 
   const inviteWizardWorkspaceId = resolveInviteeWizardWorkspaceId(serverAccess)
   const gateResult = needsInviteeSetupGate(serverAccess, platformSuperadmin)
-  console.log('[lfdc:wizard] gate check: needsInviteeSetupGate=%s, inviteWizardWorkspaceId=%s, serverAccess.source=%s', gateResult, inviteWizardWorkspaceId, serverAccess?.source)
+  const wizardDebugEnabled = isAuthBootDebugEnabled()
+  if (wizardDebugEnabled) {
+    console.log('[lfdc:wizard] gate check: needsInviteeSetupGate=%s, inviteWizardWorkspaceId=%s, serverAccess.source=%s', gateResult, inviteWizardWorkspaceId, serverAccess?.source)
+  }
   if (gateResult && inviteWizardWorkspaceId) {
-    console.log('[lfdc:wizard] WIZARD MOUNTED: workspace_id=%s, serverAccess.source=%s', inviteWizardWorkspaceId, serverAccess?.source)
+    if (wizardDebugEnabled) {
+      console.log('[lfdc:wizard] WIZARD MOUNTED: workspace_id=%s, serverAccess.source=%s', inviteWizardWorkspaceId, serverAccess?.source)
+    }
     let wizardMode: 'invitation' | 'incomplete_profile' = 'invitation'
     let wizardDbRole: AppDbUser['role'] = 'codir'
     let wizardExistingId: string | null = null
@@ -1587,7 +1604,9 @@ function App() {
     )
   }
 
-  console.log('[lfdc:wizard] wizard NOT mounted: gate=%s, workspaceId=%s', gateResult, inviteWizardWorkspaceId)
+  if (wizardDebugEnabled) {
+    console.log('[lfdc:wizard] wizard NOT mounted: gate=%s, workspaceId=%s', gateResult, inviteWizardWorkspaceId)
+  }
 
   return (
     <div className="dashboard">
