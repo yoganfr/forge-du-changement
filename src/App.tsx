@@ -1594,10 +1594,20 @@ function App() {
           existingUserId={wizardExistingId}
           onCompleted={async () => {
             invalidateCache([`workspace:${inviteWizardWorkspaceId}`])
-            const {
-              data: { session },
-            } = await supabase.auth.getSession()
-            if (session?.user) await reconcileAuthSession(session.user)
+            // Apres `updateUser({ password })`, les jetons peuvent etre renouveles : sans
+            // `refreshSession` + `getUser`, `getSession()` peut rester vide brievement et
+            // on ne reconcilie pas → l’invite reste bloque ou doit se reconnecter.
+            const { error: refErr } = await supabase.auth.refreshSession()
+            if (refErr) {
+              /* getUser peut quand meme resoudre ; eviter de bloquer la transition */
+            }
+            const { data: fresh, error: freshErr } = await supabase.auth.getUser()
+            const resolved = !freshErr && fresh?.user ? fresh.user : null
+            const user = resolved ?? authUser
+            if (user) {
+              await reconcileAuthSession(user)
+              navigateToMainNav('home')
+            }
           }}
         />
       </Suspense>

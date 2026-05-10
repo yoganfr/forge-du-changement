@@ -131,6 +131,9 @@ export default function InviteeSetupWizard({
           throw pwdErr
         }
       }
+      // Synchroniser les jetons locaux apres changement de mot de passe (ou no-op si pas de pwd).
+      const { error: refErr } = await supabase.auth.refreshSession()
+      if (refErr) throw refErr
       await persistProfile()
       await onCompleted()
     } catch (e) {
