@@ -155,6 +155,16 @@ export default function WorkspaceHome({
       <style>{CSS}</style>
 
       <div className="wh-inner">
+        {(currentStep === null || currentStep < 1) && (
+          <div className="wh-parcours-banner" role="status">
+            <p className="wh-parcours-banner__title">Parcours pas encore ouvert sur cet espace</p>
+            <p className="wh-parcours-banner__text">
+              Tous les modules restent en « Bientôt » tant que la phase du parcours n’a pas été démarrée par un{' '}
+              <strong>consultant</strong> ou un <strong>administrateur</strong> dans{' '}
+              <strong>Paramètres → Parcours</strong> (étape CODIR ou contributeur selon le cas).
+            </p>
+          </div>
+        )}
         <header className="wh-header">
           <p className="wh-header-kicker">{roleLabel}</p>
           <h1 className="wh-header-title">Votre parcours de transformation</h1>
@@ -284,6 +294,31 @@ const CSS = `
   margin-inline: auto;
   padding: clamp(4px, 0.7vw, 8px) clamp(12px, 2vw, 20px) clamp(10px, 1.6vw, 18px);
   box-sizing: border-box;
+}
+
+.wh-parcours-banner {
+  margin-bottom: clamp(1rem, 2vw, 1.35rem);
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-border);
+  background: color-mix(in srgb, var(--theme-accent) 10%, var(--theme-bg-card));
+  color: var(--theme-text);
+}
+.wh-parcours-banner__title {
+  margin: 0 0 6px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+.wh-parcours-banner__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--theme-text-muted);
+}
+.wh-parcours-banner__text strong {
+  color: var(--theme-text);
+  font-weight: 600;
 }
 
 .wh-header {

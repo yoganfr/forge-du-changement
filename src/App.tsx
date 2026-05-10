@@ -66,6 +66,7 @@ const DashboardDG = lazy(() => import('./pages/DashboardDG'))
 const DiscoursTransformationPage = lazy(() => import('./pages/DiscoursTransformation'))
 const MaturityRoadmap = lazy(() => import('./MaturityRoadmap'))
 const ReviewerSnapshotPage = lazy(() => import('./pages/ReviewerSnapshotPage'))
+const InviteeSetupWizard = lazy(() => import('./InviteeSetupWizard'))
 
 type JourneyModuleId =
   | 'projects'
@@ -215,6 +216,30 @@ const APP_SHELL_FALLBACK = (
 const AUTH_BOOT_DEBUG_STORAGE_KEY = 'lfdc:debug:auth-boot'
 const ACCESS_DENIED_LOGIN_MESSAGE =
   "Votre compte n'a pas accès à cet espace. Vérifiez votre invitation ou contactez un administrateur."
+
+/** Invité sans profil complet : flux dédié (mot de passe optionnel + identité), avant le tableau de bord. */
+function needsInviteeSetupGate(
+  serverAccess: ServerAccess | null,
+  platformSuperadmin: boolean,
+): boolean {
+  if (platformSuperadmin) return false
+  if (!serverAccess) return false
+  if (serverAccess.source === 'superadmin') return false
+  if (serverAccess.source === 'invitation') return true
+  if (serverAccess.source === 'users') {
+    const u = serverAccess.dbUser
+    if (u.role === 'consultant') return false
+    return !u.prenom?.trim() && !u.nom?.trim()
+  }
+  return false
+}
+
+function resolveInviteeWizardWorkspaceId(access: ServerAccess | null): string | null {
+  if (!access) return null
+  if (access.source === 'invitation') return access.workspaceId
+  if (access.source === 'users') return access.dbUser.workspace_id ?? null
+  return null
+}
 
 function isAuthBootDebugEnabled(): boolean {
   try {
@@ -1321,19 +1346,6 @@ function App() {
     })()
   }, [authUser?.id, authUser?.email, authUser?.email_confirmed_at])
 
-  /** Invité sans ligne `users` : ouvrir une fois le tiroir profil pour l’onboarding (création du profil). */
-  const inviteProfileAutoOpenedRef = useRef(false)
-  useEffect(() => {
-    if (authLoading || !authUser) return
-    if (serverAccess?.source !== 'invitation') {
-      inviteProfileAutoOpenedRef.current = false
-      return
-    }
-    if (inviteProfileAutoOpenedRef.current) return
-    inviteProfileAutoOpenedRef.current = true
-    setShowProfile(true)
-  }, [authLoading, authUser, serverAccess])
-
   useEffect(() => {
     if (!authUser) return
     if (!workspaceId) return
@@ -1513,6 +1525,42 @@ function App() {
             if (session?.user) {
               await reconcileAuthSession(session.user)
             }
+          }}
+        />
+      </Suspense>
+    )
+  }
+
+  const inviteWizardWorkspaceId = resolveInviteeWizardWorkspaceId(serverAccess)
+  if (
+    needsInviteeSetupGate(serverAccess, platformSuperadmin) &&
+    inviteWizardWorkspaceId
+  ) {
+    let wizardMode: 'invitation' | 'incomplete_profile' = 'invitation'
+    let wizardDbRole: AppDbUser['role'] = 'codir'
+    let wizardExistingId: string | null = null
+    if (serverAccess?.source === 'invitation') {
+      wizardMode = 'invitation'
+      wizardDbRole = serverAccess.role as AppDbUser['role']
+    } else if (serverAccess?.source === 'users') {
+      wizardMode = 'incomplete_profile'
+      wizardDbRole = serverAccess.dbUser.role
+      wizardExistingId = serverAccess.dbUser.id
+    }
+
+    return (
+      <Suspense fallback={APP_SHELL_FALLBACK}>
+        <InviteeSetupWizard
+          companyName={workspaceName || 'votre entreprise'}
+          workspaceId={inviteWizardWorkspaceId}
+          mode={wizardMode}
+          dbRole={wizardDbRole}
+          existingUserId={wizardExistingId}
+          onCompleted={async () => {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession()
+            if (session?.user) await reconcileAuthSession(session.user)
           }}
         />
       </Suspense>
