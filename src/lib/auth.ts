@@ -107,10 +107,14 @@ function readBrowserMemberUserId(): string | null {
  */
 export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
   const resolvedSessionUser = sessionUser ?? (await getSession())?.user ?? null
-  if (!resolvedSessionUser?.email) return null
+  if (!resolvedSessionUser?.email) {
+    console.log('[lfdc:auth] getCurrentUser: no email in session')
+    return null
+  }
 
   const email = resolvedSessionUser.email.trim().toLowerCase()
   const authId = resolvedSessionUser.id
+  console.log('[lfdc:auth] getCurrentUser start: email=%s, authId=%s', email, authId)
 
   const emailMatches = (r: { email?: string | null } | null) =>
     r?.email?.trim().toLowerCase() === email
@@ -121,6 +125,12 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
     .eq('id', authId)
     .maybeSingle()
 
+  if (authErr) {
+    console.log('[lfdc:auth] getCurrentUser authRow query error: %O', authErr)
+  } else {
+    console.log('[lfdc:auth] getCurrentUser authRow result: %O (match=%s)', authRow, authRow ? emailMatches(authRow) : false)
+  }
+
   const storedUserId = readBrowserMemberUserId()
   if (storedUserId && storedUserId !== authId) {
     const { data: byId, error: errId } = await supabase
@@ -128,16 +138,24 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
       .select('*')
       .eq('id', storedUserId)
       .maybeSingle()
+    if (errId) {
+      console.log('[lfdc:auth] getCurrentUser byId query error: %O', errId)
+    } else if (byId) {
+      console.log('[lfdc:auth] getCurrentUser byId result found, match=%s', emailMatches(byId))
+    }
     if (!errId && byId && emailMatches(byId)) {
+      console.log('[lfdc:auth] getCurrentUser returning storedUserId match')
       return byId
     }
   }
 
   if (!authErr && authRow && emailMatches(authRow)) {
+    console.log('[lfdc:auth] getCurrentUser returning authId match')
     return authRow
   }
 
   const ws = readBrowserWorkspaceId()
+  console.log('[lfdc:auth] getCurrentUser workspace=%s', ws)
   if (ws) {
     const { data: byWs, error: errWs } = await supabase
       .from('users')
@@ -145,7 +163,12 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
       .eq('email', email)
       .eq('workspace_id', ws)
       .maybeSingle()
-    if (!errWs && byWs) return byWs
+    if (errWs) {
+      console.log('[lfdc:auth] getCurrentUser byWs query error: %O', errWs)
+    } else if (byWs) {
+      console.log('[lfdc:auth] getCurrentUser byWs result found')
+      return byWs
+    }
   }
 
   const { data: candidates, error } = await supabase
@@ -155,10 +178,22 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
     .order('created_at', { ascending: false })
     .limit(25)
 
-  if (error || !candidates?.length) return null
+  if (error) {
+    console.log('[lfdc:auth] getCurrentUser candidates query error: %O', error)
+    return null
+  }
+  if (!candidates?.length) {
+    console.log('[lfdc:auth] getCurrentUser no candidates found')
+    return null
+  }
+
+  console.log('[lfdc:auth] getCurrentUser candidates count: %d', candidates.length)
 
   const withAvatar = candidates.find((r) => Boolean(r.avatar_url?.trim()))
-  if (withAvatar) return withAvatar
+  if (withAvatar) {
+    console.log('[lfdc:auth] getCurrentUser returning candidate with avatar')
+    return withAvatar
+  }
 
   const scoreProfile = (u: (typeof candidates)[number]) =>
     (u.prenom?.trim() ? 4 : 0)
@@ -166,7 +201,9 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
     + (u.job_title?.trim() ? 2 : 0)
     + (u.direction_nom?.trim() ? 2 : 0)
 
-  return [...candidates].sort((a, b) => scoreProfile(b) - scoreProfile(a))[0] ?? null
+  const result = [...candidates].sort((a, b) => scoreProfile(b) - scoreProfile(a))[0] ?? null
+  console.log('[lfdc:auth] getCurrentUser returning highest-scored candidate: %s', result ? 'found' : 'none')
+  return result
 }
 
 /**
@@ -175,8 +212,13 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
  */
 export async function isPlatformSuperadmin(): Promise<boolean> {
   const { data, error } = await supabase.rpc('is_platform_superadmin')
-  if (error) return false
-  return data === true
+  if (error) {
+    console.log('[lfdc:auth] isPlatformSuperadmin error: %O', error)
+    return false
+  }
+  const result = data === true
+  console.log('[lfdc:auth] isPlatformSuperadmin result: %s', result)
+  return result
 }
 
 type MfaTotpEnrollResult = {
