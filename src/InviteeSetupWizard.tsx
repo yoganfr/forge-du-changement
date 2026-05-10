@@ -125,7 +125,11 @@ export default function InviteeSetupWizard({
     try {
       if (pwd) {
         const { error: pwdErr } = await supabase.auth.updateUser({ password: pwd })
-        if (pwdErr) throw pwdErr
+        // `same_password` ne doit pas bloquer la creation du profil : un retry apres
+        // un echec partiel (ex. profil non cree) re-soumet souvent le meme mot de passe.
+        if (pwdErr && (pwdErr as { code?: string }).code !== 'same_password') {
+          throw pwdErr
+        }
       }
       await persistProfile()
       await onCompleted()
