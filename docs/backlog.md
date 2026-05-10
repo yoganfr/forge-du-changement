@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **10 mai 2026**, 17 h 42 (Europe/Paris)
+Dernière mise à jour : **10 mai 2026**, 23 h 20 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -90,6 +90,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 45 | **NEW** Documentation permissions en langage métier | ✅ |
 | 46 | **NEW** Scripts SQL de vérification RLS | ✅ |
 | 47 | RLS **DELETE** — retrait membre : policies sur `users`, `invitations`, `workspace_consultants` (migration `supabase/migrations/20260510153751_member_removal_rls_delete_policies.sql`) ; aligné `can_manage_workspace` + superadmin ; pas d’auto-suppression sur `users` | ✅ |
+| 47a | **Veille (🟡)** Supabase JWT Signing Keys : quand les secrets réservés « legacy » ne seront plus injectés, migrer `discours-analyze` + `remove-member-auth-cleanup` (`SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` → `SUPABASE_PUBLISHABLE_KEYS` / `SUPABASE_SECRET_KEYS`) ; au besoin `web/lib/supabase.ts` (admin server-only). Pas d’urgence tant que la plateforme alimente encore les noms actuels | ⬜ |
 
 ---
 
@@ -673,7 +674,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 - **Maintenant** : finaliser le dialogue structuré roadmap (EPIC 3 · REF-7), fermer le gap décideur transverse (EPIC 2 · REF-3) et prolonger le module Discours avec les prochains lots IA visibles côté usage (**REF-93 → REF-95**). Le prochain lot roadmap le plus naturel après la base déjà livrée est **REF-7b.1bis**.
 - **Après** : poser les fondations de l'EPIC 15 (REF-76 + REF-77), arbitrer l'export PDF autonome (EPIC 13), puis lancer l’harmonisation **PCI / RACI** et le polish final du module PCI (REF-7b.1c → 7b.1e).
-- **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète.
+- **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète ; **veille infra** **EPIC 10 · REF-47a** (migration clés Supabase réservées Edge / Next server).
 
 ---
 
@@ -698,6 +699,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 10. EPIC 15 · **REF-78 à REF-86** — suite migration `/src` → `/web` par vagues.
 11. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires.
 12. EPIC 12 (complet) — extension du design premium au-delà des quick wins ciblés.
+13. EPIC 10 · **REF-47a** — veille migration clés Supabase (`PUBLISHABLE_KEYS` / `SECRET_KEYS` vs anon/service_role legacy) pour Edge Functions + optionnellement Next server.
 
 ---
 
