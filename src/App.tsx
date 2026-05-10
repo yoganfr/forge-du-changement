@@ -1321,6 +1321,19 @@ function App() {
     })()
   }, [authUser?.id, authUser?.email, authUser?.email_confirmed_at])
 
+  /** Invité sans ligne `users` : ouvrir une fois le tiroir profil pour l’onboarding (création du profil). */
+  const inviteProfileAutoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (authLoading || !authUser) return
+    if (serverAccess?.source !== 'invitation') {
+      inviteProfileAutoOpenedRef.current = false
+      return
+    }
+    if (inviteProfileAutoOpenedRef.current) return
+    inviteProfileAutoOpenedRef.current = true
+    setShowProfile(true)
+  }, [authLoading, authUser, serverAccess])
+
   useEffect(() => {
     if (!authUser) return
     if (!workspaceId) return

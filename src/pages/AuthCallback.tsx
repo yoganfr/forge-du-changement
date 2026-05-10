@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { userCanAccessApp, signOut } from '../lib/auth'
+import { consumeAuthRedirectUrl } from '../lib/authRedirect'
 import { supabase } from '../lib/supabase'
 
 const STALL_MS = 45_000
 
 export default function AuthCallback() {
   const [stallError, setStallError] = useState(false)
+  const [linkError, setLinkError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     let finished = false
-    let unsubscribe: (() => void) | undefined
+    let stallTimer: ReturnType<typeof window.setTimeout> | undefined
 
     async function allowThenRedirect(sessionUserEmail: string) {
       const ok = await userCanAccessApp(sessionUserEmail)
@@ -27,7 +29,8 @@ export default function AuthCallback() {
       const email = session?.user?.email?.trim()
       if (!email || cancelled || finished) return
       finished = true
-      unsubscribe?.()
+      if (stallTimer !== undefined) window.clearTimeout(stallTimer)
+      subscription.unsubscribe()
       void allowThenRedirect(email)
     }
 
@@ -44,22 +47,69 @@ export default function AuthCallback() {
         tryContinueWithSession(session)
       }
     })
-    unsubscribe = () => subscription.unsubscribe()
 
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      tryContinueWithSession(session)
-    })
+    void (async () => {
+      const { errorMessage } = await consumeAuthRedirectUrl(supabase)
+      if (cancelled) return
+      if (errorMessage) {
+        const pkceHint =
+          /code verifier|invalid request|invalid grant|already been used/i.test(errorMessage)
+        setLinkError(
+          pkceHint
+            ? 'Ce lien ne fonctionne pas sur cet appareil (souvent : invitation ouverte sur le téléphone alors que le mail a été demandé depuis un autre navigateur). Demandez une nouvelle invitation, ou ouvrez le lien dans Safari / Chrome.'
+            : errorMessage,
+        )
+        subscription.unsubscribe()
+        return
+      }
 
-    const stallTimer = window.setTimeout(() => {
-      if (!cancelled && !finished) setStallError(true)
-    }, STALL_MS)
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        tryContinueWithSession(session)
+      })
+
+      stallTimer = window.setTimeout(() => {
+        if (!cancelled && !finished) setStallError(true)
+      }, STALL_MS)
+    })()
 
     return () => {
       cancelled = true
-      window.clearTimeout(stallTimer)
+      if (stallTimer !== undefined) window.clearTimeout(stallTimer)
       subscription.unsubscribe()
     }
   }, [])
+
+  if (linkError) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100svh',
+        fontFamily: 'var(--font-body)',
+        background: 'var(--theme-bg-page, #121212)',
+        color: 'var(--theme-text, #f0f0f0)',
+        gap: '16px',
+        padding: '24px',
+        textAlign: 'center',
+      }}>
+        <p style={{ fontSize: '15px', maxWidth: '360px', lineHeight: 1.5 }}>
+          {linkError}
+        </p>
+        <a
+          href="/"
+          style={{
+            fontSize: '14px',
+            color: 'var(--theme-accent, #8E3B46)',
+            textDecoration: 'underline',
+          }}
+        >
+          Retour à la connexion
+        </a>
+      </div>
+    )
+  }
 
   return (
     <div style={{
