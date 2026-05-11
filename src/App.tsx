@@ -7,12 +7,14 @@ import {
   getAcceptedInvitationAwaitingUserRow,
   getDirectionProjets,
   getRoadmapEligibleProjects,
+  getLatestAcceptedInvitationForEmail,
   getLatestPendingInvitationForEmail,
   getWorkspace,
   getWorkspaceConsultantMembership,
   getWorkspaceDirections,
   listWorkspaces,
   markInvitationsAcceptedForWorkspaceEmail,
+  updateUser,
 } from './lib/api'
 import { invalidateCache } from './lib/api/cache'
 import type { Workspace } from './lib/types'
@@ -1232,24 +1234,47 @@ function App() {
         }
         setAuthUser(user)
         if (invitedUser) {
-          setServerAccess({ source: 'users', dbUser: invitedUser })
-          if (debugEnabled) {
-            console.log('[lfdc:wizard] setServerAccess: source=users, workspace_id=%s, role=%s', invitedUser.workspace_id, invitedUser.role)
+          let dbUserForSession = invitedUser
+          /**
+           * Hors consultant : la ligne `users` doit refléter la dernière invitation « acceptée » pour cet email.
+           * Sinon un profil / shell créé sous un autre `workspaceId` local laisse un rattachement faux en base
+           * jusqu'à correction manuelle — réalignement automatique au login (RLS permettant).
+           */
+          if (invitedUser.role !== 'consultant') {
+            try {
+              const latestAccepted = await getLatestAcceptedInvitationForEmail(emailNorm)
+              if (
+                latestAccepted?.workspace_id &&
+                latestAccepted.workspace_id !== invitedUser.workspace_id
+              ) {
+                dbUserForSession = await updateUser(
+                  invitedUser.id,
+                  { workspace_id: latestAccepted.workspace_id },
+                  { workspace_id: invitedUser.workspace_id },
+                )
+              }
+            } catch {
+              /* Mise à jour impossible (RLS, contrainte) : session avec la ligne lue telle quelle */
+            }
           }
-          if (invitedUser.workspace_id) {
-            const isConsultantMember = invitedUser.role === 'consultant'
+          setServerAccess({ source: 'users', dbUser: dbUserForSession })
+          if (debugEnabled) {
+            console.log('[lfdc:wizard] setServerAccess: source=users, workspace_id=%s, role=%s', dbUserForSession.workspace_id, dbUserForSession.role)
+          }
+          if (dbUserForSession.workspace_id) {
+            const isConsultantMember = dbUserForSession.role === 'consultant'
             const syncWorkspace = (id: string) => {
               localStorage.setItem('workspaceId', id)
               setWorkspaceId(id)
             }
             if (!isConsultantMember) {
-              syncWorkspace(invitedUser.workspace_id)
+              syncWorkspace(dbUserForSession.workspace_id)
             } else {
               // Consultant : conserver le choix multi-espaces (Paramètres) si l’ID est encore autorisé par la RLS.
               // Sinon rejeter un workspaceId périmé (ex. autre compte sur le même navigateur → mauvaise recette).
               const stored = localStorage.getItem('workspaceId')?.trim() || null
               if (!stored) {
-                syncWorkspace(invitedUser.workspace_id)
+                syncWorkspace(dbUserForSession.workspace_id)
               } else {
                 try {
                   invalidateCache(['workspaces:list'])
@@ -1259,14 +1284,19 @@ function App() {
                     setWorkspaceId(stored)
                   } else {
                     clearWorkspaceSnapshot()
-                    syncWorkspace(invitedUser.workspace_id)
+                    syncWorkspace(dbUserForSession.workspace_id)
                   }
                 } catch {
                   clearWorkspaceSnapshot()
-                  syncWorkspace(invitedUser.workspace_id)
+                  syncWorkspace(dbUserForSession.workspace_id)
                 }
               }
             }
+          }
+          if (dbUserForSession.workspace_id && dbUserForSession.email) {
+            void markInvitationsAcceptedForWorkspaceEmail(dbUserForSession.workspace_id, dbUserForSession.email).catch(() => {
+              /* alignement statut invitation : best-effort */
+            })
           }
         } else if (platformSuper) {
           setServerAccess({ source: 'superadmin', dbProfile: invitedUser ?? null })
@@ -1275,11 +1305,6 @@ function App() {
           }
         } else {
           setServerAccess(null)
-        }
-        if (invitedUser?.workspace_id && invitedUser.email) {
-          void markInvitationsAcceptedForWorkspaceEmail(invitedUser.workspace_id, invitedUser.email).catch(() => {
-            /* alignement statut invitation : best-effort */
-          })
         }
         logAuthBoot(debugEnabled, 'session reconciled (platform/user row)', startedAt)
         return

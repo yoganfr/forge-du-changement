@@ -64,6 +64,7 @@ export {
 export {
   createInvitation,
   getAcceptedInvitationAwaitingUserRow,
+  getLatestAcceptedInvitationForEmail,
   getLatestPendingInvitationForEmail,
   getWorkspaceInvitations,
   markInvitationsAcceptedForWorkspaceEmail,

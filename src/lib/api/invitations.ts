@@ -120,6 +120,24 @@ export async function getLatestPendingInvitationForEmail(email: string): Promise
   return data as Invitation | null
 }
 
+/**
+ * Dernière invitation au statut « acceptée » pour cet email (indépendamment d’une ligne `users` existante).
+ * Sert de référence métier pour rattacher le membre au bon `workspace_id` si la ligne `users` a divergé.
+ */
+export async function getLatestAcceptedInvitationForEmail(email: string): Promise<Invitation | null> {
+  const normalized = email.trim().toLowerCase()
+  const { data, error } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('email', normalized)
+    .eq('status', 'acceptee')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) return null
+  return data as Invitation | null
+}
+
 /** Invitation déjà acceptée côté Auth / base, mais pas encore de ligne `public.users` (profil à créer). */
 export async function getAcceptedInvitationAwaitingUserRow(email: string): Promise<Invitation | null> {
   const normalized = email.trim().toLowerCase()
