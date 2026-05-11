@@ -847,6 +847,33 @@ function App() {
         ? serverAccess.dbProfile?.id ?? null
         : null
 
+  /** Nom / id direction pour Projets transformants : DB en priorité, sinon cache profil local (évite un nom vide tant que `serverAccess` est périmé). */
+  const projectSelectorDirectionName = useMemo(() => {
+    const fromDb =
+      serverAccess?.source === 'users' ? serverAccess.dbUser.direction_nom?.trim() ?? '' : ''
+    const fromStored = storedProfile?.directionName?.trim() ?? ''
+    return fromDb || fromStored || 'Ma direction'
+  }, [serverAccess, storedProfile?.directionName])
+
+  const projectSelectorDirectionId = useMemo(
+    () => (serverAccess?.source === 'users' ? serverAccess.dbUser.direction_id ?? null : null),
+    [serverAccess],
+  )
+
+  /** Au passage sur l’écran projets, réaligner `serverAccess` avec la ligne `users` du workspace affiché (direction_id / direction_nom). */
+  useEffect(() => {
+    if (normalizedActiveNav !== 'projects' || !authUser?.email) return
+    let cancelled = false
+    void (async () => {
+      const row = await getCurrentUser()
+      if (cancelled || !row) return
+      setServerAccess((prev) => (prev?.source === 'users' ? { source: 'users', dbUser: row } : prev))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [normalizedActiveNav, authUser?.email])
+
   /** Invité sans ligne `users` → la lecture `workspaces` peut échouer (RLS) ; après onboarding la signature change et on recharge les phases. */
   const workspaceMemberSignature = useMemo(() => {
     if (!serverAccess) return 'none'
@@ -1929,14 +1956,8 @@ function App() {
               />
             ) : normalizedActiveNav === 'projects' ? (
               <ProjectSelector
-                memberDirectionName={
-                  serverAccess?.source === 'users' && serverAccess.dbUser.direction_nom?.trim()
-                    ? serverAccess.dbUser.direction_nom.trim()
-                    : (storedProfile?.directionName ?? 'Ma direction')
-                }
-                memberDirectionId={
-                  serverAccess?.source === 'users' ? serverAccess.dbUser.direction_id ?? null : null
-                }
+                memberDirectionName={projectSelectorDirectionName}
+                memberDirectionId={projectSelectorDirectionId}
                 restrictToMemberDirections={
                   currentUserRole === 'codir' || currentUserRole === 'contributeur'
                 }

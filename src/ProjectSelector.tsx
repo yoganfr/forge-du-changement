@@ -327,20 +327,27 @@ function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Per
   })
 }
 
-/** Rattache le membre à une ligne `directions` : id serveur si présent, sinon nom affiché (hors transverse). */
+/** Rattache le membre à une ligne `directions` chargée : id uniquement si la ligne est visible ici ; sinon matching nom (hors transverse). */
 function resolveEffectiveMemberDirectionId(
   hydrated: Perimetre[],
   memberDirectionId: string | null,
   memberDirectionName: string,
 ): string | null {
-  if (memberDirectionId && hydrated.some((p) => p.id === memberDirectionId)) {
-    return memberDirectionId
+  const trimmed = memberDirectionName.trim()
+
+  if (memberDirectionId) {
+    const row = hydrated.find((p) => p.id === memberDirectionId && !p.isTransverse)
+    if (row) return memberDirectionId
   }
-  if (!memberDirectionName.trim()) return memberDirectionId
-  const byName = hydrated.find(
-    (p) => !p.isTransverse && directionDisplayNamesMatch(memberDirectionName, p.name),
-  )
-  return byName?.id ?? memberDirectionId
+
+  if (trimmed) {
+    const byName = hydrated.find(
+      (p) => !p.isTransverse && directionDisplayNamesMatch(trimmed, p.name),
+    )
+    if (byName) return byName.id
+  }
+
+  return null
 }
 
 function applyMemberDirectionPrefill(

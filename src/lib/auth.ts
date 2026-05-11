@@ -113,9 +113,9 @@ function lfdcLog(...args: unknown[]): void {
  * Plusieurs lignes peuvent exister (même email, espaces différents) : on évite de prendre
  * la plus « récente » si c’est un stub vide qui écraserait le profil à chaque reco Google.
  *
- * Priorité : (1) sélection explicite multi-espace (`lfdc-user-id` ≠ auth.uid) ;
- * (2) ligne dont `id` = `auth.uid()` — celle utilisée par la RLS sur `workspaces` ;
- * (3) filtre email + workspace courant ; (4) heuristique sur doublons d’email.
+ * Priorité : (1) email + `workspace_id` = espace sélectionné (`localStorage.workspaceId`) ;
+ * (2) `lfdc-user-id` si email concorde ; (3) ligne dont `id` = `auth.uid()` si même workspace ou pas de filtre ;
+ * (4) candidats même email — d’abord ceux du workspace courant, puis score profil.
  */
 export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
   const resolvedSessionUser = sessionUser ?? (await getSession())?.user ?? null
@@ -126,10 +126,27 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
 
   const email = resolvedSessionUser.email.trim().toLowerCase()
   const authId = resolvedSessionUser.id
-  lfdcLog('[lfdc:auth] getCurrentUser start: email=%s, authId=%s', email, authId)
+  const ws = readBrowserWorkspaceId()
+  lfdcLog('[lfdc:auth] getCurrentUser start: email=%s, authId=%s, workspace=%s', email, authId, ws)
 
   const emailMatches = (r: { email?: string | null } | null) =>
     r?.email?.trim().toLowerCase() === email
+
+  /** Priorité absolue : la ligne `users` pour l’espace sélectionné (même email sur plusieurs dossiers clients). */
+  if (ws) {
+    const { data: byWs, error: errWs } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('workspace_id', ws)
+      .maybeSingle()
+    if (errWs) {
+      lfdcLog('[lfdc:auth] getCurrentUser byWs query error: %O', errWs)
+    } else if (byWs && emailMatches(byWs)) {
+      lfdcLog('[lfdc:auth] getCurrentUser returning workspace match')
+      return byWs
+    }
+  }
 
   const { data: authRow, error: authErr } = await supabase
     .from('users')
@@ -162,25 +179,11 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
   }
 
   if (!authErr && authRow && emailMatches(authRow)) {
-    lfdcLog('[lfdc:auth] getCurrentUser returning authId match')
-    return authRow
-  }
-
-  const ws = readBrowserWorkspaceId()
-  lfdcLog('[lfdc:auth] getCurrentUser workspace=%s', ws)
-  if (ws) {
-    const { data: byWs, error: errWs } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('workspace_id', ws)
-      .maybeSingle()
-    if (errWs) {
-      lfdcLog('[lfdc:auth] getCurrentUser byWs query error: %O', errWs)
-    } else if (byWs) {
-      lfdcLog('[lfdc:auth] getCurrentUser byWs result found')
-      return byWs
+    if (!ws || authRow.workspace_id === ws) {
+      lfdcLog('[lfdc:auth] getCurrentUser returning authId match')
+      return authRow
     }
+    lfdcLog('[lfdc:auth] getCurrentUser skip authId match (workspace_id differs from sélection locale)')
   }
 
   const { data: candidates, error } = await supabase
@@ -201,7 +204,10 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
 
   lfdcLog('[lfdc:auth] getCurrentUser candidates count: %d', candidates.length)
 
-  const withAvatar = candidates.find((r) => Boolean(r.avatar_url?.trim()))
+  const pool = ws ? candidates.filter((c) => c.workspace_id === ws) : candidates
+  const effective = pool.length ? pool : candidates
+
+  const withAvatar = effective.find((r) => Boolean(r.avatar_url?.trim()))
   if (withAvatar) {
     lfdcLog('[lfdc:auth] getCurrentUser returning candidate with avatar')
     return withAvatar
@@ -213,7 +219,7 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
     + (u.job_title?.trim() ? 2 : 0)
     + (u.direction_nom?.trim() ? 2 : 0)
 
-  const result = [...candidates].sort((a, b) => scoreProfile(b) - scoreProfile(a))[0] ?? null
+  const result = [...effective].sort((a, b) => scoreProfile(b) - scoreProfile(a))[0] ?? null
   lfdcLog('[lfdc:auth] getCurrentUser returning highest-scored candidate: %s', result ? 'found' : 'none')
   return result
 }
