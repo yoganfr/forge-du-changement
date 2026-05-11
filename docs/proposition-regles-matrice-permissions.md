@@ -81,7 +81,7 @@ Après **discussion avec le client** (ou validation interne en mode autonome) su
 |--------|----------------|-----------------|
 | **Gérer la fiche entreprise** | Logo, nom, secteur, taille — structure du dossier « client ». | Consultant **responsable** ou **administrateur de l’espace entreprise** (rôle **admin** dans l’outil) (+ super admin **plateforme** si besoin). **Pas** le seul collaborateur consultant, sauf règle produit ouverte plus tard. |
 | **Inviter des membres** | Une par une ou par lot CSV, renvoyer le mail de connexion. | **Tout consultant** sur le dossier (responsable ou collaborateur), **l’administrateur de l’espace entreprise**, et les **membres CODIR**. |
-| **Travailler dans l’espace** | Fabrique, projets, contenus du quotidien. | CODIR, chefs de projet, contributeurs (selon les modules). |
+| **Travailler dans l’espace** | Projets transformants, activités terrain, contenus du quotidien. | CODIR, chefs de projet, contributeurs (selon les modules). |
 
 ---
 

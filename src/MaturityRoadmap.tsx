@@ -93,7 +93,7 @@ const FACETTE_OPTIONS: { value: JalonFacette; label: string }[] = [
 ]
 
 /**
- * Direction rattachée au membre (aligné La Fabrique / `users.direction_id`).
+ * Direction rattachée au membre (alignée sur Projets transformants / `users.direction_id`).
  * Pas de repli sur « la première direction » : évite d’afficher les roadmaps d’un autre CODIR.
  */
 function resolveMemberDirectionId(dirs: Direction[], u: User | null): string | null {
@@ -260,9 +260,9 @@ export default function MaturityRoadmap({
         setEligibleEmptyInfo(
           restrictsRoadmapPerimeter
             ? memberDirId
-              ? 'Aucun projet BUILD retenu pour le décideur et validé par lui dans votre périmètre (votre direction et les périmètres transverses). Utilisez La Fabrique pour soumettre un top 5, puis la Vue décideur pour valider avant d’éditer la roadmap.'
+              ? 'Aucun projet BUILD retenu pour le décideur et validé par lui dans votre périmètre (votre direction et les périmètres transverses). Utilisez Projets transformants pour soumettre un top 5, puis la Vue décideur pour valider avant d’éditer la roadmap.'
               : 'Aucun projet BUILD retenu et validé sur les périmètres transverses accessibles. Rattachez-vous à une direction dans votre profil si votre CODIR a un périmètre dédié, ou attendez des projets transverses validés.'
-            : 'Aucun projet BUILD retenu pour le décideur et validé pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le décideur, puis validez-le dans la Vue décideur (section « Projets BUILD soumis pour la roadmap »).',
+            : 'Aucun projet BUILD retenu pour le décideur et validé pour la roadmap. Créez un BUILD dans Projets transformants, retenez-le pour le décideur, puis validez-le dans la Vue décideur (section « Projets BUILD soumis pour la roadmap »).',
         )
         return
       }

@@ -1041,7 +1041,7 @@ function ProjectCard({
             <div className="section-title">Pilotage &amp; contributeurs</div>
             {transverseMode && (
               <div className="pilotage-transverse-note">
-                Ce projet comporte des directions co-pilotes : il est traité comme <strong>transverse</strong> et listé sous « Projets transverses » dans La Fabrique.
+                Ce projet comporte des directions co-pilotes : il est traité comme <strong>transverse</strong> et listé sous « Projets transverses ».
               </div>
             )}
             <label className="project-field">
@@ -1393,7 +1393,7 @@ export default function ProjectSelector({
   /** Noms des directions métier (non transverses) du workspace — co-pilotes projet transverse. */
   const [nonTransverseDirectionNames, setNonTransverseDirectionNames] = useState<string[]>([])
   /** CODIR / contributeur : vue liste locale ou projets avec au moins un co-pilote. */
-  const [memberFabriqueFilter, setMemberFabriqueFilter] = useState<'local' | 'transverse'>('local')
+  const [memberProjectScopeFilter, setMemberProjectScopeFilter] = useState<'local' | 'transverse'>('local')
   const effectiveMemberDirIdRef = useRef<string | null>(null)
   const pendingCreateRef = useRef<Record<string, Promise<string>>>({})
 
@@ -1536,10 +1536,10 @@ export default function ProjectSelector({
     if (!restrictToMemberDirections) return active
     const filtered = active.projects.filter((p) => {
       const hasCo = (p.contributorDirections?.length ?? 0) > 0
-      return memberFabriqueFilter === 'transverse' ? hasCo : !hasCo
+      return memberProjectScopeFilter === 'transverse' ? hasCo : !hasCo
     })
     return { ...active, projects: filtered }
-  }, [active, restrictToMemberDirections, memberFabriqueFilter])
+  }, [active, restrictToMemberDirections, memberProjectScopeFilter])
 
   function resolveDirectionIdForWrite(perimId: string): string | null {
     if (perimId && !perimId.startsWith('perim-')) return perimId
@@ -1696,7 +1696,7 @@ export default function ProjectSelector({
               <h3>Sélectionnez d&apos;abord un espace entreprise</h3>
               <p>
                 Tant qu&apos;aucun workspace n&apos;est actif, les projets ne peuvent pas être enregistrés durablement.
-                Ouvrez <strong>Paramètres</strong>, choisissez une entreprise, puis revenez dans La Fabrique.
+                Ouvrez <strong>Paramètres</strong>, choisissez une entreprise, puis revenez dans <strong>Projets transformants</strong>.
               </p>
             </div>
           </main>
@@ -1729,9 +1729,9 @@ export default function ProjectSelector({
                 <>
                   <button
                     type="button"
-                    className={`ps-pill ${memberFabriqueFilter === 'local' ? 'ps-pill--active' : ''}`}
+                    className={`ps-pill ${memberProjectScopeFilter === 'local' ? 'ps-pill--active' : ''}`}
                     onClick={() => {
-                      setMemberFabriqueFilter('local')
+                      setMemberProjectScopeFilter('local')
                       setExpandedProjectId(null)
                     }}
                   >
@@ -1740,9 +1740,9 @@ export default function ProjectSelector({
                   </button>
                   <button
                     type="button"
-                    className={`ps-pill ${memberFabriqueFilter === 'transverse' ? 'ps-pill--active' : ''}`}
+                    className={`ps-pill ${memberProjectScopeFilter === 'transverse' ? 'ps-pill--active' : ''}`}
                     onClick={() => {
-                      setMemberFabriqueFilter('transverse')
+                      setMemberProjectScopeFilter('transverse')
                       setExpandedProjectId(null)
                     }}
                   >

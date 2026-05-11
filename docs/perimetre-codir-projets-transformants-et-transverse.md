@@ -1,8 +1,8 @@
-# Récap — Périmètre CODIR, La Fabrique et projets transverses
+# Récap — Périmètre CODIR, Projets transformants et projets transverses
 
-Dernière mise à jour : **11 mai 2026**, 03 h 08 (Europe/Paris)
+Dernière mise à jour : **11 mai 2026**, 03 h 10 (Europe/Paris)
 
-Document de reprise rapide suite aux travaux sur le dashboard Vite (`/src`), Supabase (RLS) et le comportement « membre CODIR » dans **La Fabrique** (sélection de projets transformants) et la **Maturity Roadmap**.
+Document de reprise rapide suite aux travaux sur le dashboard Vite (`/src`), Supabase (RLS) et le comportement « membre CODIR » dans **Projets transformants** (sélection et scoring des projets, `ProjectSelector`) et la **Maturity Roadmap**.
 
 ---
 
@@ -18,7 +18,7 @@ Document de reprise rapide suite aux travaux sur le dashboard Vite (`/src`), Sup
 
 1. **BUILD disjoint par CODIR** : hors roadmap transversale explicite documentée ailleurs, le périmètre BUILD d’un CODIR est **local** ; le **partage** entre CODIR passe par des mécanismes **transverses** (direction dédiée ou, désormais, **co-pilotes** — voir §4).
 
-2. **Transverse côté La Fabrique (vue CODIR / contributeur)**  
+2. **Transverse côté Projets transformants (vue CODIR / contributeur)**  
    - **Ajouter un projet** = projet rattaché à **ma direction** (`direction_id` = ligne `directions` alignée sur `users.direction_id`).  
    - Dès qu’on sélectionne au moins une **direction co-pilote** (autres directions métier), le projet est considéré comme **transverse** pour l’affichage.  
    - **Pas** de second « dépôt » obligatoire sur une ligne `directions` avec `is_transverse = true` pour les projets créés par le CODIR.
@@ -33,7 +33,7 @@ Document de reprise rapide suite aux travaux sur le dashboard Vite (`/src`), Sup
 
 ## 3. Implémentation technique (résumé)
 
-### 3.1 `ProjectSelector.tsx` (La Fabrique)
+### 3.1 `ProjectSelector.tsx` (Projets transformants)
 
 - **`restrictToMemberDirections`** (activé pour `codir` et `contributeur` dans `App.tsx`) : **un seul** périmètre chargé = direction du membre (`getDirectionProjets` sur l’UUID résolu).
 - **Pastilles** : plus un onglet séparé sur la ligne DB `is_transverse` pour les CODIR ; à la place, **Ma direction** / **Projets transverses** (filtre sur la présence de co-pilotes).
@@ -49,7 +49,7 @@ Document de reprise rapide suite aux travaux sur le dashboard Vite (`/src`), Sup
 ### 3.3 Supabase — RLS `projets`
 
 - Migration **`20260511120000_projets_rls_member_self_serve.sql`** (appliquée sur le projet distant lors du chantier) :
-  - Fonction **`can_member_self_serve_projet(workspace_id, direction_id)`** : rôles `codir` / `contributeur` / `pilote` peuvent insérer/mettre à jour/supprimer des projets sur **leur** `users.direction_id` **ou** sur une direction **`is_transverse`** (règle large côté DB ; le produit CODIR n’utilise plus le second cas pour *créer* depuis La Fabrique — voir dette §5).
+  - Fonction **`can_member_self_serve_projet(workspace_id, direction_id)`** : rôles `codir` / `contributeur` / `pilote` peuvent insérer/mettre à jour/supprimer des projets sur **leur** `users.direction_id` **ou** sur une direction **`is_transverse`** (règle large côté DB ; le produit CODIR n’utilise plus le second cas pour *créer* depuis Projets transformants — voir dette §5).
   - Policies **`projets_select` / `insert` / `update` / `delete`** remplaçant la policy unique **`projets_all`** à **`WITH CHECK`** trop restrictive pour les membres terrain.
 
 ### 3.4 Maturity Roadmap — `MaturityRoadmap.tsx` + API
@@ -64,10 +64,10 @@ Document de reprise rapide suite aux travaux sur le dashboard Vite (`/src`), Sup
 
 | Zone | Fichiers |
 |------|----------|
-| La Fabrique UI / logique | `src/ProjectSelector.tsx` |
+| Projets transformants — UI / logique | `src/ProjectSelector.tsx` |
 | Matching noms direction | `src/lib/directionLabels.ts` |
 | Profil / `direction_id` | `src/ProfileSheet.tsx` |
-| Props La Fabrique | `src/App.tsx` (`ProjectSelector`) |
+| Props `ProjectSelector` | `src/App.tsx` (`ProjectSelector`) |
 | Roadmap chargement | `src/MaturityRoadmap.tsx`, `src/lib/api/directions.ts` |
 | RLS | `supabase/migrations/20260511120000_projets_rls_member_self_serve.sql` |
 
@@ -75,13 +75,13 @@ Document de reprise rapide suite aux travaux sur le dashboard Vite (`/src`), Sup
 
 ## 5. Points ouverts / dettes (pour la suite)
 
-1. **Visibilité côté CODIR co-pilote** : aujourd’hui un projet transverse reste stocké avec **`direction_id` = porteur**. Les CODIR des directions **co-pilotes** ne voient **pas** automatiquement le projet dans leur La Fabrique sans évolution (requête « projets où mon nom de direction est dans `directions_contributrices` » + éventuel alignement RLS).
+1. **Visibilité côté CODIR co-pilote** : aujourd’hui un projet transverse reste stocké avec **`direction_id` = porteur**. Les CODIR des directions **co-pilotes** ne voient **pas** automatiquement le projet dans leur liste Projets transformants sans évolution (requête « projets où mon nom de direction est dans `directions_contributrices` » + éventuel alignement RLS).
 
 2. **Données legacy** : d’anciens projets uniquement rattachés à la ligne DB **`is_transverse`** (création historique) **n’apparaissent plus** dans la vue CODIR basée sur **sa** direction. À traiter par migration data ou par vue admin / consultant (qui voit encore les onglets par direction).
 
 3. **RLS `can_member_self_serve_projet`** : autorise encore techniquement insert sur une direction **`is_transverse`** pour codir/pilote/contributeur ; le flux UI CODIR actuel n’y pousse plus les créations. À resserrer en SQL si on veut coller au strict **porteur + co-pilotes textuels** uniquement.
 
-4. **Pilote** : `restrictToMemberDirections` dans `App.tsx` est surtout **codir / contributeur** ; vérifier si **pilote** doit avoir le même filtre La Fabrique que le CODIR.
+4. **Pilote** : `restrictToMemberDirections` dans `App.tsx` est surtout **codir / contributeur** ; vérifier si **pilote** doit avoir le même filtre que le CODIR dans Projets transformants.
 
 ---
 

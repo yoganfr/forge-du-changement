@@ -363,7 +363,7 @@ export default function DashboardDG({
           <article className="dg__card dg__card--wide">
             <h3>Projets BUILD soumis pour la roadmap</h3>
             <p className="dg__hint">
-              Les directions marquent des projets comme &laquo; retenus pour le décideur &raquo; dans La Fabrique. Validez ici ceux qui passent en
+              Les directions marquent des projets comme &laquo; retenus pour le décideur &raquo; dans Projets transformants. Validez ici ceux qui passent en
               Maturity Roadmap (chantiers et jalons sur 4 axes).
             </p>
             {pendingByDirection.length === 0 ? (
@@ -400,7 +400,7 @@ export default function DashboardDG({
           {validatedByDirection.length > 0 && (
             <article className="dg__card dg__card--wide">
               <h3>Projets validés pour la roadmap</h3>
-              <p className="dg__hint">Ces projets sont disponibles dans <strong>Mon Espace → Ma roadmap</strong> (et le bouton roadmap dans La Fabrique).</p>
+              <p className="dg__hint">Ces projets sont disponibles dans <strong>Mon Espace → Ma roadmap</strong> (et le bouton roadmap dans Projets transformants).</p>
               <div className="dg__direction-groups">
                 {validatedByDirection.map((group) => (
                   <section key={group.directionId} className="dg__direction-group">

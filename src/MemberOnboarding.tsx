@@ -25,14 +25,14 @@ export default function MemberOnboarding({
         </header>
 
         <section className="mo-grid">
-          <button type="button" className="mo-card mo-card--active" onClick={() => onNavigate('fabrique')}>
+          <button type="button" className="mo-card mo-card--active" onClick={() => onNavigate('projects')}>
             <span className="mo-icon">{ICON_PENCIL}</span>
             <h3>Saisir mes projets</h3>
             <p>Évaluer vos projets RUN & BUILD sur les 6 dimensions de criticité</p>
             <span className="mo-cta">Ouvrir →</span>
           </button>
 
-          <button type="button" className="mo-card mo-card--active" onClick={() => onNavigate('fabrique')}>
+          <button type="button" className="mo-card mo-card--active" onClick={() => onNavigate('projects')}>
             <span className="mo-icon">{ICON_LIST}</span>
             <h3>Vue synthèse</h3>
             <p>Visualiser le classement et le top 5 BUILD soumis au DG</p>

@@ -1267,7 +1267,7 @@
   );
 }
 
-.dashboard__card--fabrique::before {
+.dashboard__card--projects::before {
   background: linear-gradient(
     180deg,
     var(--score-caramel-4, #8f5f32),
@@ -1295,7 +1295,7 @@
     var(--glass-bg-card);
 }
 
-.dashboard__card--fabrique {
+.dashboard__card--projects {
   background:
     linear-gradient(
       155deg,
@@ -1465,7 +1465,7 @@
 
 .dashboard__module-panel .dashboard__card--sens,
 .dashboard__module-panel .dashboard__card--roles,
-.dashboard__module-panel .dashboard__card--fabrique {
+.dashboard__module-panel .dashboard__card--projects {
   background: var(--module-card-fill);
 }
 

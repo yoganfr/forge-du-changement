@@ -53,7 +53,7 @@ export function ganttYearTimelineMarkers(months: GanttMonth[]): Array<{
   })
 }
 
-/** Fenêtre glissante 24 mois (alignée sur La Fabrique). */
+/** Fenêtre glissante 24 mois (alignée sur la sélection Projets transformants). */
 export function generateGanttMonths(): GanttMonth[] {
   const today = new Date()
   const months: GanttMonth[] = []

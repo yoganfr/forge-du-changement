@@ -447,7 +447,7 @@ Chaque lot est livré en commit atomique, avec recette utilisateur dédiée avan
 
 ---
 
-## EPIC 7 — La Fabrique (Séminaires & Ateliers)
+## EPIC 7 — Séminaires & Ateliers (futur — hors sélecteur Projets transformants)
 
 | REF | Titre | Priorité | Statut |
 |---|-------|----------|--------|
@@ -611,7 +611,7 @@ Objectif : permettre à un administrateur de **piloter l'avancement du parcours 
 
 ## Composants principaux
 
-- `App.tsx` — dashboard, navigation, garde d'auth, entrées La Fabrique / Vue décideur / roadmap
+- `App.tsx` — dashboard, navigation, garde d'auth, entrées Projets transformants / Vue décideur / roadmap
 - `OnboardingFlow.tsx` — création espace entreprise + invitations
 - `ProjectSelector.tsx` — outil saisie/scoring projets (Supabase)
 - `CompanySheet.tsx` — fiche entreprise + invitations unitaires/CSV + **retrait membre** (**EPIC 11 · REF-52**, RLS **EPIC 10 · REF-47**)
@@ -648,7 +648,7 @@ Objectif : permettre à un administrateur de **piloter l'avancement du parcours 
 
 Ce bloc est la référence produit pour la navbar applicative `/src` (workspace authentifié).
 
-- **Entrées historiques supprimées** en navigation principale : `La Fabrique`, `Mon Espace`.
+- **Entrées historiques supprimées** en navigation principale : ancien libellé « La Fabrique » (module actuel **Projets transformants**), `Mon Espace`.
 - **Macro-menu unique** : `Mon parcours de transformation`.
 - **Rôles CODIR** (`codir`) : section `Parcours membre CODIR` avec les modules (ordre canonique) :
   1. `Projets transformants`

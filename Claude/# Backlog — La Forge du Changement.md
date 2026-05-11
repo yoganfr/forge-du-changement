@@ -70,7 +70,7 @@ Tout l'epic 1 a été implémenté par Cursor le 17/04/2026.
 
 ---
 
-## EPIC 7 — La Fabrique (Séminaires & Ateliers)
+## EPIC 7 — Séminaires & Ateliers (futur — hors sélecteur Projets transformants)
 | # | Titre | Priorité | Statut |
 |---|-------|----------|--------|
 | 22 | Banque de séquences d'animation | 🟡 | ⬜ |
