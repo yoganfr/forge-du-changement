@@ -1,6 +1,6 @@
 # Guide de Debug — Spinner infini à l'onboarding (InviteeSetupWizard)
 
-Dernière mise à jour : **11 mai 2026**, 10 h 32 (Europe/Paris)
+Dernière mise à jour : **11 mai 2026**, 10 h 40 (Europe/Paris)
 
 ## 1. Vue d'ensemble
 
@@ -481,7 +481,7 @@ Les policies **s’additionnent en OR** (comportement RLS permissif par défaut 
 
 ### Création / résolution à l’enregistrement (`ProfileSheet`)
 
-- `resolveOrCreateMemberDirection` (`src/lib/profileDirectionResolve.ts`) : cherche une direction **non transverse** dont le nom matche ; sinon **INSERT** `directions` avec `user_id` = **`auth.uid()`** (session), pas une ligne `getCurrentUser()` potentiellement ambiguë.
+- `resolveOrCreateMemberDirection` (`src/lib/profileDirectionResolve.ts`) : cherche une direction **non transverse** dont le nom matche ; sinon **INSERT** `directions`. **`directions.user_id`** est une FK vers **`public.users.id`** : ne pas y mettre `auth.uid()` si la ligne profil a un autre id — depuis **`ProfileSheet`**, passer `directionOwnerDbUserId: currentUserId` ; depuis le **wizard** avant `createUser`, **omettre** `user_id` (NULL) pour éviter `directions_user_id_fkey`.
 - Si l’INSERT / le SELECT échoue (RLS, réseau), l’enregistrement **s’interrompt** et un message d’erreur s’affiche : sans `direction_id`, le CODIR ne peut pas verrouiller son périmètre dans **Projets transformants**.
 - **Erreur UI « ([object Object]) »** : l’objet d’erreur PostgREST renvoyé par `supabase-js` n’est pas toujours une `instanceof Error` — utiliser `formatClientErrorMessage` (`src/lib/formatClientErrorMessage.ts`) dans les `catch` affichés à l’utilisateur.
 
@@ -544,6 +544,7 @@ sessionStorage.clear()
 
 ## Notes additionnelles
 
+- **Fichier `debug-*.log` à la racine du dépôt** : il n’est créé que si la session **Debug** Cursor écrit réellement des lignes NDJSON dans le workspace (pont avec l’ingest local). Les `fetch` vers `127.0.0.1:7271` échouent souvent **sans fichier** si le service d’ingest n’est pas actif — ce n’est **pas** un artefact du build Vite. Pour diagnostiquer, utiliser surtout le **message d’erreur** affiché dans l’UI, l’onglet **Network** (requêtes PostgREST) ou l’éditeur SQL Supabase.
 - Les logs ne sont jamais remis à zéro automatiquement ; ils persistent jusqu'à rechargement/fermeture d'onglet.
 - Les timestamps des logs sont en millisecondes (`performance.now()`), pas en UTC.
 - Si aucun log `[lfdc:...]` n'apparaît, c'est que le bundle n'a pas été recompilé après les changements. Vérifier que `npm run dev` a bien redémarré.

@@ -1,9 +1,17 @@
 import { createDirection, getWorkspaceDirections } from './api'
-import { supabase } from './supabase'
 import { directionDisplayNamesMatch } from './directionLabels'
 
 /** Aligné sur les pastilles du profil (`ProfileSheet`). */
 export type ProfileDirectionType = 'fonctionnel' | 'metier' | 'geographique'
+
+export type ResolveMemberDirectionOptions = {
+  /**
+   * `public.users.id` pour `directions.user_id` (FK). Ne pas utiliser `auth.uid()` si la ligne
+   * `users` n’a pas le même id. Si absent / null : INSERT sans `user_id` (NULL) — ex. wizard
+   * avant `createUser`, ou profil sans `lfdc-user-id` encore aligné.
+   */
+  directionOwnerDbUserId?: string | null
+}
 
 const DEFAULT_NEW_DIRECTION_COLOR = '#8E3B46'
 
@@ -19,6 +27,7 @@ export async function resolveOrCreateMemberDirection(
   workspaceId: string,
   directionName: string,
   directionType: ProfileDirectionType,
+  options?: ResolveMemberDirectionOptions,
 ): Promise<string | null> {
   const trimmed = directionName.trim()
   if (!trimmed) return null
@@ -26,19 +35,20 @@ export async function resolveOrCreateMemberDirection(
   const nonTransverse = dirs.filter((d) => !d.is_transverse)
   const match = nonTransverse.find((d) => directionDisplayNamesMatch(trimmed, d.nom ?? ''))
   if (match) return match.id
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  const authUserId = session?.user?.id?.trim() ?? null
-  const created = await createDirection({
+  const ownerRaw = options?.directionOwnerDbUserId?.trim()
+  const ownerId = ownerRaw || null
+  const insertPayload: Parameters<typeof createDirection>[0] = {
     workspace_id: workspaceId,
-    user_id: authUserId,
     nom: trimmed,
     type: mapDirectionType(directionType),
     mission: null,
     vision: null,
     color: DEFAULT_NEW_DIRECTION_COLOR,
     is_transverse: false,
-  })
+  }
+  if (ownerId) {
+    insertPayload.user_id = ownerId
+  }
+  const created = await createDirection(insertPayload)
   return created.id
 }

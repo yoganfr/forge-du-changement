@@ -9,26 +9,7 @@ export async function createDirection(data: Partial<Direction>): Promise<Directi
     .insert(data)
     .select()
     .single()
-  if (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7271/ingest/4a825d9f-9e80-4d72-a03f-6e97efcd6511', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f7b5d7' },
-      body: JSON.stringify({
-        sessionId: 'f7b5d7',
-        location: 'directions.ts:createDirection',
-        message: 'directions insert error',
-        data: {
-          code: (error as { code?: string }).code,
-          msg: (error as { message?: string }).message,
-        },
-        timestamp: Date.now(),
-        hypothesisId: 'H-RLS',
-      }),
-    }).catch(() => {})
-    // #endregion
-    throw error
-  }
+  if (error) throw error
   if (direction?.workspace_id) invalidateCache([`workspace-directions-projects:${direction.workspace_id}`])
   return direction as Direction
 }

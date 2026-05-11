@@ -482,6 +482,7 @@ export default function ProfileSheet({
             workspaceId,
             directionName,
             directionType,
+            { directionOwnerDbUserId: currentUserId },
           )
         } catch (err) {
           const detail = formatClientErrorMessage(err)
