@@ -163,7 +163,10 @@ export default function MaturityRoadmap({
   const [jalonsByChantier, setJalonsByChantier] = useState<Record<string, Jalon[]>>({})
   const [directions, setDirections] = useState<Direction[]>([])
   const [loading, setLoading] = useState(true)
+  /** Échec technique (réseau, RLS, etc.) — affiche l’aide script SQL en bas. */
   const [error, setError] = useState<string | null>(null)
+  /** Aucun projet éligible : message métier uniquement, sans indiquer une panne Supabase. */
+  const [eligibleEmptyInfo, setEligibleEmptyInfo] = useState<string | null>(null)
   const [chantierSaving, setChantierSaving] = useState(false)
   const [memberDirectionId, setMemberDirectionId] = useState<string | null>(null)
   const [memberDirectionName, setMemberDirectionName] = useState<string | null>(null)
@@ -220,6 +223,7 @@ export default function MaturityRoadmap({
   const loadAll = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setEligibleEmptyInfo(null)
     try {
       const [dirs, appUser] = await Promise.all([
         getWorkspaceDirections(workspaceId),
@@ -250,7 +254,7 @@ export default function MaturityRoadmap({
         setSelectedProjectIds([])
         setChantiers([])
         setJalonsByChantier({})
-        setError(
+        setEligibleEmptyInfo(
           restrictsRoadmapPerimeter
             ? memberDirId
               ? 'Aucun projet BUILD retenu pour le décideur et validé par lui dans votre périmètre (votre direction et les périmètres transverses). Utilisez La Fabrique pour soumettre un top 5, puis la Vue décideur pour valider avant d’éditer la roadmap.'
@@ -830,6 +834,19 @@ export default function MaturityRoadmap({
           <p className="mr-hint" style={{ marginTop: 8 }}>
             Vérifiez que le script SQL « maturity roadmap phase 1 » a bien été appliqué sur Supabase.
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (eligibleEmptyInfo) {
+    return (
+      <div className="mr-root">
+        <button type="button" className="mr-back" onClick={onBack}>
+          ← Retour aux projets
+        </button>
+        <div className="mr-error mr-error--info" role="status">
+          {eligibleEmptyInfo}
         </div>
       </div>
     )

@@ -960,6 +960,12 @@
   font-size: var(--text-sm);
 }
 
+/* État vide métier (pas d’éligibilité roadmap) — distinct d’une erreur technique */
+.mr-error--info {
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  border: 1px solid var(--theme-border);
+}
+
 .mr-muted {
   color: var(--theme-text-muted);
   font-size: var(--text-sm);
