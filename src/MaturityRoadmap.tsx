@@ -29,6 +29,7 @@ import {
   createRoadmapSnapshot,
   updateJalon,
 } from './lib/api'
+import { directionDisplayNamesMatch } from './lib/directionLabels'
 import { getCurrentUser } from './lib/auth'
 import CreateDirectionDialog from './CreateDirectionDialog'
 import ReviewDeadlineDialog, { formatDeadlinePreview } from './ReviewDeadlineDialog'
@@ -101,9 +102,11 @@ function resolveMemberDirectionId(dirs: Direction[], u: User | null): string | n
     const byId = dirs.find((d) => d.id === u.direction_id)
     if (byId) return byId.id
   }
-  const want = u.direction_nom?.trim().toLowerCase()
+  const want = u.direction_nom?.trim()
   if (want) {
-    const byName = dirs.find((d) => !d.is_transverse && d.nom.trim().toLowerCase() === want)
+    const byName = dirs.find(
+      (d) => !d.is_transverse && directionDisplayNamesMatch(want, d.nom ?? ''),
+    )
     if (byName) return byName.id
   }
   return null

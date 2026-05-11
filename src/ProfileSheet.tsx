@@ -11,6 +11,7 @@ import {
 } from './lib/api'
 import { supabase } from './lib/supabase'
 import type { User } from './lib/types'
+import { directionDisplayNamesMatch } from './lib/directionLabels'
 import {
   memberProfileStorageKey,
   migrateLegacyMemberProfileIfNeeded,
@@ -475,9 +476,8 @@ export default function ProfileSheet({
         if (workspaceId && directionName.trim()) {
           try {
             const dirs = await getWorkspaceDirections(workspaceId)
-            const label = directionName.trim().toLowerCase()
             const match = dirs.find(
-              (d) => !d.is_transverse && d.nom.trim().toLowerCase() === label,
+              (d) => !d.is_transverse && directionDisplayNamesMatch(directionName, d.nom ?? ''),
             )
             if (match) userPatch.direction_id = match.id
           } catch {

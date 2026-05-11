@@ -7,6 +7,7 @@ import {
   getWorkspaceDirections,
   updateProjet,
 } from './lib/api'
+import { directionDisplayNamesMatch } from './lib/directionLabels'
 import { getCurrentUser } from './lib/auth'
 import {
   memberProfileStorageKey,
@@ -144,13 +145,6 @@ const PERIMETRE_COLORS = ['#8E3B46', '#a67d48', '#8f5f32', '#7a5a42', '#6b4a38',
 
 const DIR_PERIM_ID = 'perim-direction'
 const TRANS_PERIM_ID = 'perim-transverse'
-
-const SIMULATED_DIRECTIONS = [
-  'Direction Financière',
-  'Direction IT',
-  'Direction Marketing',
-  'Direction Opérations',
-] as const
 
 function emptyPlanning(): Record<string, boolean> {
   return Object.fromEntries(GANTT_MONTHS.map((m) => [m.key, false])) as Record<string, boolean>
@@ -342,10 +336,9 @@ function resolveEffectiveMemberDirectionId(
   if (memberDirectionId && hydrated.some((p) => p.id === memberDirectionId)) {
     return memberDirectionId
   }
-  const label = memberDirectionName.trim().toLowerCase()
-  if (!label) return memberDirectionId
+  if (!memberDirectionName.trim()) return memberDirectionId
   const byName = hydrated.find(
-    (p) => !p.isTransverse && p.name.trim().toLowerCase() === label,
+    (p) => !p.isTransverse && directionDisplayNamesMatch(memberDirectionName, p.name),
   )
   return byName?.id ?? memberDirectionId
 }
@@ -641,6 +634,7 @@ function ProjectCard({
   perimColor,
   dgRank,
   isTransverse,
+  contributorDirectionChoices,
   expanded,
   onToggleExpand,
   onToggleTransfo,
@@ -655,6 +649,8 @@ function ProjectCard({
   perimColor: string
   dgRank?: number
   isTransverse: boolean
+  /** Directions métier du workspace (noms) pour co-pilotes projet transverse. */
+  contributorDirectionChoices: string[]
   expanded: boolean
   onToggleExpand: () => void
   onToggleTransfo: () => void
@@ -1047,7 +1043,7 @@ function ProjectCard({
                 {contribLabel}
               </span>
               <div className="contrib-pills">
-                {SIMULATED_DIRECTIONS.map((dir) => (
+                {contributorDirectionChoices.map((dir) => (
                   <button
                     key={dir}
                     type="button"
@@ -1058,6 +1054,9 @@ function ProjectCard({
                   </button>
                 ))}
               </div>
+              {isTransverse && contributorDirectionChoices.length === 0 && (
+                <p className="pilotage-hint">Aucune direction métier listée sur cet espace. Demandez à un administrateur d’en créer une.</p>
+              )}
               {pilotageError && contribRequired && (
                 <div className="pilotage-err">Sélectionnez au moins une direction co-pilote.</div>
               )}
@@ -1153,6 +1152,7 @@ function PerimetreView({
   perimetre,
   coefs,
   isTransverse,
+  contributorDirectionChoices,
   expandedProjectId,
   onExpandedChange,
   onUpdateProject,
@@ -1163,6 +1163,7 @@ function PerimetreView({
   perimetre: Perimetre
   coefs: Coefficients
   isTransverse: boolean
+  contributorDirectionChoices: string[]
   expandedProjectId: string | null
   onExpandedChange: (id: string | null) => void
   onUpdateProject: (perimId: string, projId: string, updates: Partial<Project>) => Promise<void> | void
@@ -1220,6 +1221,7 @@ function PerimetreView({
               coefs={coefs}
               perimColor={perimetre.color}
               isTransverse={isTransverse}
+              contributorDirectionChoices={contributorDirectionChoices}
               expanded={expandedProjectId === project.id}
               onToggleExpand={() => onExpandedChange(expandedProjectId === project.id ? null : project.id)}
               dgRank={dgRanks.get(project.id)}
@@ -1251,6 +1253,7 @@ function PerimetreView({
               coefs={coefs}
               perimColor={perimetre.color}
               isTransverse={isTransverse}
+              contributorDirectionChoices={contributorDirectionChoices}
               expanded={expandedProjectId === project.id}
               onToggleExpand={() => onExpandedChange(expandedProjectId === project.id ? null : project.id)}
               onToggleTransfo={() => {}}
@@ -1381,6 +1384,8 @@ export default function ProjectSelector({
   const [showCoefs, setShowCoefs] = useState(false)
   const [syncLoading, setSyncLoading] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  /** Noms des directions métier (non transverses) du workspace — co-pilotes projet transverse. */
+  const [nonTransverseDirectionNames, setNonTransverseDirectionNames] = useState<string[]>([])
   const pendingCreateRef = useRef<Record<string, Promise<string>>>({})
 
   useEffect(() => {
@@ -1443,6 +1448,14 @@ export default function ProjectSelector({
 
         if (cancelled) return
 
+        setNonTransverseDirectionNames(
+          directions
+            .filter((d) => !d.is_transverse)
+            .map((d) => (d.nom ?? '').trim())
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, 'fr')),
+        )
+
         const effectiveMemberDirectionId = resolveEffectiveMemberDirectionId(
           hydrated,
           memberDirectionId,
@@ -1493,6 +1506,7 @@ export default function ProjectSelector({
         setActiveId(nextActive)
       } catch (error) {
         if (cancelled) return
+        setNonTransverseDirectionNames([])
         const message = typeof error === 'object' && error && 'message' in error
           ? String((error as { message?: unknown }).message ?? '')
           : ''
@@ -1719,6 +1733,7 @@ export default function ProjectSelector({
               perimetre={active}
               coefs={coefs}
               isTransverse={isTransverseActive}
+              contributorDirectionChoices={nonTransverseDirectionNames}
               expandedProjectId={expandedProjectId}
               onExpandedChange={setExpandedProjectId}
               onUpdateProject={persistProject}
