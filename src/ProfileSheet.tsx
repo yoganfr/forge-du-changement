@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   createUser,
   getAcceptedInvitationAwaitingUserRow,
-  getWorkspaceDirections,
   getWorkspaceUsers,
   isStorageBucketNotFound,
   markInvitationsAcceptedForWorkspaceEmail,
@@ -11,7 +10,8 @@ import {
 } from './lib/api'
 import { supabase } from './lib/supabase'
 import type { User } from './lib/types'
-import { directionDisplayNamesMatch } from './lib/directionLabels'
+import { resolveOrCreateMemberDirection } from './lib/profileDirectionResolve'
+import DirectionPickerField from './DirectionPickerField'
 import {
   memberProfileStorageKey,
   migrateLegacyMemberProfileIfNeeded,
@@ -461,6 +461,19 @@ export default function ProfileSheet({
       const trigramCleaned = trigram.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3)
       const trigramToPersist: string | null = trigramCleaned.length === 3 ? trigramCleaned : null
 
+      let resolvedDirectionId: string | null = null
+      if (workspaceId && directionName.trim()) {
+        try {
+          resolvedDirectionId = await resolveOrCreateMemberDirection(
+            workspaceId,
+            directionName,
+            directionType,
+          )
+        } catch {
+          /* RLS / réseau : on enregistre le profil sans forcer direction_id */
+        }
+      }
+
       if (currentUserId) {
         const userPatch: Partial<User> = {
           prenom: firstName || null,
@@ -473,17 +486,7 @@ export default function ProfileSheet({
           total_effectif: totalEffectif,
           trigram: trigramToPersist,
         }
-        if (workspaceId && directionName.trim()) {
-          try {
-            const dirs = await getWorkspaceDirections(workspaceId)
-            const match = dirs.find(
-              (d) => !d.is_transverse && directionDisplayNamesMatch(directionName, d.nom ?? ''),
-            )
-            if (match) userPatch.direction_id = match.id
-          } catch {
-            /* ne pas bloquer la sauvegarde profil si les directions ne sont pas lisibles */
-          }
-        }
+        if (resolvedDirectionId) userPatch.direction_id = resolvedDirectionId
         await updateUser(
           currentUserId,
           userPatch,
@@ -517,7 +520,7 @@ export default function ProfileSheet({
           role: roleDb,
           direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
           direction_nom: directionName || null,
-          direction_id: inheritedDirectionId,
+          direction_id: resolvedDirectionId ?? inheritedDirectionId,
           managed_count: managedCount,
           total_effectif: totalEffectif,
           trigram: trigramToPersist ?? inheritedTrigram,
@@ -662,11 +665,20 @@ export default function ProfileSheet({
             ))}
           </div>
 
-          <InlineTextField
-            label="Nom de ma direction"
-            value={directionName}
-            onCommit={(v) => { setDirectionName(v); markDirty() }}
-          />
+          {workspaceId ? (
+            <DirectionPickerField
+              label="Nom de ma direction"
+              value={directionName}
+              workspaceId={workspaceId}
+              onCommit={(v) => { setDirectionName(v); markDirty() }}
+            />
+          ) : (
+            <InlineTextField
+              label="Nom de ma direction"
+              value={directionName}
+              onCommit={(v) => { setDirectionName(v); markDirty() }}
+            />
+          )}
 
           <InlineNumberField
             label="Nombre de personnes managées en direct"
@@ -1047,5 +1059,81 @@ const CSS = `
 
 .psd-save-all:hover {
   filter: brightness(0.95);
+}
+
+.psd-dir-picker {
+  margin-bottom: 12px;
+}
+
+.psd-dir-picker-row {
+  width: 100%;
+}
+
+.psd-dir-picker-hint {
+  font-size: 10px;
+  color: var(--theme-text-muted);
+  margin: 6px 0 8px;
+  line-height: 1.35;
+}
+
+.psd-dir-picker-meta {
+  font-size: 11px;
+  color: var(--theme-text-muted);
+  margin: 0 0 6px;
+}
+
+.psd-dir-picker-err {
+  font-size: 11px;
+  color: #dc2626;
+  margin: 0 0 6px;
+}
+
+.psd-dir-picker-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-bg-page);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 4px;
+}
+
+.psd-dir-picker-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: var(--theme-text);
+  cursor: pointer;
+  font-family: var(--font-body);
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-border) 60%, transparent);
+}
+
+.psd-dir-picker-item:last-child {
+  border-bottom: none;
+}
+
+.psd-dir-picker-item:hover,
+.psd-dir-picker-item:focus-visible {
+  background: color-mix(in srgb, var(--theme-accent) 10%, transparent);
+  outline: none;
+}
+
+.psd-dir-picker-empty {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.psd-dir-picker-new {
+  font-size: 11px;
+  color: var(--theme-text-muted);
+  margin: 8px 0 0;
+  line-height: 1.35;
 }
 `
