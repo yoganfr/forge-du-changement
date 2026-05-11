@@ -27,6 +27,7 @@ export {
   createDirection,
   getRoadmapEligibleProjects,
   getRoadmapEligibleProjectsForDirection,
+  getRoadmapEligibleProjectsForRestrictedMember,
   getWorkspaceDirections,
   getWorkspaceDirectionsWithProjects,
   updateDirection,

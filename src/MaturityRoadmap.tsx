@@ -12,7 +12,7 @@ import {
   getJalonRaci,
   getProjetChantiers,
   getRoadmapEligibleProjects,
-  getRoadmapEligibleProjectsForDirection,
+  getRoadmapEligibleProjectsForRestrictedMember,
   getWorkspaceUsers,
   getWorkspaceDirections,
   listSnapshotFeedbacks,
@@ -91,16 +91,20 @@ const FACETTE_OPTIONS: { value: JalonFacette; label: string }[] = [
   { value: 'AUTRE', label: 'Autre' },
 ]
 
-/** Direction « métier » du membre CODIR / pilote (nom dans le profil ou première direction non transverse). */
+/**
+ * Direction rattachée au membre (aligné La Fabrique / `users.direction_id`).
+ * Pas de repli sur « la première direction » : évite d’afficher les roadmaps d’un autre CODIR.
+ */
 function resolveMemberDirectionId(dirs: Direction[], u: User | null): string | null {
   if (!u) return null
+  if (u.direction_id) {
+    const byId = dirs.find((d) => d.id === u.direction_id)
+    if (byId) return byId.id
+  }
   const want = u.direction_nom?.trim().toLowerCase()
   if (want) {
-    const hit = dirs.find((d) => d.nom.trim().toLowerCase() === want)
-    if (hit) return hit.id
-  }
-  if (u.role === 'codir' || u.role === 'pilote') {
-    return dirs.find((d) => !d.is_transverse)?.id ?? dirs[0]?.id ?? null
+    const byName = dirs.find((d) => !d.is_transverse && d.nom.trim().toLowerCase() === want)
+    if (byName) return byName.id
   }
   return null
 }
@@ -230,8 +234,15 @@ export default function MaturityRoadmap({
       setMemberDirectionName(appUser?.direction_nom?.trim() ? appUser.direction_nom.trim() : null)
       setMemberDirectionLabel(dirLabel)
 
-      const projects = memberDirId
-        ? await getRoadmapEligibleProjectsForDirection(memberDirId)
+      const restrictsRoadmapPerimeter = Boolean(
+        appUser &&
+        (appUser.role === 'codir' ||
+          appUser.role === 'contributeur' ||
+          appUser.role === 'pilote'),
+      )
+
+      const projects = restrictsRoadmapPerimeter
+        ? await getRoadmapEligibleProjectsForRestrictedMember(workspaceId, memberDirId)
         : await getRoadmapEligibleProjects(workspaceId)
 
       if (projects.length === 0) {
@@ -240,9 +251,11 @@ export default function MaturityRoadmap({
         setChantiers([])
         setJalonsByChantier({})
         setError(
-          memberDirId
-            ? 'Aucun projet BUILD validé par le décideur pour votre direction. Créez un BUILD dans La Fabrique, retenez-le pour le décideur, puis validez-le dans la Vue décideur (section « Projets BUILD soumis pour la roadmap »).'
-            : 'Aucun projet BUILD validé par le décideur pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le décideur, puis validez-le dans la Vue décideur (section « Projets BUILD soumis pour la roadmap »).',
+          restrictsRoadmapPerimeter
+            ? memberDirId
+              ? 'Aucun projet BUILD retenu pour le décideur et validé par lui dans votre périmètre (votre direction et les périmètres transverses). Utilisez La Fabrique pour soumettre un top 5, puis la Vue décideur pour valider avant d’éditer la roadmap.'
+              : 'Aucun projet BUILD retenu et validé sur les périmètres transverses accessibles. Rattachez-vous à une direction dans votre profil si votre CODIR a un périmètre dédié, ou attendez des projets transverses validés.'
+            : 'Aucun projet BUILD retenu pour le décideur et validé pour la roadmap. Créez un BUILD dans La Fabrique, retenez-le pour le décideur, puis validez-le dans la Vue décideur (section « Projets BUILD soumis pour la roadmap »).',
         )
         return
       }

@@ -60,14 +60,19 @@ export async function getWorkspaceDirectionsWithProjects(workspaceId: string): P
   })
 }
 
-/** Projets BUILD validés DG — éligibles à la Maturity Roadmap (dédoublonnés, tri par nom). */
+/** BUILD retenu pour le décideur et validé — seul cas éligible à la Maturity Roadmap (chantiers / jalons). */
+function isRoadmapEligibleProjet(p: Projet): boolean {
+  return p.type === 'BUILD' && p.selected_for_transfo && p.dg_validated_transfo
+}
+
+/** Projets BUILD retenus + validés DG — éligibles roadmap, tout périmètre workspace (dédoublonnés). */
 export async function getRoadmapEligibleProjects(workspaceId: string): Promise<Projet[]> {
   const rows = await getWorkspaceDirectionsWithProjects(workspaceId)
   const seen = new Set<string>()
   const out: Projet[] = []
   for (const row of rows) {
     for (const p of row.projects) {
-      if (p.type !== 'BUILD' || !p.dg_validated_transfo) continue
+      if (!isRoadmapEligibleProjet(p)) continue
       if (seen.has(p.id)) continue
       seen.add(p.id)
       out.push(p)
@@ -76,10 +81,36 @@ export async function getRoadmapEligibleProjects(workspaceId: string): Promise<P
   return out.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 }
 
-/** Projets BUILD validés DG — pour une direction donnée (périmètre CODIR / roadmap). */
+/** Projets BUILD retenus + validés DG — pour une direction donnée. */
 export async function getRoadmapEligibleProjectsForDirection(directionId: string): Promise<Projet[]> {
   const list = await getDirectionProjets(directionId)
   return list
-    .filter((p) => p.type === 'BUILD' && p.dg_validated_transfo)
+    .filter(isRoadmapEligibleProjet)
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+}
+
+/**
+ * Périmètre membre CODIR / contributeur / pilote : direction rattachée + directions transverses.
+ * Si `memberDirectionId` est null, seuls les projets des directions `is_transverse` sont pris en compte.
+ */
+export async function getRoadmapEligibleProjectsForRestrictedMember(
+  workspaceId: string,
+  memberDirectionId: string | null,
+): Promise<Projet[]> {
+  const rows = await getWorkspaceDirectionsWithProjects(workspaceId)
+  const seen = new Set<string>()
+  const out: Projet[] = []
+  for (const row of rows) {
+    const { direction: d } = row
+    const inScope =
+      d.is_transverse || (memberDirectionId != null && d.id === memberDirectionId)
+    if (!inScope) continue
+    for (const p of row.projects) {
+      if (!isRoadmapEligibleProjet(p)) continue
+      if (seen.has(p.id)) continue
+      seen.add(p.id)
+      out.push(p)
+    }
+  }
+  return out.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 }
