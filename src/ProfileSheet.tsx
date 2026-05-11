@@ -10,6 +10,7 @@ import {
 } from './lib/api'
 import { supabase } from './lib/supabase'
 import type { User } from './lib/types'
+import { formatClientErrorMessage } from './lib/formatClientErrorMessage'
 import { resolveOrCreateMemberDirection } from './lib/profileDirectionResolve'
 import DirectionPickerField from './DirectionPickerField'
 import {
@@ -483,7 +484,7 @@ export default function ProfileSheet({
             directionType,
           )
         } catch (err) {
-          const detail = err instanceof Error ? err.message : String(err)
+          const detail = formatClientErrorMessage(err)
           setSaveError(
             `La direction n’a pas pu être créée ou liée en base (${detail}). Sans cela, « Projets transformants » ne peut pas résoudre votre périmètre. Vérifiez vos droits ou demandez à un consultant / administrateur d’initialiser les directions.`,
           )

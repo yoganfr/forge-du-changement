@@ -1,6 +1,6 @@
 # Guide de Debug — Spinner infini à l'onboarding (InviteeSetupWizard)
 
-Dernière mise à jour : **11 mai 2026**, 10 h 19 (Europe/Paris)
+Dernière mise à jour : **11 mai 2026**, 10 h 32 (Europe/Paris)
 
 ## 1. Vue d'ensemble
 
@@ -15,6 +15,34 @@ Ce document décrit les logs ajoutés au flux d'authentification et d'invitation
 5. **Résolution du `serverAccess`** → décide de source = `users`, `invitation`, ou `superadmin`
 6. **Évaluation du gate du wizard** → `needsInviteeSetupGate(serverAccess, platformSuperadmin)`
 7. **Montée du wizard** ou **affichage du dashboard**
+
+---
+
+## 1 bis. Checklist — tests manuels à faire
+
+Cocher au fil des releases / recettes (ordre indicatif).
+
+### Profil et direction (workspace réel)
+
+- [ ] **CODIR** : ouvrir **Mon profil**, saisir un **nom de direction** (nouveau libellé), type (ex. Géographique), **Enregistrer** → pas d’erreur ; `direction_id` renseigné côté base ; **Projets transformants** résout le périmètre.
+- [ ] **CODIR** : modifier le nom pour matcher une direction **existante** non transverse → rattachement à l’`id` existant (pas de doublon inutile).
+- [ ] **Admin / consultant** : création ou édition direction **transverse** (flux habituel back-office) → toujours autorisé via `can_manage_workspace`.
+
+### Wizard invité (`InviteeSetupWizard`)
+
+- [ ] Invitation **CODIR** : liste des directions + option **créer une nouvelle** ; enregistrement OK.
+- [ ] Invitation **contributeur** avec `direction_id` sur l’invitation (ex. invité par un CODIR avec direction) → message de rattachement cohérent ; pas de choix contradictoire.
+- [ ] Invitation **contributeur** **sans** `direction_id` → choix obligatoire (liste ou création), comme CODIR.
+
+### Revue roadmap / rôle CODIR « réel »
+
+- [ ] Depuis un compte **CODIR** avec revue ouverte (ou tout flux qui appelle `createInvitation` avec le bon `workspace_id`) : inviter un **contributeur** → vérifier en base que `invitations.direction_id` reprend la direction du CODIR **dans ce workspace** (cf. `resolveCurrentAppUserForInvitation` filtré par `workspace_id` dans `src/lib/api/invitations.ts`).
+- [ ] Si impossible en recette : valider au minimum l’invitation **admin** + les blocs ci-dessus ; reporter le scénario CODIR-revue à un compte test dédié.
+
+### Régressions connues à surveiller
+
+- [ ] Après login invité : `getWorkspace` OK (`current_step_*` cohérents) — voir **§6 bis**.
+- [ ] Pas de contamination cache **Mon profil** entre deux comptes sur le même navigateur — voir **§6 ter** (`savedForEmail`).
 
 ---
 
@@ -455,6 +483,20 @@ Les policies **s’additionnent en OR** (comportement RLS permissif par défaut 
 
 - `resolveOrCreateMemberDirection` (`src/lib/profileDirectionResolve.ts`) : cherche une direction **non transverse** dont le nom matche ; sinon **INSERT** `directions` avec `user_id` = **`auth.uid()`** (session), pas une ligne `getCurrentUser()` potentiellement ambiguë.
 - Si l’INSERT / le SELECT échoue (RLS, réseau), l’enregistrement **s’interrompt** et un message d’erreur s’affiche : sans `direction_id`, le CODIR ne peut pas verrouiller son périmètre dans **Projets transformants**.
+- **Erreur UI « ([object Object]) »** : l’objet d’erreur PostgREST renvoyé par `supabase-js` n’est pas toujours une `instanceof Error` — utiliser `formatClientErrorMessage` (`src/lib/formatClientErrorMessage.ts`) dans les `catch` affichés à l’utilisateur.
+
+### RLS `public.directions` (INSERT) — CODIR / pilote / contributeur
+
+Historiquement, une policy **FOR ALL** `directions_all` combine :
+
+- `USING (can_access_workspace(workspace_id))` — lecture / visibilité ;
+- **`WITH CHECK (can_manage_workspace(workspace_id))`** — s’applique notamment aux **INSERT**.
+
+Les rôles **CODIR / contributeur / pilote** ont en général `can_access_workspace` mais **pas** `can_manage_workspace` → l’**INSERT** d’une nouvelle direction depuis le profil ou le wizard était **refusé** (message PostgREST du type *new row violates row-level security policy*).
+
+**Correctif (prod + fichier migration)** : policy permissive supplémentaire **`directions_insert_member_self_serve`** + fonction `can_member_self_serve_direction_insert(workspace_id, is_transverse)` — autorise l’INSERT d’une direction **non transverse** dans le workspace du membre dont le rôle est `codir`, `contributeur` ou `pilote`. Les directions **transverses** restent réservées aux comptes qui passent `can_manage_workspace` (policy `directions_all`).
+
+- Migration : `supabase/migrations/20260511183200_directions_insert_member_self_serve.sql`
 
 ### Cache local et contamination entre comptes
 
@@ -471,6 +513,8 @@ Les policies **s’additionnent en OR** (comportement RLS permissif par défaut 
 - `src/lib/api/index.ts` — Requêtes invitations (`getLatestPendingInvitationForEmail`)
 - `src/lib/api/workspaces.ts` — `getWorkspace` (parcours / fiche entreprise) ; voir aussi §6 bis (RLS `workspaces`)
 - `supabase/migrations/20260511180000_workspaces_select_member_jwt_email.sql` — policy SELECT email JWT (§6 bis)
+- `supabase/migrations/20260511183200_directions_insert_member_self_serve.sql` — policy INSERT membre terrain sur `directions` (§6 ter)
+- `src/lib/formatClientErrorMessage.ts` — libellé d’erreur client (évite `[object Object]`)
 - `src/lib/profileDirectionResolve.ts` — résolution / création direction à l’enregistrement profil (§6 ter)
 - `src/lib/memberProfileStorage.ts` — clés cache et migration legacy sécurisée (§6 ter)
 

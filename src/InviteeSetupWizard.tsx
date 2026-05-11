@@ -7,6 +7,7 @@ import {
   updateUser,
 } from './lib/api'
 import type { Direction, User } from './lib/types'
+import { formatClientErrorMessage } from './lib/formatClientErrorMessage'
 import type { ProfileDirectionType } from './lib/profileDirectionResolve'
 import { resolveOrCreateMemberDirection } from './lib/profileDirectionResolve'
 import { supabase } from './lib/supabase'
@@ -185,7 +186,7 @@ export default function InviteeSetupWizard({
               newDirectionType,
             )
           } catch (dirErr) {
-            const detail = dirErr instanceof Error ? dirErr.message : String(dirErr)
+            const detail = formatClientErrorMessage(dirErr)
             throw new Error(
               `Impossible de créer la direction (« ${detail} »). Vérifiez vos droits ou demandez à un consultant d’initialiser les directions.`,
             )
