@@ -90,27 +90,14 @@ export async function getRoadmapEligibleProjectsForDirection(directionId: string
 }
 
 /**
- * Périmètre membre CODIR / contributeur / pilote : direction rattachée + directions transverses.
- * Si `memberDirectionId` est null, seuls les projets des directions `is_transverse` sont pris en compte.
+ * Membre CODIR / contributeur / pilote : projets rattachés à `users.direction_id` uniquement.
+ * Les projets « transverses » (co-pilotes) restent sur cette même `direction_id` ; la distinction est UI (directions_contributrices).
  */
 export async function getRoadmapEligibleProjectsForRestrictedMember(
-  workspaceId: string,
+  _workspaceId: string,
   memberDirectionId: string | null,
 ): Promise<Projet[]> {
-  const rows = await getWorkspaceDirectionsWithProjects(workspaceId)
-  const seen = new Set<string>()
-  const out: Projet[] = []
-  for (const row of rows) {
-    const { direction: d } = row
-    const inScope =
-      d.is_transverse || (memberDirectionId != null && d.id === memberDirectionId)
-    if (!inScope) continue
-    for (const p of row.projects) {
-      if (!isRoadmapEligibleProjet(p)) continue
-      if (seen.has(p.id)) continue
-      seen.add(p.id)
-      out.push(p)
-    }
-  }
-  return out.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  if (!memberDirectionId) return []
+  const list = await getDirectionProjets(memberDirectionId)
+  return list.filter(isRoadmapEligibleProjet).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 }
