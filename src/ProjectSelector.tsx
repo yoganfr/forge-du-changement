@@ -664,13 +664,24 @@ function ProjectCard({
   const [draft, setDraft] = useState<Project>(project)
   const [pilotageError, setPilotageError] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  /** Après sync depuis `project`, on ignore un cycle d’auto-save (évite double POST à l’ouverture). */
   const hasMountedRef = useRef(false)
+  /** Dernière fiche synchronisée dans le draft : évite d’écraser le formulaire à chaque patch parent (nom, etc.). */
+  const syncedProjectIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (expanded) {
+    if (!expanded) {
+      syncedProjectIdRef.current = null
+      return
+    }
+    const openingNew =
+      syncedProjectIdRef.current === null || syncedProjectIdRef.current !== project.id
+    if (openingNew) {
       setDraft(project)
       setPilotageError(false)
       setConfirmDelete(false)
+      syncedProjectIdRef.current = project.id
+      hasMountedRef.current = false
     }
   }, [expanded, project])
 
@@ -687,7 +698,6 @@ function ProjectCard({
     if (same) return
 
     const timer = window.setTimeout(() => {
-      if (isTransverse && draft.contributorDirections.length === 0) return
       onSaveProject({
         ...draft,
         planning: { ...emptyPlanning(), ...draft.planning },
@@ -697,7 +707,7 @@ function ProjectCard({
     return () => {
       window.clearTimeout(timer)
     }
-  }, [draft, expanded, isTransverse, onSaveProject, project])
+  }, [draft, expanded, onSaveProject, project])
 
   const displayScoreCollapsed = computeScore(project, coefs)
   const score = computeScore(draft, coefs)
