@@ -62,6 +62,8 @@ type Perimetre = {
   color: string
   mission: string
   vision: string
+  /** Aligné sur `directions.is_transverse` après synchro Supabase ; faux pour l’onglet démo local. */
+  isTransverse?: boolean
   projects: Project[]
 }
 
@@ -190,6 +192,7 @@ function buildInitialPerimetres(directionLabel: string): Perimetre[] {
       color: PERIMETRE_COLORS[0],
       mission: '',
       vision: '',
+      isTransverse: false,
       projects: [],
     },
     {
@@ -198,6 +201,7 @@ function buildInitialPerimetres(directionLabel: string): Perimetre[] {
       color: PERIMETRE_COLORS[1],
       mission: '',
       vision: '',
+      isTransverse: true,
       projects: [],
     },
   ]
@@ -329,7 +333,11 @@ function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Per
   })
 }
 
-function applyMemberDirectionPrefill(data: Perimetre[], memberProfileEmail?: string | null): Perimetre[] {
+function applyMemberDirectionPrefill(
+  data: Perimetre[],
+  memberProfileEmail?: string | null,
+  primaryDirectionId?: string | null,
+): Perimetre[] {
   if (typeof window === 'undefined') return data
   migrateLegacyMemberProfileIfNeeded(memberProfileEmail)
   const raw = window.localStorage.getItem(memberProfileStorageKey(memberProfileEmail))
@@ -347,7 +355,10 @@ function applyMemberDirectionPrefill(data: Perimetre[], memberProfileEmail?: str
     const vision = (parsed.vision ?? '').trim()
 
     return data.map((perimetre) => {
-      if (perimetre.id !== DIR_PERIM_ID) return perimetre
+      const isPrimary =
+        perimetre.id === DIR_PERIM_ID ||
+        (primaryDirectionId != null && perimetre.id === primaryDirectionId)
+      if (!isPrimary) return perimetre
       return {
         ...perimetre,
         name: directionName || perimetre.name,
@@ -1314,6 +1325,13 @@ function CoefPanel({
 
 export interface ProjectSelectorProps {
   memberDirectionName?: string
+  /** `public.users.direction_id` : onglet « ma direction » (projets locaux à ce CODIR). */
+  memberDirectionId?: string | null
+  /**
+   * Si vrai : n’affiche que cette direction et les directions `is_transverse` (projets partagés entre CODIR).
+   * Les autres directions du workspace restent invisibles — règle BUILD disjoint par CODIR.
+   */
+  restrictToMemberDirections?: boolean
   workspaceId?: string | null
   /** Email Auth : lecture du cache profil pour préremplir direction / mission / vision. */
   memberProfileEmail?: string | null
@@ -1323,6 +1341,8 @@ export interface ProjectSelectorProps {
 
 export default function ProjectSelector({
   memberDirectionName = 'Ma direction',
+  memberDirectionId = null,
+  restrictToMemberDirections = false,
   workspaceId = null,
   memberProfileEmail = null,
   onOpenRoadmap,
@@ -1331,6 +1351,7 @@ export default function ProjectSelector({
     applyMemberDirectionPrefill(
       autoSelectTopBuildProjects(buildInitialPerimetres(memberDirectionName), DEFAULT_COEFFICIENTS),
       memberProfileEmail,
+      memberDirectionId,
     ),
   )
   const [activeId, setActiveId] = useState<string>(DIR_PERIM_ID)
@@ -1351,8 +1372,8 @@ export default function ProjectSelector({
   }, [memberDirectionName])
 
   useEffect(() => {
-    setPerimetres((prev) => applyMemberDirectionPrefill(prev, memberProfileEmail))
-  }, [memberProfileEmail])
+    setPerimetres((prev) => applyMemberDirectionPrefill(prev, memberProfileEmail, memberDirectionId))
+  }, [memberProfileEmail, memberDirectionId])
 
   useEffect(() => {
     if (!workspaceId) return
@@ -1397,16 +1418,53 @@ export default function ProjectSelector({
               color: d.color || PERIMETRE_COLORS[idx % PERIMETRE_COLORS.length],
               mission: d.mission ?? '',
               vision: d.vision ?? '',
+              isTransverse: Boolean(d.is_transverse),
               projects: projets.map(mapDbProjetToProject),
-            } as Perimetre
+            } satisfies Perimetre
           }),
         )
 
         if (cancelled) return
-        setPerimetres(hydrated)
-        if (!hydrated.find((p) => p.id === activeIdRef.current)) {
-          setActiveId(hydrated[0]?.id ?? DIR_PERIM_ID)
+
+        // Chaque projet est stocké sous `directions.id`. Les lignes `is_transverse = true`
+        // portent les projets visibles par tous les CODIR ; les autres = périmètre local à
+        // une direction (BUILD disjoints par CODIR hors roadmap transversale explicite).
+        let visible = hydrated
+        if (restrictToMemberDirections) {
+          if (memberDirectionId) {
+            visible = hydrated.filter(
+              (p) => p.id === memberDirectionId || p.isTransverse,
+            )
+            visible.sort((a, b) => {
+              const aMine = a.id === memberDirectionId
+              const bMine = b.id === memberDirectionId
+              if (aMine !== bMine) return aMine ? -1 : 1
+              if (a.isTransverse !== b.isTransverse) return a.isTransverse ? 1 : -1
+              return 0
+            })
+          } else {
+            visible = hydrated.filter((p) => p.isTransverse)
+          }
         }
+
+        setPerimetres(visible)
+
+        let nextActive: string
+        if (restrictToMemberDirections) {
+          if (memberDirectionId && visible.some((p) => p.id === memberDirectionId)) {
+            nextActive = memberDirectionId
+          } else {
+            nextActive =
+              visible.find((p) => p.isTransverse)?.id
+              ?? visible[0]?.id
+              ?? DIR_PERIM_ID
+          }
+        } else if (activeIdRef.current && visible.some((p) => p.id === activeIdRef.current)) {
+          nextActive = activeIdRef.current
+        } else {
+          nextActive = visible[0]?.id ?? DIR_PERIM_ID
+        }
+        setActiveId(nextActive)
       } catch (error) {
         if (cancelled) return
         const message = typeof error === 'object' && error && 'message' in error
@@ -1427,17 +1485,16 @@ export default function ProjectSelector({
     return () => {
       cancelled = true
     }
-  }, [workspaceId, memberDirectionName])
+  }, [workspaceId, memberDirectionName, memberDirectionId, restrictToMemberDirections])
 
   const active = perimetres.find((p) => p.id === activeId) ?? perimetres[0]
-  const directionPerimetre = perimetres.find((p) => p.id === DIR_PERIM_ID)
-  const transPerimetre = perimetres.find((p) => p.id === TRANS_PERIM_ID)
-  const isTransverse = activeId === TRANS_PERIM_ID
+  /** Onglet transverse = direction DB `is_transverse` (ou mode démo sans synchro, `perim-transverse`). */
+  const isTransverseActive = Boolean(active?.isTransverse) || activeId === TRANS_PERIM_ID
 
   function resolveDirectionIdForWrite(perimId: string): string | null {
     if (perimId && !perimId.startsWith('perim-')) return perimId
-    const directionCandidate = perimetres.find((p) => p.id !== TRANS_PERIM_ID && !p.id.startsWith('perim-'))
-    const transverseCandidate = perimetres.find((p) => p.id !== DIR_PERIM_ID && !p.id.startsWith('perim-'))
+    const directionCandidate = perimetres.find((p) => !p.isTransverse && !p.id.startsWith('perim-'))
+    const transverseCandidate = perimetres.find((p) => p.isTransverse && !p.id.startsWith('perim-'))
     if (perimId === TRANS_PERIM_ID) return transverseCandidate?.id ?? null
     if (perimId === DIR_PERIM_ID) return directionCandidate?.id ?? null
     return null
@@ -1609,26 +1666,17 @@ export default function ProjectSelector({
 
           <div className="ps-toolbar">
             <div className="ps-pills">
-              {directionPerimetre && (
+              {perimetres.map((p) => (
                 <button
+                  key={p.id}
                   type="button"
-                  className={`ps-pill ${activeId === DIR_PERIM_ID ? 'ps-pill--active' : ''}`}
-                  onClick={() => selectTab(DIR_PERIM_ID)}
+                  className={`ps-pill ${activeId === p.id ? 'ps-pill--active' : ''}`}
+                  onClick={() => selectTab(p.id)}
                 >
-                  {directionPerimetre.name}
-                  <span className="ps-pill-dot" style={{ background: directionPerimetre.color }} aria-hidden />
+                  {p.name}
+                  <span className="ps-pill-dot" style={{ background: p.color }} aria-hidden />
                 </button>
-              )}
-              {transPerimetre && (
-                <button
-                  type="button"
-                  className={`ps-pill ${activeId === TRANS_PERIM_ID ? 'ps-pill--active' : ''}`}
-                  onClick={() => selectTab(TRANS_PERIM_ID)}
-                >
-                  Projets transverses
-                  <span className="ps-pill-dot" style={{ background: transPerimetre.color }} aria-hidden />
-                </button>
-              )}
+              ))}
             </div>
             <div className="ps-toolbar-right">
               <button type="button" className="ps-add-project" onClick={addProject}>
@@ -1644,7 +1692,7 @@ export default function ProjectSelector({
             <PerimetreView
               perimetre={active}
               coefs={coefs}
-              isTransverse={isTransverse}
+              isTransverse={isTransverseActive}
               expandedProjectId={expandedProjectId}
               onExpandedChange={setExpandedProjectId}
               onUpdateProject={persistProject}
@@ -1652,6 +1700,12 @@ export default function ProjectSelector({
               onPatchProject={updateProjectLocal}
               onOpenRoadmap={onOpenRoadmap ? handleOpenRoadmap : undefined}
             />
+          )}
+          {!syncLoading && perimetres.length === 0 && (
+            <p className="ps-sync-note" role="status">
+              Aucun périmètre projet n’est accessible avec votre profil (direction ou projets transverses).
+              Si vous venez d’être invité, vérifiez votre rattachement à une direction auprès d’un administrateur.
+            </p>
           )}
           {syncLoading && <p className="ps-sync-note">Synchronisation en cours...</p>}
           {syncError && <p className="ps-sync-err">{syncError}</p>}

@@ -1930,6 +1930,13 @@ function App() {
             ) : normalizedActiveNav === 'projects' ? (
               <ProjectSelector
                 memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
+                memberDirectionId={
+                  serverAccess?.source === 'users' ? serverAccess.dbUser.direction_id ?? null : null
+                }
+                restrictToMemberDirections={
+                  !platformSuperadmin &&
+                  (currentUserRole === 'codir' || currentUserRole === 'contributeur')
+                }
                 memberProfileEmail={authUser?.email ?? null}
                 workspaceId={workspaceId}
                 onOpenRoadmap={(projetId) => {
