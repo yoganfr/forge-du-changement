@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   createUser,
   getAcceptedInvitationAwaitingUserRow,
+  getWorkspaceDirections,
   getWorkspaceUsers,
   isStorageBucketNotFound,
   markInvitationsAcceptedForWorkspaceEmail,
@@ -460,19 +461,32 @@ export default function ProfileSheet({
       const trigramToPersist: string | null = trigramCleaned.length === 3 ? trigramCleaned : null
 
       if (currentUserId) {
+        const userPatch: Partial<User> = {
+          prenom: firstName || null,
+          nom: lastName || null,
+          job_title: jobTitle || null,
+          avatar_url: avatarUrlToPersist,
+          direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
+          direction_nom: directionName || null,
+          managed_count: managedCount,
+          total_effectif: totalEffectif,
+          trigram: trigramToPersist,
+        }
+        if (workspaceId && directionName.trim()) {
+          try {
+            const dirs = await getWorkspaceDirections(workspaceId)
+            const label = directionName.trim().toLowerCase()
+            const match = dirs.find(
+              (d) => !d.is_transverse && d.nom.trim().toLowerCase() === label,
+            )
+            if (match) userPatch.direction_id = match.id
+          } catch {
+            /* ne pas bloquer la sauvegarde profil si les directions ne sont pas lisibles */
+          }
+        }
         await updateUser(
           currentUserId,
-          {
-            prenom: firstName || null,
-            nom: lastName || null,
-            job_title: jobTitle || null,
-            avatar_url: avatarUrlToPersist,
-            direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
-            direction_nom: directionName || null,
-            managed_count: managedCount,
-            total_effectif: totalEffectif,
-            trigram: trigramToPersist,
-          },
+          userPatch,
           workspaceId ? { workspace_id: workspaceId } : undefined,
         )
       } else if (workspaceId) {

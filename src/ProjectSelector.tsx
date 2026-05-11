@@ -333,6 +333,23 @@ function autoSelectTopBuildProjects(data: Perimetre[], coefs: Coefficients): Per
   })
 }
 
+/** Rattache le membre à une ligne `directions` : id serveur si présent, sinon nom affiché (hors transverse). */
+function resolveEffectiveMemberDirectionId(
+  hydrated: Perimetre[],
+  memberDirectionId: string | null,
+  memberDirectionName: string,
+): string | null {
+  if (memberDirectionId && hydrated.some((p) => p.id === memberDirectionId)) {
+    return memberDirectionId
+  }
+  const label = memberDirectionName.trim().toLowerCase()
+  if (!label) return memberDirectionId
+  const byName = hydrated.find(
+    (p) => !p.isTransverse && p.name.trim().toLowerCase() === label,
+  )
+  return byName?.id ?? memberDirectionId
+}
+
 function applyMemberDirectionPrefill(
   data: Perimetre[],
   memberProfileEmail?: string | null,
@@ -1426,18 +1443,24 @@ export default function ProjectSelector({
 
         if (cancelled) return
 
+        const effectiveMemberDirectionId = resolveEffectiveMemberDirectionId(
+          hydrated,
+          memberDirectionId,
+          memberDirectionName,
+        )
+
         // Chaque projet est stocké sous `directions.id`. Les lignes `is_transverse = true`
         // portent les projets visibles par tous les CODIR ; les autres = périmètre local à
         // une direction (BUILD disjoints par CODIR hors roadmap transversale explicite).
         let visible = hydrated
         if (restrictToMemberDirections) {
-          if (memberDirectionId) {
+          if (effectiveMemberDirectionId) {
             visible = hydrated.filter(
-              (p) => p.id === memberDirectionId || p.isTransverse,
+              (p) => p.id === effectiveMemberDirectionId || p.isTransverse,
             )
             visible.sort((a, b) => {
-              const aMine = a.id === memberDirectionId
-              const bMine = b.id === memberDirectionId
+              const aMine = a.id === effectiveMemberDirectionId
+              const bMine = b.id === effectiveMemberDirectionId
               if (aMine !== bMine) return aMine ? -1 : 1
               if (a.isTransverse !== b.isTransverse) return a.isTransverse ? 1 : -1
               return 0
@@ -1451,8 +1474,11 @@ export default function ProjectSelector({
 
         let nextActive: string
         if (restrictToMemberDirections) {
-          if (memberDirectionId && visible.some((p) => p.id === memberDirectionId)) {
-            nextActive = memberDirectionId
+          if (
+            effectiveMemberDirectionId
+            && visible.some((p) => p.id === effectiveMemberDirectionId)
+          ) {
+            nextActive = effectiveMemberDirectionId
           } else {
             nextActive =
               visible.find((p) => p.isTransverse)?.id

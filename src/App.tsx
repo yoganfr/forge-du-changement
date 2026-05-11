@@ -1929,13 +1929,16 @@ function App() {
               />
             ) : normalizedActiveNav === 'projects' ? (
               <ProjectSelector
-                memberDirectionName={storedProfile?.directionName ?? 'Ma direction'}
+                memberDirectionName={
+                  serverAccess?.source === 'users' && serverAccess.dbUser.direction_nom?.trim()
+                    ? serverAccess.dbUser.direction_nom.trim()
+                    : (storedProfile?.directionName ?? 'Ma direction')
+                }
                 memberDirectionId={
                   serverAccess?.source === 'users' ? serverAccess.dbUser.direction_id ?? null : null
                 }
                 restrictToMemberDirections={
-                  !platformSuperadmin &&
-                  (currentUserRole === 'codir' || currentUserRole === 'contributeur')
+                  currentUserRole === 'codir' || currentUserRole === 'contributeur'
                 }
                 memberProfileEmail={authUser?.email ?? null}
                 workspaceId={workspaceId}
