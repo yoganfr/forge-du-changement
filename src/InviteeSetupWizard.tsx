@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   createUser,
   getAcceptedInvitationAwaitingUserRow,
+  getWorkspaceDirections,
   markInvitationsAcceptedForWorkspaceEmail,
   updateUser,
 } from './lib/api'
-import type { User } from './lib/types'
+import type { Direction, User } from './lib/types'
+import type { ProfileDirectionType } from './lib/profileDirectionResolve'
+import { resolveOrCreateMemberDirection } from './lib/profileDirectionResolve'
 import { supabase } from './lib/supabase'
 
 export type InviteeSetupWizardProps = {
@@ -19,6 +22,17 @@ export type InviteeSetupWizardProps = {
 }
 
 const MIN_PASSWORD_LEN = 8
+
+function mapProfileDirectionTypeToDb(t: ProfileDirectionType): User['direction_type'] {
+  if (t === 'metier') return 'Métier'
+  if (t === 'geographique') return 'Géographique'
+  return 'Fonctionnel'
+}
+
+function directionTypeFromDbRow(type: Direction['type']): User['direction_type'] {
+  if (type === 'Métier' || type === 'Géographique' || type === 'Fonctionnel') return type
+  return 'Fonctionnel'
+}
 
 export default function InviteeSetupWizard({
   companyName,
@@ -37,6 +51,73 @@ export default function InviteeSetupWizard({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  /** Directions métier du workspace (hors transverse) — étape 2 invitation. */
+  const [nonTransverseDirections, setNonTransverseDirections] = useState<Direction[]>([])
+  const [directionsLoading, setDirectionsLoading] = useState(false)
+  const [directionSyncError, setDirectionSyncError] = useState<string | null>(null)
+  /** `direction_id` porté par l’invitation (ex. contributeur invité par un CODIR en revue). */
+  const [invitationDirectionId, setInvitationDirectionId] = useState<string | null>(null)
+  const [invitationDirectionNom, setInvitationDirectionNom] = useState<string | null>(null)
+  /** Choix CODIR / contributeur sans direction sur l’invitation : id réel ou `__new__`. */
+  const [memberDirectionPick, setMemberDirectionPick] = useState('')
+  const [newDirectionName, setNewDirectionName] = useState('')
+  const [newDirectionType, setNewDirectionType] = useState<ProfileDirectionType>('fonctionnel')
+
+  useEffect(() => {
+    if (step !== 2 || mode !== 'invitation' || !workspaceId) return
+    let cancelled = false
+    setDirectionSyncError(null)
+    setDirectionsLoading(true)
+    void (async () => {
+      try {
+        const dirs = await getWorkspaceDirections(workspaceId)
+        if (cancelled) return
+        const nonT = dirs.filter((d) => !d.is_transverse)
+        setNonTransverseDirections(nonT)
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        const em = session?.user?.email?.trim().toLowerCase() ?? ''
+        let invDir: string | null = null
+        if (em) {
+          try {
+            const inv = await getAcceptedInvitationAwaitingUserRow(em)
+            invDir = inv?.direction_id ?? null
+          } catch {
+            /* RLS */
+          }
+        }
+        if (cancelled) return
+        setInvitationDirectionId(invDir)
+        if (invDir) {
+          const row = nonT.find((d) => d.id === invDir)
+          setInvitationDirectionNom(row?.nom ?? null)
+        } else {
+          setInvitationDirectionNom(null)
+        }
+
+        if (dbRole === 'codir' && invDir && nonT.some((d) => d.id === invDir)) {
+          setMemberDirectionPick(invDir)
+        } else if (dbRole === 'codir' && nonT.length === 0) {
+          setMemberDirectionPick('__new__')
+        } else {
+          setMemberDirectionPick('')
+        }
+      } catch (e) {
+        if (!cancelled) {
+          const msg = e instanceof Error ? e.message : 'Impossible de charger les directions.'
+          setDirectionSyncError(msg)
+        }
+      } finally {
+        if (!cancelled) setDirectionsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [step, mode, workspaceId, dbRole])
+
   async function persistProfile(): Promise<void> {
     const prenom = firstName.trim()
     const nom = lastName.trim()
@@ -48,14 +129,16 @@ export default function InviteeSetupWizard({
     const {
       data: { session },
     } = await supabase.auth.getSession()
+    const authUserId = session?.user?.id?.trim()
     const authEmail = session?.user?.email?.trim().toLowerCase()
     if (!authEmail) throw new Error('Session sans email.')
+    if (!authUserId) throw new Error('Session sans identifiant utilisateur.')
 
-    let inheritedDirectionId: string | null = null
+    let invitationDirId: string | null = null
     let inheritedTrigram: string | null = null
     try {
       const accepted = await getAcceptedInvitationAwaitingUserRow(authEmail)
-      inheritedDirectionId = accepted?.direction_id ?? null
+      invitationDirId = accepted?.direction_id ?? null
       inheritedTrigram = accepted?.trigram?.trim().toUpperCase() || null
     } catch {
       /* idem ProfileSheet */
@@ -75,7 +158,58 @@ export default function InviteeSetupWizard({
       return
     }
 
+    let resolvedDirectionId: string | null = null
+    let resolvedDirectionNom: string | null = null
+    let resolvedDirectionType: User['direction_type'] = 'Fonctionnel'
+
+    if (mode === 'invitation' && workspaceId && (dbRole === 'codir' || dbRole === 'contributeur')) {
+      if (dbRole === 'contributeur' && invitationDirId) {
+        const dirs = await getWorkspaceDirections(workspaceId)
+        const row = dirs.find((d) => d.id === invitationDirId)
+        resolvedDirectionId = invitationDirId
+        resolvedDirectionNom = row?.nom?.trim() ?? null
+        resolvedDirectionType = directionTypeFromDbRow(row?.type ?? null)
+      } else if (dbRole === 'codir' || (dbRole === 'contributeur' && !invitationDirId)) {
+        if (!memberDirectionPick) {
+          throw new Error('Indiquez votre direction dans l’entreprise (liste ou création).')
+        }
+        if (memberDirectionPick === '__new__') {
+          const nm = newDirectionName.trim()
+          if (!nm) {
+            throw new Error('Saisissez le nom de la nouvelle direction.')
+          }
+          try {
+            resolvedDirectionId = await resolveOrCreateMemberDirection(
+              workspaceId,
+              nm,
+              newDirectionType,
+            )
+          } catch (dirErr) {
+            const detail = dirErr instanceof Error ? dirErr.message : String(dirErr)
+            throw new Error(
+              `Impossible de créer la direction (« ${detail} »). Vérifiez vos droits ou demandez à un consultant d’initialiser les directions.`,
+            )
+          }
+          if (!resolvedDirectionId) {
+            throw new Error('La direction n’a pas pu être créée. Réessayez ou contactez un administrateur.')
+          }
+          resolvedDirectionNom = nm
+          resolvedDirectionType = mapProfileDirectionTypeToDb(newDirectionType)
+        } else {
+          const dirsFresh = await getWorkspaceDirections(workspaceId)
+          const row = dirsFresh.filter((d) => !d.is_transverse).find((d) => d.id === memberDirectionPick)
+          if (!row) {
+            throw new Error('Direction choisie introuvable. Rechargez la page et réessayez.')
+          }
+          resolvedDirectionId = row.id
+          resolvedDirectionNom = row.nom?.trim() ?? null
+          resolvedDirectionType = directionTypeFromDbRow(row.type)
+        }
+      }
+    }
+
     const created = await createUser({
+      id: authUserId,
       workspace_id: workspaceId,
       email: authEmail,
       prenom,
@@ -83,9 +217,9 @@ export default function InviteeSetupWizard({
       job_title: job || null,
       avatar_url: null,
       role: dbRole,
-      direction_type: 'Fonctionnel',
-      direction_nom: null,
-      direction_id: inheritedDirectionId,
+      direction_type: resolvedDirectionType,
+      direction_nom: resolvedDirectionNom,
+      direction_id: resolvedDirectionId,
       managed_count: 0,
       total_effectif: 0,
       trigram: inheritedTrigram,
@@ -119,6 +253,29 @@ export default function InviteeSetupWizard({
     if (!prenom || !nom) {
       setError('Indiquez votre prénom et votre nom.')
       return
+    }
+
+    if (mode === 'invitation' && workspaceId && (dbRole === 'codir' || dbRole === 'contributeur')) {
+      if (directionsLoading) {
+        setError('Chargement des directions en cours — patientez un instant puis réessayez.')
+        return
+      }
+      if (directionSyncError) {
+        setError(directionSyncError)
+        return
+      }
+      if (dbRole === 'contributeur' && invitationDirectionId) {
+        /* direction imposée par l’invitation (ex. CODIR en revue roadmap) */
+      } else if (dbRole === 'codir' || (dbRole === 'contributeur' && !invitationDirectionId)) {
+        if (!memberDirectionPick) {
+          setError('Sélectionnez votre direction dans la liste, ou « Créer une nouvelle direction ».')
+          return
+        }
+        if (memberDirectionPick === '__new__' && !newDirectionName.trim()) {
+          setError('Indiquez le nom de la nouvelle direction.')
+          return
+        }
+      }
     }
 
     setSubmitting(true)
@@ -251,6 +408,87 @@ export default function InviteeSetupWizard({
                 onChange={(e) => setJobTitle(e.target.value)}
               />
             </label>
+
+            {mode === 'invitation' && workspaceId && (dbRole === 'codir' || dbRole === 'contributeur') ? (
+              <div className="invite-setup__direction-block">
+                {directionsLoading ? (
+                  <p className="invite-setup__hint">Chargement des directions…</p>
+                ) : directionSyncError ? (
+                  <p className="invite-setup__error" role="alert">
+                    {directionSyncError}
+                  </p>
+                ) : (
+                  <>
+                    {dbRole === 'contributeur' && invitationDirectionId ? (
+                      <p className="invite-setup__hint">
+                        Vous rejoignez la direction{' '}
+                        <strong>{invitationDirectionNom ?? 'indiquée sur votre invitation'}</strong>
+                        {' '}
+                        (rattachement défini par le membre du CODIR qui vous a invité, par exemple lors d’une revue
+                        roadmap).
+                      </p>
+                    ) : null}
+
+                    {dbRole === 'codir' || (dbRole === 'contributeur' && !invitationDirectionId) ? (
+                      <>
+                        <label className="invite-setup__label" htmlFor="invite-member-direction">
+                          Votre direction dans l’entreprise <span className="invite-setup__req">*</span>
+                        </label>
+                        <select
+                          id="invite-member-direction"
+                          className="invite-setup__select"
+                          value={memberDirectionPick}
+                          onChange={(e) => setMemberDirectionPick(e.target.value)}
+                          aria-describedby="invite-direction-help"
+                        >
+                          <option value="">— Choisir une direction —</option>
+                          {nonTransverseDirections.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.nom}
+                            </option>
+                          ))}
+                          <option value="__new__">Créer une nouvelle direction…</option>
+                        </select>
+                        <p id="invite-direction-help" className="invite-setup__hint">
+                          Cette direction sert pour <strong>Projets transformants</strong> et votre roadmap une fois
+                          les projets validés par le décideur.
+                        </p>
+                        {memberDirectionPick === '__new__' ? (
+                          <>
+                            <label className="invite-setup__label" htmlFor="invite-new-dir-name">
+                              Nom de la nouvelle direction <span className="invite-setup__req">*</span>
+                            </label>
+                            <input
+                              id="invite-new-dir-name"
+                              className="invite-setup__input"
+                              value={newDirectionName}
+                              onChange={(e) => setNewDirectionName(e.target.value)}
+                              placeholder="ex. Direction Ressources Humaines"
+                            />
+                            <label className="invite-setup__label" htmlFor="invite-new-dir-type">
+                              Type de direction
+                            </label>
+                            <select
+                              id="invite-new-dir-type"
+                              className="invite-setup__select"
+                              value={newDirectionType}
+                              onChange={(e) =>
+                                setNewDirectionType(e.target.value as ProfileDirectionType)
+                              }
+                            >
+                              <option value="fonctionnel">Fonctionnel</option>
+                              <option value="metier">Métier</option>
+                              <option value="geographique">Géographique</option>
+                            </select>
+                          </>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
+
             <div className="invite-setup__actions">
               <button
                 type="button"
@@ -294,7 +532,7 @@ const CSS = `
 }
 .invite-setup__panel {
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
   background: var(--theme-bg-card);
   border: 1px solid var(--theme-border);
   border-radius: var(--radius-lg, 12px);
@@ -346,6 +584,31 @@ const CSS = `
   color: var(--theme-text);
 }
 .invite-setup__input:focus {
+  outline: 2px solid color-mix(in srgb, var(--theme-accent) 45%, transparent);
+  outline-offset: 1px;
+}
+.invite-setup__direction-block {
+  margin-bottom: 16px;
+  padding-top: 4px;
+  border-top: 1px solid var(--theme-border);
+}
+.invite-setup__hint {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--theme-text-muted);
+}
+.invite-setup__select {
+  font: inherit;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-bg-page);
+  color: var(--theme-text);
+}
+.invite-setup__select:focus {
   outline: 2px solid color-mix(in srgb, var(--theme-accent) 45%, transparent);
   outline-offset: 1px;
 }

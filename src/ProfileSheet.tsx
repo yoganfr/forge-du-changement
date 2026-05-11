@@ -38,6 +38,8 @@ export interface StoredMemberProfile {
   managedCount?: number
   totalEffectif?: number
   avatar?: string | null
+  /** Email auquel ce cache se rapporte — évite de réutiliser un JSON d’un autre compte sur la même machine. */
+  savedForEmail?: string
 }
 
 export interface ProfileSheetProps {
@@ -66,7 +68,12 @@ function loadStored(storageEmail?: string | null): StoredMemberProfile {
     migrateLegacyMemberProfileIfNeeded(storageEmail)
     const raw = localStorage.getItem(memberProfileStorageKey(storageEmail))
     if (!raw) return {}
-    return JSON.parse(raw) as StoredMemberProfile
+    const parsed = JSON.parse(raw) as StoredMemberProfile
+    const want = storageEmail?.trim().toLowerCase()
+    if (want && parsed.savedForEmail && parsed.savedForEmail.trim().toLowerCase() !== want) {
+      return {}
+    }
+    return parsed
   } catch {
     return {}
   }
@@ -74,10 +81,11 @@ function loadStored(storageEmail?: string | null): StoredMemberProfile {
 
 function saveStored(data: StoredMemberProfile, storageEmail?: string | null) {
   const prev = loadStored(storageEmail)
+  const emailNorm = storageEmail?.trim().toLowerCase()
   try {
     localStorage.setItem(
       memberProfileStorageKey(storageEmail),
-      JSON.stringify({ ...prev, ...data }),
+      JSON.stringify({ ...prev, ...data, ...(emailNorm ? { savedForEmail: emailNorm } : {}) }),
     )
   } catch {
     /* quota */
@@ -267,9 +275,11 @@ export default function ProfileSheet({
   const [mfaInfo, setMfaInfo] = useState<{ factorId: string; qrCode: string | null; uri: string | null } | null>(null)
   const [mfaCode, setMfaCode] = useState('')
   const [mfaVerifiedCount, setMfaVerifiedCount] = useState(0)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
+    setSaveError(null)
     const s = loadStored(storageEmail)
     setFirstName(s.firstName ?? firstNameProp)
     setLastName(s.lastName ?? lastNameProp)
@@ -414,6 +424,7 @@ export default function ProfileSheet({
   const initials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.toUpperCase() || '?'
 
   async function persistAll() {
+    setSaveError(null)
     let avatarUrlToPersist = avatarUrl
     if (workspaceId && avatarFile) {
       try {
@@ -433,6 +444,7 @@ export default function ProfileSheet({
     }
 
     const prev = loadStored(storageEmail)
+    const emailNorm = storageEmail?.trim().toLowerCase()
     const payload: StoredMemberProfile = {
       ...prev,
       firstName,
@@ -445,6 +457,7 @@ export default function ProfileSheet({
       managedCount,
       totalEffectif,
       avatar: avatarUrlToPersist,
+      ...(emailNorm ? { savedForEmail: emailNorm } : {}),
     }
     saveStored(payload, storageEmail)
     try {
@@ -469,8 +482,12 @@ export default function ProfileSheet({
             directionName,
             directionType,
           )
-        } catch {
-          /* RLS / réseau : on enregistre le profil sans forcer direction_id */
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err)
+          setSaveError(
+            `La direction n’a pas pu être créée ou liée en base (${detail}). Sans cela, « Projets transformants » ne peut pas résoudre votre périmètre. Vérifiez vos droits ou demandez à un consultant / administrateur d’initialiser les directions.`,
+          )
+          return
         }
       }
 
@@ -496,9 +513,13 @@ export default function ProfileSheet({
         const {
           data: { session },
         } = await supabase.auth.getSession()
+        const authUserId = session?.user?.id?.trim()
         const authEmail = session?.user?.email?.trim().toLowerCase()
         if (!authEmail) {
           throw new Error('Session sans email')
+        }
+        if (!authUserId) {
+          throw new Error('Session sans identifiant utilisateur')
         }
         // REF-7b.0 : recuperer l'invitation acceptee pour heriter de direction_id et trigram derive a l'invitation.
         let inheritedDirectionId: string | null = null
@@ -511,6 +532,7 @@ export default function ProfileSheet({
           /* invitation absente ou RLS : on cree sans heritage */
         }
         const created = await createUser({
+          id: authUserId,
           workspace_id: workspaceId,
           email: authEmail,
           prenom: firstName || null,
@@ -726,6 +748,11 @@ export default function ProfileSheet({
           />
         </section>
 
+        {saveError ? (
+          <p className="psd-security-error" role="alert">
+            {saveError}
+          </p>
+        ) : null}
         {dirty && (
           <button type="button" className="psd-save-all" onClick={persistAll}>
             Enregistrer les modifications

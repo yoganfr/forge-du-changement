@@ -3,7 +3,7 @@ import type { Invitation } from '../types'
 import { dedupedFetch, invalidateCache, type ListOptions } from './cache'
 import { insertAuditEvent } from './audit'
 
-async function resolveCurrentAppUserForInvitation(): Promise<{
+async function resolveCurrentAppUserForInvitation(workspaceId?: string | null): Promise<{
   id: string | null
   role: string | null
   direction_id: string | null
@@ -13,11 +13,12 @@ async function resolveCurrentAppUserForInvitation(): Promise<{
   } = await supabase.auth.getSession()
   const email = session?.user?.email?.trim().toLowerCase() ?? null
   if (!email) return { id: null, role: null, direction_id: null }
-  const { data } = await supabase
-    .from('users')
-    .select('id, role, direction_id')
-    .eq('email', email)
-    .maybeSingle()
+  let q = supabase.from('users').select('id, role, direction_id').eq('email', email)
+  const ws = workspaceId?.trim()
+  if (ws) {
+    q = q.eq('workspace_id', ws)
+  }
+  const { data } = await q.maybeSingle()
   const row = (data as { id?: string; role?: string; direction_id?: string | null } | null) ?? null
   return {
     id: row?.id ?? null,
@@ -49,7 +50,7 @@ function deriveTrigramFromEmail(
 }
 
 export async function createInvitation(data: Partial<Invitation>): Promise<Invitation> {
-  const inviter = await resolveCurrentAppUserForInvitation()
+  const inviter = await resolveCurrentAppUserForInvitation(data.workspace_id ?? null)
   let workspaceConvention: 'prenom_nom_3' | 'nom_prenom_3' | 'custom' | null = null
   if (data.workspace_id) {
     const { data: workspace } = await supabase

@@ -1,6 +1,6 @@
 # Guide de Debug — Spinner infini à l'onboarding (InviteeSetupWizard)
 
-**Dernière mise à jour : 10 mai 2026**
+Dernière mise à jour : **11 mai 2026**, 10 h 19 (Europe/Paris)
 
 ## 1. Vue d'ensemble
 
@@ -363,7 +363,8 @@ Si tu vois une erreur dans les logs type :
 ```
 [lfdc:auth] getCurrentUser candidates query error: {"code": "PGRST116", "message": "The result exceeded ..."}
 ```
-→ Cela signifie une vérification de permissions RLS. Vérifier les policies sur `public.users`.
+→ Cela signifie une vérification de permissions RLS. Vérifier les policies sur `public.users`.  
+Pour un **membre connecté** dont le dashboard ne charge pas le parcours (`getWorkspace` / `workspaces`), voir **§6 bis** (RLS `workspaces` SELECT).
 
 ### Requête de réconciliation infinite
 
@@ -383,6 +384,83 @@ Si tu vois des `workspaceId` inattendus :
 ```
 Mais c'est pas le bon → supprimer localStorage sur le navigateur.
 
+Pour un **avatar ou un libellé de direction** incohérent dans **Mon profil** (mélange entre deux comptes sur la même machine), voir **§6 ter**.
+
+---
+
+## 6 bis. RLS `public.workspaces` (SELECT) — dashboard Vite (`/src`)
+
+Cette section **synthétise** les règles et choix d’implémentation qui impactent le **chargement de l’espace entreprise** côté SPA (`getWorkspace` dans `src/lib/api/workspaces.ts`, effet dans `src/App.tsx`). Elle complète la section 6 (erreurs RLS) pour le cas précis **membre invité / parcours figé**.
+
+### Pourquoi c’est critique pour `/src`
+
+Après connexion, l’app lit la ligne `workspaces` pour :
+
+- `company_name`, logo, métadonnées fiche entreprise ;
+- **`current_step_codir`** et **`current_step_contributeur`** (parcours — `src/pages/WorkspaceHome.tsx`, menu parcours dans `App.tsx`).
+
+Si le **SELECT** sur `workspaces` est refusé par la RLS (0 ligne côté PostgREST), `getWorkspace` échoue : l’UI retombe sur le snapshot local ou un état dégradé, et le parcours peut rester en **« Bientôt »** / bandeau *Parcours pas encore ouvert* **même si** la phase a déjà été ouverte par un admin sur cet espace.
+
+### Modèle historique (risque)
+
+Une policy de lecture du type :
+
+- *« La ligne `workspaces` est visible si `id` est dans le sous-ensemble des `workspace_id` des lignes `users` où `users.id = auth.uid()` »*
+
+est **correcte** tant que **`public.users.id` = `auth.users.id`** (UUID Supabase Auth) pour chaque membre.
+
+**Écart observé (2026-05)** : certains profils créés via `createUser()` **sans** `id` explicite recevaient un **`id` généré** (≠ `auth.uid()`). La session Auth était valide et `getCurrentUser()` retrouvait bien la ligne `users` (email, scoring, ou `lfdc-user-id`), mais **`getWorkspace(workspace_id)`** ne passait plus la RLS → **aucune** ligne `workspaces` retournée.
+
+### Synthèse des politiques côté `workspaces` (SELECT, `/src`)
+
+Les policies **s’additionnent en OR** (comportement RLS permissif par défaut sur plusieurs politiques). Pour le dashboard authentifié, retenir :
+
+| Mécanisme | Rôle |
+|-----------|------|
+| **Lecture « membre du workspace » (historique)** | Condition du type *workspace `id` lié à une ligne `users` dont l’identité correspond au JWT* (souvent via `auth.uid()` sur `users.id`). |
+| **`workspaces_superadmin_select`** | Voir `docs/supabase-workspaces-superadmin-select.sql` — super-admin plateforme voit les espaces nécessaires au support. |
+| **`workspaces_select_member_jwt_email_match`** (migration `supabase/migrations/20260511180000_workspaces_select_member_jwt_email.sql`) | **SELECT** autorisé si une ligne `public.users` du **même** `workspace_id` a un **email** égal à l’**email du JWT** (après `lower(trim(...))`), et que le workspace n’est pas archivé (`coalesce(archived, false) = false`). **Sert de filet** lorsque `users.id ≠ auth.uid()` tout en restant strictement lié à l’identité Auth par email. |
+
+**Sécurité** : cette policy ne dépend pas d’un secret client ; elle repose sur le JWT Supabase. Elle n’ouvre pas un workspace arbitraire : il faut **une ligne `users` existante** pour cet email **dans** ce `workspace_id` (invitation / rattachement déjà validé côté métier).
+
+### Choix applicatifs côté code (`/src`)
+
+1. **Création de profil** : lors de l’insert `public.users` pour un invité (wizard ou fiche profil), passer explicitement **`id` = `session.user.id`** (Auth), pour rester aligné avec les policies qui utilisent `auth.uid()` et avec la convention Supabase « une ligne profil par identité Auth ».  
+   Fichiers : `src/InviteeSetupWizard.tsx`, `src/ProfileSheet.tsx` (appel à `createUser`).
+
+2. **`getCurrentUser()`** : la priorité documentée dans `src/lib/auth.ts` (auth row, `lfdc-user-id`, workspace local, scoring) **n’est pas modifiée** par la policy `workspaces` ; en revanche, une fois le workspace chargé, **`current_step_*`** ne sont fiables que si le SELECT `workspaces` réussit.
+
+### Références utiles
+
+- Migration appliquée en prod (exemple) : `supabase/migrations/20260511180000_workspaces_select_member_jwt_email.sql`
+- API lecture workspace : `src/lib/api/workspaces.ts` — `getWorkspace(id)` (`select('*')`, cache `dedupedFetch`).
+- Alignement invitation ↔ `users.workspace_id` : `src/lib/sessionWorkspace.ts` — `alignUserWorkspaceToLatestAcceptedInvitation` (ne remplace pas la RLS `workspaces` ; évite seulement un décalage métier d’espace sur la ligne `users`).
+
+---
+
+## 6 ter. Cache « Mon profil », rattachement `directions` et CODIR (`/src`)
+
+### Chaîne de vérité produit
+
+| Couche | Rôle |
+|--------|------|
+| `public.directions` | Périmètres métiers du workspace (dont une ligne **non transverse** par direction CODIR / équipe). |
+| `public.users.direction_id` | Rattachement **persistant** du membre à **une** ligne `directions` — utilisé par `ProjectSelector` (`memberDirectionId`) pour `resolveEffectiveMemberDirectionId`. |
+| `public.users.direction_nom` | Libellé affiché / saisi ; doit rester aligné avec la direction résolue après enregistrement. |
+| Cache `localStorage` `lfdc-member-onboarding:<email>` | Préremplissage UI ; **ne remplace pas** la base. |
+
+`ProjectSelector` affiche *« Aucune direction métier n’est résolue pour votre profil »* lorsque `restrictToMemberDirections` est vrai et qu’**aucun** périmètre hydraté ne correspond à `memberDirectionId` **ni** par matching de nom (`directionDisplayNamesMatch`).
+
+### Création / résolution à l’enregistrement (`ProfileSheet`)
+
+- `resolveOrCreateMemberDirection` (`src/lib/profileDirectionResolve.ts`) : cherche une direction **non transverse** dont le nom matche ; sinon **INSERT** `directions` avec `user_id` = **`auth.uid()`** (session), pas une ligne `getCurrentUser()` potentiellement ambiguë.
+- Si l’INSERT / le SELECT échoue (RLS, réseau), l’enregistrement **s’interrompt** et un message d’erreur s’affiche : sans `direction_id`, le CODIR ne peut pas verrouiller son périmètre dans **Projets transformants**.
+
+### Cache local et contamination entre comptes
+
+- Chaque entrée cache inclut désormais **`savedForEmail`** (email normalisé) ; la migration **legacy** (`lfdc-member-onboarding` sans suffixe) vers la clé par email **ne se fait** que si le JSON legacy porte déjà le même `savedForEmail` (évite de recoller le profil d’un autre rôle, ex. super-admin, sur un nouvel invité).
+- Si un navigateur a encore d’anciennes données douteuses : vider la clé `lfdc-member-onboarding` et les clés `lfdc-member-onboarding:<email>` concernées, ou ré-enregistrer le profil après correction.
+
 ---
 
 ## 7. Fichiers pertinents
@@ -391,6 +469,10 @@ Mais c'est pas le bon → supprimer localStorage sur le navigateur.
 - `src/lib/auth.ts` — `getCurrentUser()`, `isPlatformSuperadmin()`, logs `[lfdc:auth]`
 - `src/InviteeSetupWizard.tsx` — Composant wizard (si montage OK mais spinner infini, chercher ici)
 - `src/lib/api/index.ts` — Requêtes invitations (`getLatestPendingInvitationForEmail`)
+- `src/lib/api/workspaces.ts` — `getWorkspace` (parcours / fiche entreprise) ; voir aussi §6 bis (RLS `workspaces`)
+- `supabase/migrations/20260511180000_workspaces_select_member_jwt_email.sql` — policy SELECT email JWT (§6 bis)
+- `src/lib/profileDirectionResolve.ts` — résolution / création direction à l’enregistrement profil (§6 ter)
+- `src/lib/memberProfileStorage.ts` — clés cache et migration legacy sécurisée (§6 ter)
 
 ---
 

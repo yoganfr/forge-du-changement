@@ -10,7 +10,11 @@ export function memberProfileStorageKey(email: string | null | undefined): strin
   return e ? `${MEMBER_PROFILE_STORAGE_KEY}:${e}` : MEMBER_PROFILE_STORAGE_KEY
 }
 
-/** Copie une fois le JSON legacy vers la clé par email si la cible est vide. */
+/**
+ * Copie une fois le JSON legacy vers la clé par email si la cible est vide.
+ * Ne copie **que** si le JSON legacy porte `savedForEmail` strictement égal à cet email :
+ * sinon un cache global (ex. ancien profil super-admin) polluerait un nouvel invité sur une autre adresse.
+ */
 export function migrateLegacyMemberProfileIfNeeded(email: string | null | undefined): void {
   if (typeof localStorage === 'undefined') return
   const e = email?.trim().toLowerCase()
@@ -20,8 +24,10 @@ export function migrateLegacyMemberProfileIfNeeded(email: string | null | undefi
   const legacy = localStorage.getItem(MEMBER_PROFILE_STORAGE_KEY)
   if (!legacy) return
   try {
+    const parsed = JSON.parse(legacy) as { savedForEmail?: string }
+    if (parsed?.savedForEmail?.trim().toLowerCase() !== e) return
     localStorage.setItem(keyed, legacy)
   } catch {
-    /* quota */
+    /* JSON invalide */
   }
 }

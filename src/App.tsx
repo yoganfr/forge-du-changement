@@ -27,7 +27,6 @@ import {
   clearStoredWorkspaceSelection,
 } from './lib/sessionWorkspace'
 import {
-  clearWorkspaceSnapshot,
   readInitialCompanyLogo,
   readWorkspaceLogoUrl,
   readWorkspaceSnapshot,
@@ -263,7 +262,13 @@ function readStoredProfile(email?: string | null): StoredMemberProfile | null {
   try {
     migrateLegacyMemberProfileIfNeeded(email)
     const raw = localStorage.getItem(memberProfileStorageKey(email))
-    return raw ? (JSON.parse(raw) as StoredMemberProfile) : null
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as StoredMemberProfile
+    const want = email?.trim().toLowerCase()
+    if (want && parsed.savedForEmail && parsed.savedForEmail.trim().toLowerCase() !== want) {
+      return null
+    }
+    return parsed
   } catch {
     return null
   }
@@ -784,8 +789,10 @@ function App() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
   const [workspaceName, setWorkspaceName] = useState('')
-  /** Libellé affiché (évite « La Forge » par défaut si le snapshot / API n’a pas encore répondu). */
-  const workspaceLabel = workspaceName.trim() || '…'
+  /** Libellé header : nom API ; sinon message explicite (jamais un caractère ambigu seul). */
+  const workspaceLabel =
+    workspaceName.trim() ||
+    (workspaceId ? 'Chargement entreprise…' : 'Espace entreprise')
   const [companyLogo, setCompanyLogo] = useState<string | null>(readInitialCompanyLogo)
   const [storedProfile, setStoredProfile] = useState<StoredMemberProfile | null>(null)
   const [userInitials, setUserInitials] = useState('?')
@@ -1124,7 +1131,12 @@ function App() {
       const patchAuth = profilePatchFromAuthUser(authUser)
       const prev = readStoredProfile(email) ?? {}
       // Auth → base → cache : la base bat Google sur les champs renseignés ; le cache bat tout pour les retouches locales.
-      const next: StoredMemberProfile = { ...patchAuth, ...patchDb, ...prev }
+      const next: StoredMemberProfile = {
+        ...patchAuth,
+        ...patchDb,
+        ...prev,
+        ...(email ? { savedForEmail: email } : {}),
+      }
 
       const nDb = Object.keys(patchDb).length
       const nAuth = Object.keys(patchAuth).length
@@ -1489,9 +1501,14 @@ function App() {
             }
           })
         } else {
-          localStorage.removeItem('workspaceId')
-          clearWorkspaceSnapshot()
-          setWorkspaceId(null)
+          /**
+           * Ne pas effacer workspaceId : un échec réseau / RLS temporaire ne doit pas désolidariser
+           * le membre de son espace (sinon nom vide + parcours figé). L’utilisateur garde le rattachement
+           * et peut réessayer (F5) ; le snapshot sera re-rempli au prochain succès getWorkspace.
+           */
+          setWorkspaceName((n) =>
+            n.trim() ? n : 'Entreprise — chargement interrompu, réessayez ou ouvrez Paramètres',
+          )
         }
       }
     })()

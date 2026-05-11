@@ -1,5 +1,5 @@
 import { createDirection, getWorkspaceDirections } from './api'
-import { getCurrentUser } from './auth'
+import { supabase } from './supabase'
 import { directionDisplayNamesMatch } from './directionLabels'
 
 /** Aligné sur les pastilles du profil (`ProfileSheet`). */
@@ -26,10 +26,13 @@ export async function resolveOrCreateMemberDirection(
   const nonTransverse = dirs.filter((d) => !d.is_transverse)
   const match = nonTransverse.find((d) => directionDisplayNamesMatch(trimmed, d.nom ?? ''))
   if (match) return match.id
-  const appUser = await getCurrentUser()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const authUserId = session?.user?.id?.trim() ?? null
   const created = await createDirection({
     workspace_id: workspaceId,
-    user_id: appUser?.id ?? null,
+    user_id: authUserId,
     nom: trimmed,
     type: mapDirectionType(directionType),
     mission: null,
