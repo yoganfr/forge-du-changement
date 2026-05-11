@@ -113,9 +113,9 @@ function lfdcLog(...args: unknown[]): void {
  * Plusieurs lignes peuvent exister (même email, espaces différents) : on évite de prendre
  * la plus « récente » si c’est un stub vide qui écraserait le profil à chaque reco Google.
  *
- * Priorité : (1) email + `workspace_id` = espace sélectionné (`localStorage.workspaceId`) ;
- * (2) `lfdc-user-id` si email concorde ; (3) ligne dont `id` = `auth.uid()` si même workspace ou pas de filtre ;
- * (4) candidats même email — d’abord ceux du workspace courant, puis score profil.
+ * Priorité : (1) `lfdc-user-id` si email concorde ; (2) ligne dont `id` = `auth.uid()` si email concorde
+ * (identité canonique — ne pas la précéder par `workspaceId` local : valeur souvent résiduelle / autre onglet) ;
+ * (3) email + `workspace_id` = sélection navigateur ; (4) candidats même email (filtre workspace ensuite score).
  */
 export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
   const resolvedSessionUser = sessionUser ?? (await getSession())?.user ?? null
@@ -131,22 +131,6 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
 
   const emailMatches = (r: { email?: string | null } | null) =>
     r?.email?.trim().toLowerCase() === email
-
-  /** Priorité absolue : la ligne `users` pour l’espace sélectionné (même email sur plusieurs dossiers clients). */
-  if (ws) {
-    const { data: byWs, error: errWs } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('workspace_id', ws)
-      .maybeSingle()
-    if (errWs) {
-      lfdcLog('[lfdc:auth] getCurrentUser byWs query error: %O', errWs)
-    } else if (byWs && emailMatches(byWs)) {
-      lfdcLog('[lfdc:auth] getCurrentUser returning workspace match')
-      return byWs
-    }
-  }
 
   const { data: authRow, error: authErr } = await supabase
     .from('users')
@@ -179,11 +163,23 @@ export async function getCurrentUser(sessionUser?: SupabaseAuthUser | null) {
   }
 
   if (!authErr && authRow && emailMatches(authRow)) {
-    if (!ws || authRow.workspace_id === ws) {
-      lfdcLog('[lfdc:auth] getCurrentUser returning authId match')
-      return authRow
+    lfdcLog('[lfdc:auth] getCurrentUser returning authId match')
+    return authRow
+  }
+
+  if (ws) {
+    const { data: byWs, error: errWs } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('workspace_id', ws)
+      .maybeSingle()
+    if (errWs) {
+      lfdcLog('[lfdc:auth] getCurrentUser byWs query error: %O', errWs)
+    } else if (byWs && emailMatches(byWs)) {
+      lfdcLog('[lfdc:auth] getCurrentUser returning workspace match')
+      return byWs
     }
-    lfdcLog('[lfdc:auth] getCurrentUser skip authId match (workspace_id differs from sélection locale)')
   }
 
   const { data: candidates, error } = await supabase
