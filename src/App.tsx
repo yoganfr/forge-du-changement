@@ -7,14 +7,12 @@ import {
   getAcceptedInvitationAwaitingUserRow,
   getDirectionProjets,
   getRoadmapEligibleProjects,
-  getLatestAcceptedInvitationForEmail,
   getLatestPendingInvitationForEmail,
   getWorkspace,
   getWorkspaceConsultantMembership,
   getWorkspaceDirections,
   listWorkspaces,
   markInvitationsAcceptedForWorkspaceEmail,
-  updateUser,
 } from './lib/api'
 import { invalidateCache } from './lib/api/cache'
 import type { Workspace } from './lib/types'
@@ -24,6 +22,10 @@ import {
 } from './lib/memberProfileStorage'
 import { gravatarAvatarUrl } from './lib/gravatarUrl'
 import UserAvatarImg from './UserAvatarImg'
+import {
+  alignUserWorkspaceToLatestAcceptedInvitation,
+  clearStoredWorkspaceSelection,
+} from './lib/sessionWorkspace'
 import {
   clearWorkspaceSnapshot,
   readInitialCompanyLogo,
@@ -781,7 +783,9 @@ function App() {
   const [loginForcedMessage, setLoginForcedMessage] = useState<string | null>(null)
   const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
-  const [workspaceName, setWorkspaceName] = useState('La Forge')
+  const [workspaceName, setWorkspaceName] = useState('')
+  /** Libellé affiché (évite « La Forge » par défaut si le snapshot / API n’a pas encore répondu). */
+  const workspaceLabel = workspaceName.trim() || '…'
   const [companyLogo, setCompanyLogo] = useState<string | null>(readInitialCompanyLogo)
   const [storedProfile, setStoredProfile] = useState<StoredMemberProfile | null>(null)
   const [userInitials, setUserInitials] = useState('?')
@@ -976,13 +980,12 @@ function App() {
 
   const handleLogout = useCallback(() => {
     void signOut()
-    localStorage.removeItem('workspaceId')
-    clearWorkspaceSnapshot()
+    clearStoredWorkspaceSelection()
     // Ne pas supprimer le cache « Mon profil » : il est indexé par email et doit survivre déco/reco.
     setWorkspaceId(null)
     setWorkspaceData(null)
     setCompanyLogo(null)
-    setWorkspaceName('La Forge')
+    setWorkspaceName('')
     setConsultantCompanyEligibility('irrelevant')
     setServerAccess(null)
     setMobileNavOpen(false)
@@ -1232,31 +1235,11 @@ function App() {
         } else {
           setMfaEnrollmentRequired(false)
         }
-        setAuthUser(user)
         if (invitedUser) {
-          let dbUserForSession = invitedUser
-          /**
-           * Hors consultant : la ligne `users` doit refléter la dernière invitation « acceptée » pour cet email.
-           * Sinon un profil / shell créé sous un autre `workspaceId` local laisse un rattachement faux en base
-           * jusqu'à correction manuelle — réalignement automatique au login (RLS permettant).
-           */
-          if (invitedUser.role !== 'consultant') {
-            try {
-              const latestAccepted = await getLatestAcceptedInvitationForEmail(emailNorm)
-              if (
-                latestAccepted?.workspace_id &&
-                latestAccepted.workspace_id !== invitedUser.workspace_id
-              ) {
-                dbUserForSession = await updateUser(
-                  invitedUser.id,
-                  { workspace_id: latestAccepted.workspace_id },
-                  { workspace_id: invitedUser.workspace_id },
-                )
-              }
-            } catch {
-              /* Mise à jour impossible (RLS, contrainte) : session avec la ligne lue telle quelle */
-            }
-          }
+          const dbUserForSession = await alignUserWorkspaceToLatestAcceptedInvitation(
+            invitedUser,
+            emailNorm,
+          )
           setServerAccess({ source: 'users', dbUser: dbUserForSession })
           if (debugEnabled) {
             console.log('[lfdc:wizard] setServerAccess: source=users, workspace_id=%s, role=%s', dbUserForSession.workspace_id, dbUserForSession.role)
@@ -1270,8 +1253,6 @@ function App() {
             if (!isConsultantMember) {
               syncWorkspace(dbUserForSession.workspace_id)
             } else {
-              // Consultant : conserver le choix multi-espaces (Paramètres) si l’ID est encore autorisé par la RLS.
-              // Sinon rejeter un workspaceId périmé (ex. autre compte sur le même navigateur → mauvaise recette).
               const stored = localStorage.getItem('workspaceId')?.trim() || null
               if (!stored) {
                 syncWorkspace(dbUserForSession.workspace_id)
@@ -1283,11 +1264,11 @@ function App() {
                   if (ids.has(stored)) {
                     setWorkspaceId(stored)
                   } else {
-                    clearWorkspaceSnapshot()
+                    clearStoredWorkspaceSelection()
                     syncWorkspace(dbUserForSession.workspace_id)
                   }
                 } catch {
-                  clearWorkspaceSnapshot()
+                  clearStoredWorkspaceSelection()
                   syncWorkspace(dbUserForSession.workspace_id)
                 }
               }
@@ -1306,6 +1287,7 @@ function App() {
         } else {
           setServerAccess(null)
         }
+        setAuthUser(user)
         logAuthBoot(debugEnabled, 'session reconciled (platform/user row)', startedAt)
         return
       }
@@ -1359,6 +1341,11 @@ function App() {
         setLoginForcedMessage(null)
         setPlatformSuperadmin(false)
         setServerAccess(null)
+        clearStoredWorkspaceSelection()
+        setWorkspaceId(null)
+        setWorkspaceData(null)
+        setCompanyLogo(null)
+        setWorkspaceName('')
         setAuthLoading(false)
         logAuthBoot(debugEnabled, 'initial auth finished (no session)', initialStartedAt)
         return
@@ -1387,6 +1374,11 @@ function App() {
           setLoginForcedMessage(null)
           setPlatformSuperadmin(false)
           setServerAccess(null)
+          clearStoredWorkspaceSelection()
+          setWorkspaceId(null)
+          setWorkspaceData(null)
+          setCompanyLogo(null)
+          setWorkspaceName('')
           setAuthLoading(false)
           logAuthBoot(debugEnabled, 'auth state change finished (no session)', authChangeStartedAt)
           return
@@ -1639,7 +1631,7 @@ function App() {
     return (
       <Suspense fallback={APP_SHELL_FALLBACK}>
         <InviteeSetupWizard
-          companyName={workspaceName || 'votre entreprise'}
+          companyName={workspaceName.trim() || 'votre entreprise'}
           workspaceId={inviteWizardWorkspaceId}
           mode={wizardMode}
           dbRole={wizardDbRole}
@@ -1685,13 +1677,13 @@ function App() {
                 {companyLogo
                   ? <img src={companyLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
                   : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
-                    {workspaceName.slice(0, 2).toUpperCase()}
+                    {workspaceLabel.slice(0, 2).toUpperCase()}
                   </span>
                 }
               </div>
               <span className="dashboard__brand-stack">
                 <span className="dashboard__brand-product">La Forge du Changement</span>
-                <span className="dashboard__brand-text">{workspaceName}</span>
+                <span className="dashboard__brand-text">{workspaceLabel}</span>
               </span>
             </button>
 
@@ -1773,23 +1765,23 @@ function App() {
                   type="button"
                   className="company-badge"
                   onClick={() => navigateToMainNav('company')}
-                  aria-label={`Ouvrir la fiche ${workspaceName}`}
-                  title={`Ouvrir la fiche ${workspaceName}`}
+                  aria-label={`Ouvrir la fiche ${workspaceLabel}`}
+                  title={`Ouvrir la fiche ${workspaceLabel}`}
                 >
                   <span className="company-badge-initials">
-                    {workspaceName.slice(0, 2).toUpperCase()}
+                    {workspaceLabel.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="company-badge-name">{workspaceName}</span>
+                  <span className="company-badge-name">{workspaceLabel}</span>
                 </button>
               ) : (
                 <div
                   className="company-badge company-badge--readonly"
-                  aria-label={`Espace ${workspaceName}`}
+                  aria-label={`Espace ${workspaceLabel}`}
                 >
                   <span className="company-badge-initials">
-                    {workspaceName.slice(0, 2).toUpperCase()}
+                    {workspaceLabel.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="company-badge-name">{workspaceName}</span>
+                  <span className="company-badge-name">{workspaceLabel}</span>
                 </div>
               )}
               {canAccessSettings && (
@@ -1878,19 +1870,19 @@ function App() {
                   }}
                 >
                   <span className="dashboard__mobile-nav-action-mark" aria-hidden>
-                    {workspaceName.slice(0, 2).toUpperCase()}
+                    {workspaceLabel.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="dashboard__mobile-nav-action-text">{workspaceName}</span>
+                  <span className="dashboard__mobile-nav-action-text">{workspaceLabel}</span>
                 </button>
               ) : (
                 <div
                   className="dashboard__mobile-nav-action dashboard__mobile-nav-action--readonly"
-                  aria-label={`Espace ${workspaceName}`}
+                  aria-label={`Espace ${workspaceLabel}`}
                 >
                   <span className="dashboard__mobile-nav-action-mark" aria-hidden>
-                    {workspaceName.slice(0, 2).toUpperCase()}
+                    {workspaceLabel.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="dashboard__mobile-nav-action-text">{workspaceName}</span>
+                  <span className="dashboard__mobile-nav-action-text">{workspaceLabel}</span>
                 </div>
               )}
               <button
