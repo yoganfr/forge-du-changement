@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **10 mai 2026**, 23 h 20 (Europe/Paris)
+Dernière mise à jour : **11 juin 2026**, 11 h 55 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -137,7 +137,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 7b.1c | Harmonisation sémantique PCI / RACI entre chantier et jalon (labels, aide, docs, backlog) | 🟠 | ⬜ |
 | 7b.1d | Polish UX final du module PCI (remplacement `alert`/`confirm`, feedbacks homogènes, confirmations destructives cohérentes) | 🟡 | ⬜ |
 | 7b.1e | Durcissement technique / performance PCI (bulk updates batch, robustesse gros volumes, recette accessibilité clavier) | 🟡 | ⬜ |
-| 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS) — **spec** [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) + **plan** [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) + **DDL** [`docs/supabase-roadmap-review-cycle.sql`](supabase-roadmap-review-cycle.sql) | 🔴 | 🚧 |
+| 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS + audit triggers) — **spec** [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) + **plan** [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) + **DDL** [`docs/supabase-roadmap-review-cycle.sql`](supabase-roadmap-review-cycle.sql) — Complété 11/06/2026 : colonne `reaction_acknowledged_at`, policies INSERT/SELECT/UPDATE/DELETE renforcées, 3 triggers audit (`reviewer_submitted`, `snapshot_review_reopened`, `feedback_arbitrated`) | 🔴 | ✅ |
 | 7b.3 | Modal "Ouvrir la revue" côté CODIR (multi-sélect reviewers + deadline + magic link + transition draft→in_review + audit) | 🔴 | ⬜ |
 | 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers) | 🟠 | ⬜ |
 | 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + autosave commentaires + modal "Soumettre ma review") — **architecture UX** [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) + **plan** [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md) | 🔴 | 🚧 |
