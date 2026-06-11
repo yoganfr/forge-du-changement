@@ -683,6 +683,8 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
+**PRIORITÉ PROCHAINE SESSION** : EPIC 3 · **REF-7b.5bis** — Polish ReviewerPage (alignement frontend sur policies RLS, indicateurs CODIR, édition granulaire, empty state pédagogique). Plan prêt : `ref-7b.5_polish_frontend_b28a3469.plan.md`.
+
 1. EPIC 16 · **REF-94 / REF-95** — diagnostic jargon et comparaison V1/V2 + gestion V1/V2 pour faire du module Discours un vrai compagnon d’itération.
 2. EPIC 3 · **REF-7a → REF-7d** — figer une roadmap V1, ouvrir un cycle reviewers, collecter des propositions typées, puis arbitrer/clôturer.
 3. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier déjà intégrée à la granularité jalon.
