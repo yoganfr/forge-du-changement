@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **11 juin 2026**, 11 h 55 (Europe/Paris)
+Dernière mise à jour : **11 juin 2026**, 12 h 12 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -141,6 +141,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 7b.3 | Modal "Ouvrir la revue" côté CODIR (multi-sélect reviewers + deadline + magic link + transition draft→in_review + audit) | 🔴 | ⬜ |
 | 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers) | 🟠 | ⬜ |
 | 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + autosave commentaires + modal "Soumettre ma review") — **architecture UX** [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) + **plan** [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md) | 🔴 | 🚧 |
+| 7b.5bis | Polish ReviewerPage : alignement frontend sur policies RLS (édition granulaire feedbacks, indicateurs visuels CODIR, suppression draft, bandeau réouverture, empty state pédagogique) — **plan Cursor** `ref-7b.5_polish_frontend_b28a3469.plan.md` | 🟠 | ⬜ |
 | 7b.6 | Panneau flottant déplaçable (migration drawer latéral → `react-rnd` floating panel, multi-ouverture, persistence position) | 🟠 | ⬜ |
 | 7b.7 | Écran récap arbitrages (tableau global + badges inline + email/in-app cumulatif quand 0 feedback pending restant pour le reviewer) | 🟠 | ⬜ |
 | 7c | Propositions reviewers (ajout/suppression/évolution chantiers-jalons) + justification structurée Constat/Proposition/Bénéfice — **intégré à REF-7b.5** | 🔴 | ⬜ |
@@ -700,6 +701,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 11. EPIC 5 / 6 / 7 / 8 / 9 — modules complémentaires.
 12. EPIC 12 (complet) — extension du design premium au-delà des quick wins ciblés.
 13. EPIC 10 · **REF-47a** — veille migration clés Supabase (`PUBLISHABLE_KEYS` / `SECRET_KEYS` vs anon/service_role legacy) pour Edge Functions + optionnellement Next server.
+14. **UX-ONBOARD** — Harmonisation empty states pédagogiques sur toutes les pages produit : remplacer les textes muted/italic (`.dg__empty`, `.rcm-empty`, etc.) par le nouveau pattern `empty-state-pedagogique` (illustration + titre + hint). Objectif : guider l'utilisateur vers son premier usage de chaque module. Introduit avec REF-7b.5bis, à propager progressivement.
 
 ---
 
