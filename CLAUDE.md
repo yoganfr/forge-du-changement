@@ -115,3 +115,28 @@ node -e "const d=new Date(),z='Europe/Paris';const p=new Intl.DateTimeFormat('fr
 ```
 
 Ne jamais inventer une date ou une heure.
+
+## 9. Checklist avant implémentation backend Supabase
+
+1. **Cohérence documentaire** : Avant d'appliquer des migrations RLS, vérifier que les règles métier dans les docs (`docs/# Règles métier — *.md`, `docs/README_ref7b-*.md`) sont alignées entre elles. Si contradiction détectée, demander clarification au PO avant d'implémenter.
+
+2. **Inspection des policies existantes** : Toujours lister les policies actuelles avant d'en créer de nouvelles :
+   ```sql
+   SELECT polname, polcmd FROM pg_policy WHERE polrelid = 'public.TABLE_NAME'::regclass;
+   ```
+   Supprimer explicitement les anciennes policies avant de créer les nouvelles pour éviter les doublons.
+
+3. **Fonctions helper RLS** : Le projet utilise des fonctions helper (`is_platform_superadmin()`, `current_app_user_id()`, `has_workspace_consultant_access()`, `current_member_workspace_id()`, etc.). Toujours les réutiliser plutôt que d'écrire des sous-requêtes manuelles sur `users` ou `workspace_members`.
+
+## 10. Contexte d'exécution Windows
+
+Ce workspace s'exécute sur **Windows avec PowerShell**. Adapter les commandes shell :
+
+| Bash | PowerShell équivalent |
+|------|----------------------|
+| `cmd1 && cmd2` | `cmd1; if ($?) { cmd2 }` ou commandes séparées |
+| `cat <<'EOF'` (heredoc) | Utiliser `-m` multiples pour git commit |
+| `head -n 10 file` | `Get-Content file -First 10` |
+| `if [ ! -d dir ]` | `if (-not (Test-Path dir))` |
+
+Préférer des commandes séparées plutôt que des chaînages complexes.

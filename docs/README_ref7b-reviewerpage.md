@@ -2,7 +2,7 @@
 
 **Point d'entrée unique pour une IA qui commence une session sur REF-7b.2 (backend) ou REF-7b.5 (frontend).**
 
-Dernière mise à jour : **6 mai 2026**, 20 h 25 (Europe/Paris)
+Dernière mise à jour : **11 juin 2026**, 12 h 25 (Europe/Paris)
 
 ---
 
@@ -108,7 +108,7 @@ Dernière mise à jour : **6 mai 2026**, 20 h 25 (Europe/Paris)
 - **Règle critique** : Aucun feedback après submission
 
 ### 3 kinds feedbacks
-1. **reaction** : texte libre, éditable même après ACK CODIR
+1. **reaction** : texte libre, éditable tant que non lu par le CODIR (`reaction_acknowledged_at IS NULL`)
 2. **decision** : constat/proposition/bénéfice, immuable après submission
 3. **proposition_chantier** : création chantier (Partie 3)
 

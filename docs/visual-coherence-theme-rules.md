@@ -54,6 +54,19 @@ Note: if a future file named `theme.css` is introduced, this document still appl
 4. Interactive states (default, hover, focus-visible, active, disabled) are covered.
 5. Any new token is added to `src/themes.css` and named semantically.
 
+## Patterns UI existants à réutiliser
+
+Avant de créer de nouvelles classes CSS, vérifier les patterns existants :
+
+| Besoin | Pattern existant | Fichier |
+|--------|------------------|---------|
+| Badge de statut | `.mr-review-status-badge` | `MaturityRoadmap.css:163` |
+| Banner informatif | `.mr-review-banner` | `MaturityRoadmap.css:195` |
+| Empty state | `.dg__empty` (texte muted) | `App.css:3151` |
+| Icône | SVG inline (pas de bibliothèque) | Pattern dans `MemberOnboarding.tsx` |
+
+**Règle** : Le projet n'utilise PAS de bibliothèque d'icônes (Lucide, Heroicons). Toutes les icônes sont des **SVG inline**.
+
 ## AI execution note
 
 For any UI, CSS, component styling, theme, or design-system request:
