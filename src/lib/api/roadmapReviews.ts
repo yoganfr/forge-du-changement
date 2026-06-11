@@ -38,6 +38,8 @@ export type RoadmapReviewFeedback = {
   parent_id: string | null
   created_at: string
   updated_at: string
+  /** REF-7b.2: Date à laquelle le CODIR a lu la réaction. Une fois lue, le reviewer ne peut plus la modifier. */
+  reaction_acknowledged_at?: string | null
 }
 
 export async function listSnapshotReviewers(snapshotId: string): Promise<RoadmapSnapshotReviewer[]> {
