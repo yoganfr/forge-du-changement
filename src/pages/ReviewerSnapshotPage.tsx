@@ -17,7 +17,7 @@ import type { TimelineColumn } from '../lib/roadmapTimelineColumns'
 import { assignRoadmapProjectColors } from '../lib/projectRoadmapColor'
 import { buildChantiersAndJalonsFromSnapshotItems } from '../lib/reviewerSnapshotRoadmap'
 import type { Axe, Chantier, Jalon } from '../lib/types'
-import { AXES } from '../lib/axeMeta'
+import { AXES, AXE_META } from '../lib/axeMeta'
 import { getCurrentUser, isPlatformSuperadmin } from '../lib/auth'
 import '../MaturityRoadmap.css'
 
@@ -551,7 +551,7 @@ export default function ReviewerSnapshotPage({
           {urgency === 'orange' ? 'Moins de la moitié du temps restant' : null}
           {urgency === 'red' ? 'Moins de 30 % du temps restant' : null}
           {urgency === 'none' && deadline ? null : null}
-          {urgency === 'none' && !deadline ? 'Aucune échéance renseignée' : null}
+{urgency === 'none' && !deadline ? 'Aucune échéance renseignée' : null}
         </div>
         <button
           type="button"
@@ -615,6 +615,7 @@ export default function ReviewerSnapshotPage({
                   </>
                 )}
               </p>
+              <div className="reviewer-sidebar__scrollable">
               <div className="mr-field">
                 <label htmlFor="fb-kind">Type</label>
                 <select
@@ -706,6 +707,7 @@ export default function ReviewerSnapshotPage({
                   {fbSaving ? 'Enregistrement…' : 'Enregistrer le feedback'}
                 </button>
               )}
+              </div>
             </>
           )}
         </aside>
@@ -743,7 +745,7 @@ export default function ReviewerSnapshotPage({
             >
               {AXES.map((a) => (
                 <option key={a} value={a}>
-                  {a}
+                  {AXE_META[a].title}
                 </option>
               ))}
             </select>
@@ -904,17 +906,31 @@ export default function ReviewerSnapshotPage({
         .reviewer-deadline--overdue { background: color-mix(in srgb, var(--theme-fg-muted, #57534e) 16%, transparent); }
         .reviewer-deadline--neutral { background: var(--theme-bg-elevated, rgba(0,0,0,.03)); }
         .reviewer-layout {
-          display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start;
+          display: flex; gap: 20px; align-items: flex-start;
         }
         @media (max-width: 1024px) {
-          .reviewer-layout { grid-template-columns: 1fr; }
+          .reviewer-layout { flex-direction: column; }
         }
-        .reviewer-layout__grid { min-width: 0; }
+        .reviewer-layout__grid { 
+          flex: 1; min-width: 0;
+        }
         .reviewer-layout__sidebar {
-          position: sticky; top: 12px;
+          position: sticky;
+          top: 80px;
+          flex-shrink: 0;
+          width: 320px;
+          max-height: calc(100vh - 100px);
+          display: flex; flex-direction: column;
           padding: 16px; border-radius: var(--radius-md, 8px);
           border: 1px solid var(--theme-border-subtle, rgba(0,0,0,.12));
           background: var(--theme-bg-card, #fff);
+          overflow: hidden;
+        }
+        .reviewer-layout__sidebar > h2 { flex-shrink: 0; }
+        .reviewer-layout__sidebar > p { flex-shrink: 0; }
+        .reviewer-sidebar__scrollable {
+          flex: 1; overflow-y: auto; min-height: 0;
+          display: flex; flex-direction: column; gap: 12px;
         }
         .reviewer-selection-context { font-size: 0.92rem; margin-bottom: 12px; }
         .reviewer-part3 { margin-top: 28px; }
