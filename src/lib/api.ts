@@ -78,6 +78,7 @@ export {
 export {
   arbitrateFeedback,
   createReviewFeedback,
+  deleteReviewFeedback,
   getReviewerRowForUser,
   listReviewerAssignmentsForWorkspace,
   listReviewerFeedbacks,
@@ -86,6 +87,7 @@ export {
   listSnapshotReviewers,
   openSnapshotReview,
   submitReviewerReview,
+  updateReviewFeedback,
 } from './api/roadmapReviews'
 export type {
   CodirDecisionStatus,

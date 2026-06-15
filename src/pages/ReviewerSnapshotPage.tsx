@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import RoadmapTimelineGrid from '../RoadmapTimelineGrid'
 import {
   createReviewFeedback,
+  deleteReviewFeedback,
   getProjet,
   getReviewerRowForUser,
   getRoadmapSnapshotById,
   listRoadmapSnapshotItems,
   listReviewerFeedbacks,
   submitReviewerReview,
+  updateReviewFeedback,
 } from '../lib/api'
 import type { RoadmapReviewFeedback, RoadmapSnapshotReviewer } from '../lib/api/roadmapReviews'
 import { buildTimelineColumns } from '../lib/roadmapTimelineColumns'
@@ -21,6 +23,60 @@ import '../MaturityRoadmap.css'
 
 const REVIEWER_ROUTE_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function canEditFeedback(fb: RoadmapReviewFeedback, reviewerStatus: string | null): boolean {
+  if (reviewerStatus === 'closed') return false
+  if (fb.kind === 'reaction') {
+    return !fb.reaction_acknowledged_at
+  }
+  return reviewerStatus === 'draft'
+}
+
+function canDeleteFeedback(reviewerStatus: string | null): boolean {
+  return reviewerStatus === 'draft'
+}
+
+type EmptyStatePedagogiqueProps = {
+  illustration: 'feedback' | 'list' | 'search'
+  title: string
+  hint: string
+}
+
+function EmptyStatePedagogique({ illustration, title, hint }: EmptyStatePedagogiqueProps) {
+  const svgMap: Record<string, React.ReactNode> = {
+    feedback: (
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="8" y="12" width="48" height="36" rx="4" />
+        <path d="M20 56 L24 48 L32 48" />
+        <line x1="18" y1="24" x2="46" y2="24" strokeLinecap="round" />
+        <line x1="18" y1="32" x2="38" y2="32" strokeLinecap="round" />
+      </svg>
+    ),
+    list: (
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="8" y="8" width="48" height="48" rx="4" />
+        <line x1="18" y1="20" x2="46" y2="20" strokeLinecap="round" />
+        <line x1="18" y1="32" x2="46" y2="32" strokeLinecap="round" />
+        <line x1="18" y1="44" x2="36" y2="44" strokeLinecap="round" />
+      </svg>
+    ),
+    search: (
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="28" cy="28" r="16" />
+        <line x1="40" y1="40" x2="54" y2="54" strokeLinecap="round" strokeWidth="3" />
+      </svg>
+    ),
+  }
+  return (
+    <div className="empty-state-pedagogique">
+      <div className="empty-state-pedagogique__illu" aria-hidden="true">
+        {svgMap[illustration]}
+      </div>
+      <p className="empty-state-pedagogique__title">{title}</p>
+      <p className="empty-state-pedagogique__hint">{hint}</p>
+    </div>
+  )
+}
 
 type Props = {
   snapshotId: string
@@ -88,6 +144,8 @@ export default function ReviewerSnapshotPage({
   const [propProposition, setPropProposition] = useState('')
   const [propBenefice, setPropBenefice] = useState('')
   const [propSaving, setPropSaving] = useState(false)
+  const [editingFeedback, setEditingFeedback] = useState<RoadmapReviewFeedback | null>(null)
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
 
   const timelineColumns = useMemo<TimelineColumn[]>(() => {
     const anchor = frozenAt ? new Date(frozenAt) : new Date()
@@ -294,6 +352,84 @@ export default function ReviewerSnapshotPage({
     }
   }
 
+  function handleEditFeedback(fb: RoadmapReviewFeedback) {
+    if (!canEditFeedback(fb, reviewerStatus)) return
+    setEditingFeedback(fb)
+    setFbKind(fb.kind === 'proposition_chantier' ? 'reaction' : fb.kind)
+    if (fb.kind === 'reaction') {
+      setFbReactionText(fb.comment ?? '')
+    } else {
+      setFbConstat(fb.constat ?? '')
+      setFbProposition(fb.proposition ?? '')
+      setFbBenefice(fb.benefice ?? '')
+    }
+    if (fb.target_id) {
+      const ch = chantiers.find((c) => c.id === fb.target_id)
+      if (ch) {
+        setSelection({ kind: 'chantier', chantier: ch })
+      } else {
+        for (const [cId, jalons] of Object.entries(jalonsByChantier)) {
+          const j = jalons.find((jl) => jl.id === fb.target_id)
+          if (j) {
+            const parentCh = chantiers.find((c) => c.id === cId)
+            if (parentCh) setSelection({ kind: 'jalon', chantier: parentCh, jalon: j })
+            break
+          }
+        }
+      }
+    }
+  }
+
+  function cancelEdit() {
+    setEditingFeedback(null)
+    setFbReactionText('')
+    setFbConstat('')
+    setFbProposition('')
+    setFbBenefice('')
+  }
+
+  async function handleUpdateFeedback() {
+    if (!editingFeedback) return
+    setFbSaving(true)
+    try {
+      const updates =
+        editingFeedback.kind === 'reaction'
+          ? { comment: fbReactionText.trim() || null }
+          : {
+              constat: fbConstat.trim() || null,
+              proposition: fbProposition.trim() || null,
+              benefice: fbBenefice.trim() || null,
+            }
+      await updateReviewFeedback(editingFeedback.id, updates)
+      await reloadFeedbacks()
+      cancelEdit()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erreur modification'
+      alert(msg)
+    } finally {
+      setFbSaving(false)
+    }
+  }
+
+  async function handleDeleteFeedback(fbId: string) {
+    if (confirmingDeleteId !== fbId) {
+      setConfirmingDeleteId(fbId)
+      return
+    }
+    setFbSaving(true)
+    try {
+      await deleteReviewFeedback(fbId)
+      await reloadFeedbacks()
+      if (editingFeedback?.id === fbId) cancelEdit()
+      setConfirmingDeleteId(null)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erreur suppression'
+      alert(msg)
+    } finally {
+      setFbSaving(false)
+    }
+  }
+
   async function handleSubmitPropositionChantier() {
     if (!reviewerUserId || editsDisabled) return
     const pid = propProjetId.trim()
@@ -427,6 +563,15 @@ export default function ReviewerSnapshotPage({
         </button>
       </div>
 
+      {reviewerRow?.submitted_at && reviewerStatus === 'draft' && (
+        <div className="mr-review-banner mr-review-banner--info" role="status">
+          <p className="mr-review-banner__title">Votre revue a été rouverte</p>
+          <p className="mr-review-banner__multi">
+            Le CODIR vous a permis de modifier vos feedbacks. Vous pouvez compléter ou corriger vos contributions.
+          </p>
+        </div>
+      )}
+
       <div className="reviewer-layout">
         <div className="reviewer-layout__grid">
           <h2 className="reviewer-section-title">Roadmap figée (lecture seule)</h2>
@@ -527,14 +672,40 @@ export default function ReviewerSnapshotPage({
                   </div>
                 </>
               )}
-              <button
-                type="button"
-                className="mr-btn-primary"
-                disabled={editsDisabled || fbSaving}
-                onClick={() => void handleSaveSidebarFeedback()}
-              >
-                {fbSaving ? 'Enregistrement…' : 'Enregistrer le feedback'}
-              </button>
+              {editingFeedback ? (
+                <div className="reviewer-sidebar__actions">
+                  <button
+                    type="button"
+                    className="mr-btn-primary"
+                    disabled={fbSaving}
+                    onClick={() => void handleUpdateFeedback()}
+                  >
+                    {fbSaving ? 'Enregistrement…' : 'Mettre à jour'}
+                  </button>
+                  <button type="button" className="mr-back" onClick={cancelEdit}>
+                    Annuler
+                  </button>
+                  {canDeleteFeedback(reviewerStatus) && (
+                    <button
+                      type="button"
+                      className="mr-btn-danger"
+                      disabled={fbSaving}
+                      onClick={() => void handleDeleteFeedback(editingFeedback.id)}
+                    >
+                      {confirmingDeleteId === editingFeedback.id ? 'Confirmer ?' : 'Supprimer'}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="mr-btn-primary"
+                  disabled={editsDisabled || fbSaving}
+                  onClick={() => void handleSaveSidebarFeedback()}
+                >
+                  {fbSaving ? 'Enregistrement…' : 'Enregistrer le feedback'}
+                </button>
+              )}
             </>
           )}
         </aside>
@@ -627,26 +798,62 @@ export default function ReviewerSnapshotPage({
         </div>
 
         <h3 style={{ marginTop: 20 }}>Vos propositions et feedbacks</h3>
-        <ul className="reviewer-fb-list">
-          {feedbacks.length === 0 ? <li className="mr-muted">Aucun élément pour le moment.</li> : null}
-          {feedbacks.map((f) => {
+        {feedbacks.length === 0 ? (
+          <EmptyStatePedagogique
+            illustration="feedback"
+            title="Aucun feedback pour le moment"
+            hint="Cliquez un chantier ou un jalon dans la grille pour commenter."
+          />
+        ) : (
+          <ul className="reviewer-fb-list">
+            {feedbacks.map((f) => {
             const preview =
               f.kind === 'reaction'
                 ? f.comment
                 : f.kind === 'proposition_chantier'
                   ? `${f.titre_chantier ?? 'Proposition'} — ${f.constat ?? ''}`
                   : [f.constat, f.proposition, f.benefice].filter(Boolean).join(' · ')
+            const editable = canEditFeedback(f, reviewerStatus)
             return (
-              <li key={f.id}>
+              <li
+                key={f.id}
+                className={editable ? 'reviewer-fb-item--editable' : ''}
+                onClick={editable ? () => handleEditFeedback(f) : undefined}
+                onKeyDown={editable ? (e) => e.key === 'Enter' && handleEditFeedback(f) : undefined}
+                tabIndex={editable ? 0 : undefined}
+                role={editable ? 'button' : undefined}
+              >
                 <span className="reviewer-fb-kind">{f.kind}</span>
-                {f.codir_status && f.codir_status !== 'pending' ? (
-                  <span className="reviewer-fb-codir"> · CODIR : {f.codir_status}</span>
-                ) : null}
+                {f.kind === 'reaction' && f.reaction_acknowledged_at && (
+                  <span className="reviewer-fb-ack" title="Lu par le CODIR">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </span>
+                )}
+                {f.codir_status && f.codir_status !== 'pending' && (
+                  <div className="reviewer-fb-arbitrage">
+                    <span className={`mr-review-status-badge mr-review-status-badge--${f.codir_status}`}>
+                      {f.codir_status === 'ok'
+                        ? 'Validé'
+                        : f.codir_status === 'nok'
+                          ? 'Refusé'
+                          : f.codir_status === 'noted'
+                            ? 'Noté'
+                            : 'Sous condition'}
+                    </span>
+                    {f.codir_motivation && (
+                      <p className="reviewer-fb-motivation">{f.codir_motivation}</p>
+                    )}
+                  </div>
+                )}
                 <div className="reviewer-fb-preview">{preview || '—'}</div>
               </li>
             )
           })}
-        </ul>
+          </ul>
+        )}
       </section>
 
       {submitModalOpen ? (
@@ -727,6 +934,36 @@ export default function ReviewerSnapshotPage({
           border: 1px solid var(--theme-border-subtle, rgba(0,0,0,.12));
         }
         .reviewer-modal__actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+        .reviewer-sidebar__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .reviewer-fb-item--editable { cursor: pointer; }
+        .reviewer-fb-item--editable:hover { background: var(--theme-bg-hover, rgba(0,0,0,.04)); }
+        .reviewer-fb-item--editable:focus { outline: 2px solid var(--theme-focus-ring, #0066cc); outline-offset: 2px; }
+        .mr-btn-danger {
+          background: color-mix(in srgb, var(--theme-danger, #b91c1c) 12%, transparent);
+          border: 1px solid color-mix(in srgb, var(--theme-danger, #b91c1c) 30%, transparent);
+          color: var(--theme-danger, #b91c1c);
+          padding: 8px 16px;
+          border-radius: var(--ui-radius-sm, 6px);
+          font-size: 0.875rem;
+          cursor: pointer;
+        }
+        .mr-btn-danger:hover { background: color-mix(in srgb, var(--theme-danger, #b91c1c) 18%, transparent); }
+        .reviewer-fb-ack {
+          display: inline-flex;
+          align-items: center;
+          color: var(--theme-text-muted);
+          margin-left: var(--space-xs, 6px);
+          vertical-align: middle;
+        }
+        .reviewer-fb-arbitrage {
+          margin-top: var(--space-xs, 6px);
+        }
+        .reviewer-fb-motivation {
+          margin: var(--space-xs, 6px) 0 0;
+          font-size: var(--text-sm);
+          color: var(--theme-text-muted);
+          font-style: italic;
+        }
       `}</style>
     </section>
   )

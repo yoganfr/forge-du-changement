@@ -174,6 +174,26 @@
   border: 1px solid color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 28%, transparent);
 }
 
+.mr-review-status-badge--ok {
+  background: color-mix(in srgb, var(--muted-yellow-green-600) 18%, transparent);
+  border-color: color-mix(in srgb, var(--muted-yellow-green-600) 35%, transparent);
+}
+
+.mr-review-status-badge--nok {
+  background: color-mix(in srgb, var(--dark-red-500) 18%, transparent);
+  border-color: color-mix(in srgb, var(--dark-red-500) 35%, transparent);
+}
+
+.mr-review-status-badge--sous_condition {
+  background: color-mix(in srgb, var(--caramel-candy-600) 18%, transparent);
+  border-color: color-mix(in srgb, var(--caramel-candy-600) 35%, transparent);
+}
+
+.mr-review-status-badge--noted {
+  background: color-mix(in srgb, var(--theme-text-muted) 12%, transparent);
+  border-color: color-mix(in srgb, var(--theme-text-muted) 25%, transparent);
+}
+
 .mr-btn-review-close {
   appearance: none;
   border-radius: var(--ui-radius-control);
@@ -228,6 +248,11 @@
   font-size: var(--text-xs, 0.75rem);
   color: var(--theme-text-muted);
   line-height: 1.4;
+}
+
+.mr-review-banner--info {
+  border-left-color: var(--steel-blue-500);
+  background: color-mix(in srgb, var(--steel-blue-500) 10%, var(--theme-bg-raised));
 }
 
 .mr-review-banner__stats {

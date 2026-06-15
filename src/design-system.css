@@ -723,3 +723,41 @@ a {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ═══════════════════════════════════════════════════
+   EMPTY STATE PÉDAGOGIQUE
+═══════════════════════════════════════════════════ */
+.empty-state-pedagogique {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md, 16px);
+  padding: var(--space-xl, 32px) var(--space-lg, 20px);
+  text-align: center;
+}
+
+.empty-state-pedagogique__illu {
+  width: 64px;
+  height: 64px;
+  color: var(--theme-text-muted);
+  opacity: 0.6;
+}
+
+.empty-state-pedagogique__illu svg {
+  width: 100%;
+  height: 100%;
+}
+
+.empty-state-pedagogique__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.empty-state-pedagogique__hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--theme-text-muted);
+  max-width: 320px;
+}

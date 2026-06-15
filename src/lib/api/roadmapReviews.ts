@@ -281,3 +281,34 @@ export async function arbitrateFeedback(
     .eq('id', feedbackId)
   if (error) throw error
 }
+
+/**
+ * Met à jour un feedback existant (réaction, décision ou proposition).
+ * Seuls les champs éditables par le reviewer sont autorisés.
+ * La RLS backend vérifie que le reviewer est propriétaire et que le feedback n'a pas été lu/arbitré.
+ */
+export async function updateReviewFeedback(
+  feedbackId: string,
+  updates: Partial<
+    Pick<RoadmapReviewFeedback, 'comment' | 'constat' | 'proposition' | 'benefice' | 'titre_chantier'>
+  >,
+): Promise<RoadmapReviewFeedback> {
+  const { data, error } = await supabase
+    .from('roadmap_review_feedbacks')
+    .update(updates)
+    .eq('id', feedbackId)
+    .select('*')
+    .single()
+  if (error) throw error
+  if (!data) throw new Error('Feedback introuvable ou modification non autorisée')
+  return data as RoadmapReviewFeedback
+}
+
+/**
+ * Supprime un feedback. La RLS backend vérifie que le reviewer est propriétaire
+ * et que le statut reviewer est 'draft' (non soumis).
+ */
+export async function deleteReviewFeedback(feedbackId: string): Promise<void> {
+  const { error } = await supabase.from('roadmap_review_feedbacks').delete().eq('id', feedbackId)
+  if (error) throw error
+}

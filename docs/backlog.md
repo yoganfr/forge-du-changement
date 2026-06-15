@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **11 juin 2026**, 12 h 12 (Europe/Paris)
+Dernière mise à jour : **15 juin 2026**, 13 h 51 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -683,7 +683,9 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-**PRIORITÉ PROCHAINE SESSION** : EPIC 3 · **REF-7b.5bis** — Polish ReviewerPage (alignement frontend sur policies RLS, indicateurs CODIR, édition granulaire, empty state pédagogique). Plan prêt : `ref-7b.5_polish_frontend_b28a3469.plan.md`.
+**TERMINÉ** : EPIC 3 · **REF-7b.5bis** — Polish ReviewerPage (alignement frontend sur policies RLS, indicateurs CODIR, édition granulaire, empty state pédagogique). Implémenté le 15/06/2026.
+
+**PROCHAINE AMÉLIORATION UX** : EPIC 3 · **REF-7b.6** — Indicateurs feedbacks sur grille roadmap (marquer visuellement les jalons/chantiers déjà commentés + accès édition depuis la grille). Issue remontée lors de la recette REF-7b.5bis.
 
 1. EPIC 16 · **REF-94 / REF-95** — diagnostic jargon et comparaison V1/V2 + gestion V1/V2 pour faire du module Discours un vrai compagnon d’itération.
 2. EPIC 3 · **REF-7a → REF-7d** — figer une roadmap V1, ouvrir un cycle reviewers, collecter des propositions typées, puis arbitrer/clôturer.
