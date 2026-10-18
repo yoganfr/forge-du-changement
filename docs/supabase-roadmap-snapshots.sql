@@ -11,8 +11,13 @@ create table if not exists public.roadmap_snapshots (
   closed_at timestamptz null,
   created_by uuid null references public.users(id) on delete set null,
   created_by_email text null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  review_deadline timestamptz null
 );
+
+-- Colonne présente en base depuis REF-7b.2. Cet ALTER aligne une base créée avec l'ancien script.
+alter table public.roadmap_snapshots
+  add column if not exists review_deadline timestamptz null;
 
 -- Back-fill script si la colonne a été ajoutée après coup :
 -- alter table public.roadmap_snapshots add column if not exists created_by_email text;
