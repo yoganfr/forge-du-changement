@@ -3,9 +3,23 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 export const revalidate = 300;
 
+const CI_PLACEHOLDER_SUPABASE_URL = "https://example.supabase.co";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const baseUrl = siteUrl;
+  const homeEntry: MetadataRoute.Sitemap[number] = {
+    url: baseUrl,
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 1,
+  };
+
+  // Le contrôle GitHub n'a pas les accès réels : il ne liste pas les espaces publics.
+  // En production, un échec de lecture doit encore faire échouer la génération.
+  if ((process.env.SUPABASE_URL ?? "") === CI_PLACEHOLDER_SUPABASE_URL) {
+    return [homeEntry];
+  }
 
   const { data: workspaces, error } = await supabaseAdmin
     .from("workspaces")
@@ -25,13 +39,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 1,
-    },
-    ...workspaceUrls,
-  ];
+  return [homeEntry, ...workspaceUrls];
 }
