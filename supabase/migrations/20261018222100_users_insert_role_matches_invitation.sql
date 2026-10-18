@@ -1,6 +1,7 @@
--- NON APPLIQUÉE.
+-- APPLIQUÉE le 18 octobre 2026, 22 h 23 (Europe/Paris)
+-- sur le projet Supabase forge-du-changement (kpgkxeilddeyfwiiqaha),
+-- via la migration MCP users_insert_role_matches_invitation.
 -- Écrite le 18 octobre 2026, 22 h 21 (Europe/Paris).
--- Ne pas exécuter tant que cette policy n'a pas été relue.
 --
 -- But : un invité qui crée sa propre ligne public.users ne peut écrire
 -- que le rôle de son invitation la plus récente (même email, même espace,
