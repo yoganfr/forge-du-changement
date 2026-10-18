@@ -1,3 +1,71 @@
+# Règles de décision — refactor
+
+Dernière mise à jour : **19 octobre 2026**, 00 h 08 (Europe/Paris)
+
+Version en vigueur : **V2**. L’historique V1 est en bas de ce fichier. On ne l’applique plus.
+
+## Quand ce document s’applique
+
+Il s’applique dès qu’un agent s’apprête à créer, déplacer ou supprimer un module, un composant ou une fonction publique, sans que le produit change.
+
+Il ne s’applique pas à un renommage local fait au passage d’une correction. Il ne s’applique pas non plus à une fonctionnalité, à un correctif dont le résultat change, ni à une règle de sécurité. Une policy, un droit, ou une règle RLS n’est jamais un refactor, même lorsque l’intention est de conserver les mêmes droits.
+
+Si un autre document demande de découper le code pour le rendre plus propre, ce document-ci l’emporte. Le type de commit `refactor` nomme seulement le commit. Il n’autorise pas le changement.
+
+## Définition
+
+Un refactor est un changement interne. Après lui, la personne voit les mêmes écrans, peut faire les mêmes actions, et obtient les mêmes résultats. Les textes, les parcours, les droits et les données rendues restent les mêmes.
+
+Si un libellé, un parcours, un droit ou un résultat change, le travail n’est pas un refactor. On suit alors la demande produit ou la demande de correction.
+
+## Décision, dans l’ordre
+
+1. Écrire une phrase qui nomme un problème déjà présent. Sans cette phrase, on ne modifie pas la structure, et on le dit.
+2. Vérifier que la phrase est un motif accepté. Sinon, on s’arrête.
+3. Vérifier que l’écran reste le même. Si le moindre doute demeure, on s’arrête.
+4. Faire le plus petit changement qui tient dans la phrase. Un morceau veut dire une fonction, un composant, ou un fichier déjà nommé dans la demande.
+5. Montrer que le comportement n’a pas bougé, sur le parcours cité dans la phrase : le cas normal et le cas limite nommé dans cette phrase.
+
+## Motifs acceptés
+
+- Un bug reproductible.
+- Une lenteur déjà mesurée, dont le chiffre est cité avant le changement.
+- La même règle métier écrite à deux endroits. Changer la règle oblige à modifier les deux. Exemple valide dans ce produit : le rôle d’un invité était calculé de deux façons, et l’une contredisait l’autre.
+
+## Motifs refusés
+
+- « Le fichier est long. »
+- « Ce serait plus propre, plus scalable, ou une bonne pratique. »
+- « Cela servira plus tard. »
+- Deux éléments d’interface qui se ressemblent.
+- Exemple refusé dans ce produit : découper le sélecteur de projets parce qu’il fait plusieurs milliers de lignes.
+
+La longueur d’un fichier n’est jamais un motif à elle seule.
+
+## Exception
+
+Une seule exception existe. La demande en cours dit explicitement de déplacer un morceau nommé, malgré l’absence de motif. Un agent ne déduit pas cette exception d’un accord vague.
+
+On ne déplace que le morceau nommé. L’écran reste identique. L’exception ne couvre pas un chantier plus large.
+
+## Outils automatiques
+
+ESLint, TypeScript et les contrôles de build signalent des problèmes. Ils ne choisissent pas la forme du code métier.
+
+Il est interdit d’ajouter un délai artificiel, comme `queueMicrotask`, `setTimeout(0)` ou un équivalent, dans le seul but de faire taire une règle. Le cas déjà rencontré ici est `react-hooks/set-state-in-effect`.
+
+Si une règle d’outil pousse à ce contournement, on modifie la règle : désactivation documentée, exception ciblée, ou correctif de l’outil.
+
+## Moyen
+
+Une fois la décision prise, on retire d’abord le code dont on peut montrer qu’aucun parcours ne l’exécute. On réécrit ensuite. On n’ajoute un fichier, une couche ou une abstraction que si la phrase-motif ne peut pas être tenue sans cet ajout.
+
+---
+
+# Historique — V1
+
+Ne plus appliquer. Texte d’origine, conservé tel quel.
+
 Refactor Decision Rules
 Avant toute modification, valider toutes les conditions suivantes :
 

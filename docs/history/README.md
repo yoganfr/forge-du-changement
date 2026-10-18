@@ -32,6 +32,7 @@ Exemples:
 ## Index des sessions
 
 - [Template session](./_template-session.md)
+- [2026-10-18 - Invitations, photos, vitrine, regles de refactor](./2026-10-18-invites-photos-vitrine-refactor.md)
 - [2026-04-20 - EPIC 14 Next.js Landing](./2026-04-20-epic14-nextjs-landing.md)
 - [2026-04-21 - EPIC 14 homepage publique et composants visuels](./2026-04-21-epic14-homepage-visuelle.md)
 - [2026-04-20 - Analyse situation (clean)](./2026-04-20-analyse-situation-clean.md)
