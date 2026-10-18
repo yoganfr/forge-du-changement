@@ -4,10 +4,44 @@ import { imageExtensionForUpload } from './storageValidation'
 /** Bucket logos / pièces jointes non sensibles. */
 export const STORAGE_BUCKET_ASSETS = 'assets'
 
+const PUBLIC_ASSET_MARKER = `/storage/v1/object/public/${STORAGE_BUCKET_ASSETS}/`
+const SIGNED_ASSET_MARKER = `/storage/v1/object/sign/${STORAGE_BUCKET_ASSETS}/`
+
 /**
- * URL publique (lecture ouverte si le bucket est public).
- * Point unique à migrer vers {@link createSignedAssetUrl} pour les fichiers sensibles.
+ * Chemin du fichier dans le dossier photos, à partir de l’adresse enregistrée.
+ * Les adresses externes (Gravatar, Google) et les aperçus locaux ne sont pas des fichiers du dossier.
  */
+export function assetPathFromStoredValue(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return null
+  const publicAt = trimmed.indexOf(PUBLIC_ASSET_MARKER)
+  if (publicAt >= 0) {
+    const rest = trimmed.slice(publicAt + PUBLIC_ASSET_MARKER.length).split('?')[0]
+    return rest ? decodeURIComponent(rest) : null
+  }
+  const signedAt = trimmed.indexOf(SIGNED_ASSET_MARKER)
+  if (signedAt >= 0) {
+    const rest = trimmed.slice(signedAt + SIGNED_ASSET_MARKER.length).split('?')[0]
+    return rest ? decodeURIComponent(rest) : null
+  }
+  if (!trimmed.includes('://')) return trimmed.replace(/^\/+/, '')
+  return null
+}
+
+/** Lien d’affichage : temporaire si le fichier est dans le dossier photos, inchangé sinon. */
+export async function resolveStoredAssetUrl(value: string | null | undefined): Promise<string | null> {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  const path = assetPathFromStoredValue(trimmed)
+  if (!path) return trimmed
+  try {
+    return await createSignedAssetUrl(path)
+  } catch (err) {
+    console.warn('[assets]', err instanceof Error ? err.message : 'lien image impossible')
+    return null
+  }
+}
+
 export function isStorageBucketNotFound(error: unknown): boolean {
   const msg =
     typeof error === 'object' && error && 'message' in error

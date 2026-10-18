@@ -21,7 +21,7 @@ import {
   migrateLegacyMemberProfileIfNeeded,
 } from './lib/memberProfileStorage'
 import { gravatarAvatarUrl } from './lib/gravatarUrl'
-import UserAvatarImg from './UserAvatarImg'
+import UserAvatarImg, { StoredAssetImg } from './UserAvatarImg'
 import {
   alignUserWorkspaceToLatestAcceptedInvitation,
   clearStoredWorkspaceSelection,
@@ -1714,7 +1714,7 @@ function App() {
             >
               <div className="dashboard__brand-mark">
                 {companyLogo
-                  ? <img src={companyLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                  ? <StoredAssetImg src={companyLogo} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
                   : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
                     {workspaceLabel.slice(0, 2).toUpperCase()}
                   </span>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { StoredAssetImg } from './UserAvatarImg'
 import { sendInvitationMagicLink } from './lib/auth'
 import { formatClientErrorMessage } from './lib/formatClientErrorMessage'
 import {
@@ -1049,7 +1050,7 @@ export default function CompanySheet({
           <div className="cs-logo-block">
             <div className="cs-avatar cs-avatar--lg">
               {logoUrl
-                ? <img src={logoUrl} alt="" className="cs-avatar-img" />
+                ? <StoredAssetImg src={logoUrl} className="cs-avatar-img" />
                 : <span>{initials}</span>}
             </div>
             {canEdit && (
