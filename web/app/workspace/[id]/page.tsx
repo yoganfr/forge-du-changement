@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCachedWorkspace } from "@/lib/cache";
+import { publicLogoUrl } from "@/lib/publicLogoUrl";
 
-export const revalidate = 3600;
+export const revalidate = 300;
 export const dynamicParams = true;
 
 type WorkspacePageProps = {
@@ -26,9 +27,11 @@ export async function generateMetadata({
   const title = `${workspace.company_name} - La transformation : du discours à l'action`;
   const description = `Découvrez le parcours de transformation de ${workspace.company_name}. Projets transformants, roadmap maturity et pilotage du changement.`;
   const url = `${siteUrl}/workspace/${id}`;
-  const ogImage =
-    workspace.logo_url ||
-    `${siteUrl}/images/og-default.png`;
+  const ogImage = publicLogoUrl(
+    workspace.logo_url,
+    siteUrl,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+  );
 
   return {
     title,
@@ -77,12 +80,17 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
     notFound();
   }
 
+  const logo = publicLogoUrl(
+    workspace.logo_url,
+    siteUrl,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+  );
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: workspace.company_name,
     url: `${siteUrl}/workspace/${id}`,
-    logo: workspace.logo_url,
+    logo,
     description: `Transformation de ${workspace.company_name}`,
   };
 
@@ -97,7 +105,7 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
             {workspace.company_name}
           </h1>
           <p className="mt-4 text-lg text-slate-600">
-            Etape actuelle : {workspace.current_step} / 6
+            Etape actuelle : {workspace.current_step_codir ?? 0} / 6
           </p>
         </div>
       </section>
@@ -122,7 +130,9 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
       />
     </>
   );

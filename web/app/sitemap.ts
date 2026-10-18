@@ -1,17 +1,22 @@
 import type { MetadataRoute } from "next";
 import { supabaseAdmin } from "@/lib/supabase";
 
-export const revalidate = 86400;
+export const revalidate = 300;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const baseUrl = siteUrl;
 
-  const { data: workspaces } = await supabaseAdmin
+  const { data: workspaces, error } = await supabaseAdmin
     .from("workspaces")
     .select("id, updated_at")
     .eq("archived", false)
     .eq("is_public", true);
+
+  if (error) {
+    console.error("sitemap workspaces", error.code, error.message);
+    throw new Error("Impossible de générer le sitemap des workspaces publics");
+  }
 
   const workspaceUrls = (workspaces || []).map((ws) => ({
     url: `${baseUrl}/workspace/${ws.id}`,
