@@ -25,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .from("workspaces")
     .select("id, updated_at")
     .eq("archived", false)
-    .eq("is_public", true);
+    .eq("is_showcase", true);
 
   if (error) {
     console.error("sitemap workspaces", error.code, error.message);

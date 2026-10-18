@@ -17,7 +17,7 @@ export const getCachedWorkspace = cache(
       .select("id, company_name, current_step_codir, logo_url, updated_at")
       .eq("id", id)
       .eq("archived", false)
-      .eq("is_public", true)
+      .eq("is_showcase", true)
       .maybeSingle();
 
     if (error) {
