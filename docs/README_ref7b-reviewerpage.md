@@ -2,7 +2,7 @@
 
 **Point d'entrée unique pour une IA qui commence une session sur REF-7b.2 (backend) ou REF-7b.5 (frontend).**
 
-Dernière mise à jour : **11 juin 2026**, 12 h 25 (Europe/Paris)
+Dernière mise à jour : **18 octobre 2026**, 16 h 58 (Europe/Paris)
 
 ---
 
@@ -19,7 +19,19 @@ Dernière mise à jour : **11 juin 2026**, 12 h 25 (Europe/Paris)
 
 **Où** : `/src/pages/ReviewerSnapshotPage.tsx` (V1 grille + panneau + Partie 3 branchés)
 
-**État** : 🚧 **Implémentation démarrée** — UI reviewer alignée architecture 6 mai ; **RLS / migration** à finaliser (voir plan 7b.2)
+**État au 18 octobre 2026** : le schéma **REF-7b.2** est ✅ (ne pas rouvrir les policies RLS). **REF-7b.5bis** est ✅ recetté le 15 juin. La source de vérité des statuts est [`docs/backlog.md`](backlog.md), section EPIC 3 et priorisation **Maintenant**.
+
+| REF | Statut | Constat |
+|-----|--------|---------|
+| 7b.2 | ✅ | Tables, RLS, triggers d’audit (`reviewer_submitted`, `snapshot_review_reopened`, `feedback_arbitrated`) |
+| 7b.3 | 🚧 | `openSnapshotReview` + deadline. Sélection par `window.prompt`. Modal, magic link et audit `snapshot_review_opened` absents |
+| 7b.4 | 🚧 | Route `/review/:snapshotId` livrée. Nav principale non masquée |
+| 7b.5 | 🚧 | Cœur V1 livré. Restent PCI figé, drawer &lt; 768 px, autosave |
+| 7b.5bis | ✅ | Polish recetté le 15/06/2026 |
+| 7b.5ter | ⬜ | Indicateurs de feedbacks sur la grille (retour de recette). Ne pas le nommer 7b.6 |
+| 7b.6 | ⬜ | Panneau flottant `react-rnd` — sens d’origine conservé |
+
+Le prochain lot produit n’est pas choisi. Candidats : **7b.5ter**, finition **7b.3**, finition **7b.4**.
 
 ---
 
@@ -31,17 +43,11 @@ Dernière mise à jour : **11 juin 2026**, 12 h 25 (Europe/Paris)
 - ✅ Règles métier complètes : [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md)
 - ✅ Plan implémentation : [`docs/plan-ref-7b.2-schema-revue.md`](docs/plan-ref-7b.2-schema-revue.md)
 
-**À faire** (6 todos du plan) :
-1. Migration Supabase (DDL tables + indexes)
-2. Tester RLS policies (5 tables principales)
-3. Spécifier 5 API routes backend
-4. Créer types TypeScript + API client wrapper
-5. Audit trail : implémentation minimaliste (5 événements)
-6. Tests d'intégration
+**Livré** : migration, policies, client `src/lib/api/roadmapReviews.ts`, triggers d’audit listés dans le backlog. Le plan [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) garde des cases ouvertes historiques : ne pas les traiter comme le travail courant.
 
 **Fichiers clés** :
 - `docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md` — À lire d'abord
-- `docs/plan-ref-7b.2-schema-revue.md` — 6 todos structurés
+- `docs/plan-ref-7b.2-schema-revue.md` — historique ; le statut courant est dans le backlog
 
 ---
 
@@ -50,21 +56,16 @@ Dernière mise à jour : **11 juin 2026**, 12 h 25 (Europe/Paris)
 **Ce qui existe** :
 - ✅ Architecture UX clarifiée : [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md)
 - ✅ Plan implémentation : [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](docs/plan-ref-7b.5-reviewerpage-frontend.md)
-- ⚠️ Code existant (incomplet) : `src/pages/ReviewerSnapshotPage.tsx`
+- ✅ Code V1 : `src/pages/ReviewerSnapshotPage.tsx`
 
-**À faire** (8 todos du plan) :
-1. Analyser/refactoriser RoadmapTimelineGrid pour mode read-only
-2. Créer ReviewerRoadmapGrid (wrapper read-only)
-3. Créer panel commentaires latéral (drawer/sidebar)
-4. Implémenter formulaire Partie 3 (propositions chantier)
-5. Implémenter logic state ReviewerPage (sélection cible, gestion panel)
-6. Tester flow complet (clic chantier → panel → soumission)
-7. +2 composants utilitaires (PropositionsTable, ReviewerPageHeader)
+**Livré** : grille lecture seule, panneau latéral, propositions chantier, modal de soumission, polish 7b.5bis.
+
+**Reste** (plan frontend) : PCI figé `raci_chantier`, drawer plein écran sous 768 px, autosave, badges grille = **REF-7b.5ter**, panneau flottant = **REF-7b.6**.
 
 **Fichiers clés** :
 - `docs/architecture-ux-reviewerpage-ref7b5.md` — À lire d'abord
-- `docs/plan-ref-7b.5-reviewerpage-frontend.md` — 8 todos structurés
-- `src/pages/ReviewerSnapshotPage.tsx` — Cible de refactorisation
+- `docs/plan-ref-7b.5-reviewerpage-frontend.md` — reste à faire listé en tête du plan
+- `src/pages/ReviewerSnapshotPage.tsx` — page livrée, à étendre lot par lot
 
 ---
 
@@ -209,7 +210,7 @@ Voir [`docs/git-commit-conventions.md`](docs/git-commit-conventions.md) pour dé
 | Architecture UX | ✅ Yogan + AI | [`architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) |
 | Plan backend | ✅ AI | [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) |
 | Plan frontend | ✅ AI | [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md) |
-| Implémentation | 🚧 En cours | `ReviewerSnapshotPage`, `roadmapReviews.ts`, SQL doc |
+| Implémentation | 🚧 Cycle partiel | `ReviewerSnapshotPage`, `roadmapReviews.ts` — statuts dans `docs/backlog.md` |
 
 ---
 

@@ -18,5 +18,5 @@
 1. [ ] PCI figé dans le snapshot ou flux dédié pour `raci_chantier` + colonnes Parties prenantes.
 2. [ ] Responsive : drawer plein écran &lt; 768px pour le panneau commentaires.
 3. [ ] Autosave / debounce optionnel sur le panneau.
-4. [ ] Badges 💬 sur chantiers/jalons commentés.
+4. [ ] Badges 💬 sur chantiers/jalons commentés — lot **REF-7b.5ter** (ne pas le confondre avec REF-7b.6, panneau flottant).
 5. [ ] REF-7b.6 : panneau flottant `react-rnd` si validé produit.
