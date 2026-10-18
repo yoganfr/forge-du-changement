@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { imageExtensionForUpload } from './storageValidation'
 
 /** Bucket logos / pièces jointes non sensibles. */
 export const STORAGE_BUCKET_ASSETS = 'assets'
@@ -20,7 +21,7 @@ export async function uploadImageToStorage(params: {
   folder: string
   filenamePrefix?: string
 }): Promise<string> {
-  const ext = params.file.name.split('.').pop()?.toLowerCase() || 'bin'
+  const ext = imageExtensionForUpload(params.file)
   const safeFolder = params.folder.replace(/^\/+|\/+$/g, '')
   const safePrefix = (params.filenamePrefix ?? 'file').replace(/[^a-zA-Z0-9_-]/g, '-')
   const path = `${safeFolder}/${safePrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`

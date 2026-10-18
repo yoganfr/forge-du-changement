@@ -218,6 +218,7 @@ export default function DiscoursTransformationPage({
   const [discourse, setDiscourse] = useState<TransformationDiscourse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadWarning, setLoadWarning] = useState<string | null>(null)
   const [version, setVersion] = useState<TransformationDiscourseVersion | null>(null)
   const [versions, setVersions] = useState<TransformationDiscourseVersion[]>([])
   const [selectedExportVersionId, setSelectedExportVersionId] = useState<string | null>(null)
@@ -242,19 +243,34 @@ export default function DiscoursTransformationPage({
     if (!workspaceId) return
     setLoading(true)
     setError(null)
+    setLoadWarning(null)
     try {
-      const [ws, users, discResult] = await Promise.all([
+      const usersPromise = getWorkspaceUsers(workspaceId)
+      const [ws, discResult] = await Promise.all([
         getWorkspace(workspaceId),
-        getWorkspaceUsers(workspaceId).catch(() => [] as User[]),
         getOrCreateDiscoursForWorkspace(workspaceId),
       ])
+      const warnings: string[] = []
+      let users: User[] = []
+      try {
+        users = await usersPromise
+      } catch (userErr) {
+        console.warn('[DiscoursTransformation] members', userErr)
+        warnings.push('La liste des membres n’a pas pu être chargée.')
+      }
       setWorkspace(ws)
       setWorkspaceUsers(users)
       setDiscourse(discResult.discourse)
 
       // Historique des versions enregistrées (pour le menu dropdown en mode export).
       if (discResult.discourse) {
-        const loadedVersions = await listVersionsForDiscourse(discResult.discourse.id).catch(() => [] as TransformationDiscourseVersion[])
+        let loadedVersions: TransformationDiscourseVersion[] = []
+        try {
+          loadedVersions = await listVersionsForDiscourse(discResult.discourse.id)
+        } catch (versionErr) {
+          console.warn('[DiscoursTransformation] versions', versionErr)
+          warnings.push('L’historique des versions n’a pas pu être chargé.')
+        }
 
         const visibleAfterDelete = loadedVersions.filter(
           (v) => !v.version_label.trim().toUpperCase().startsWith('DELETED:'),
@@ -303,6 +319,7 @@ export default function DiscoursTransformationPage({
         setScoreBaselineFingerprint(null)
       }
       setSaveState('idle')
+      setLoadWarning(warnings.length > 0 ? warnings.join(' ') : null)
     } catch (e) {
       console.error('[DiscoursTransformation] load failed', e)
       setError("Impossible de charger le discours de transformation.")
@@ -451,7 +468,14 @@ export default function DiscoursTransformationPage({
       const newVersion = await freezeNewVersion(discourse.id, freezeSourceVersion, nextLabel)
 
       // Rafraîchissement local : on bascule sur la nouvelle version courante pour cohérence d'édition.
-      const updatedVersionsFromDb = await listVersionsForDiscourse(discourse.id).catch(() => [])
+      setLoadWarning(null)
+      let updatedVersionsFromDb: TransformationDiscourseVersion[] = []
+      try {
+        updatedVersionsFromDb = await listVersionsForDiscourse(discourse.id)
+      } catch (listErr) {
+        console.warn('[DiscoursTransformation] versions after freeze', listErr)
+        setLoadWarning('La version est enregistrée, mais l’historique n’a pas pu être rechargé.')
+      }
       // Important : même si la liste renvoyée est vide (RLS), on sait que `newVersion` existe
       // puisqu'on l’a récupérée via `freezeNewVersion()` (insert + returning).
       const mergedVersions = [newVersion, ...updatedVersionsFromDb.filter((v) => v.id !== newVersion.id)]
@@ -507,7 +531,14 @@ export default function DiscoursTransformationPage({
       }
 
       const newVersion = await freezeNewVersion(discourse.id, freezeSourceVersion, targetLabel)
-      const updatedVersionsFromDb = await listVersionsForDiscourse(discourse.id).catch(() => [])
+      setLoadWarning(null)
+      let updatedVersionsFromDb: TransformationDiscourseVersion[] = []
+      try {
+        updatedVersionsFromDb = await listVersionsForDiscourse(discourse.id)
+      } catch (listErr) {
+        console.warn('[DiscoursTransformation] versions after freeze', listErr)
+        setLoadWarning('La version est enregistrée, mais l’historique n’a pas pu être rechargé.')
+      }
       const mergedVersions = [newVersion, ...updatedVersionsFromDb.filter((v) => v.id !== newVersion.id)]
       setVersions(mergedVersions)
       setSelectedExportVersionId(newVersion.id)
@@ -764,6 +795,11 @@ export default function DiscoursTransformationPage({
           {error && (
             <div role="alert" className="discours-error-banner">
               {error}
+            </div>
+          )}
+          {loadWarning && (
+            <div role="status" className="discours-error-banner">
+              {loadWarning}
             </div>
           )}
         </header>

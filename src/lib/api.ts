@@ -10,6 +10,7 @@ export {
   isStorageBucketNotFound,
   uploadImageToStorage,
 } from './api/storage'
+export { validateImageFile } from './api/storageValidation'
 export type { ListOptions } from './api/cache'
 export {
   createWorkspace,
@@ -68,6 +69,8 @@ export {
   getLatestPendingInvitationForEmail,
   getWorkspaceInvitations,
   markInvitationsAcceptedForWorkspaceEmail,
+  readInvitationBootstrap,
+  resolveAcceptedInviteeRole,
 } from './api/invitations'
 export {
   createRoadmapSnapshot,

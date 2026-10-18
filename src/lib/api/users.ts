@@ -2,11 +2,12 @@ import { supabase } from '../supabase'
 import type { User } from '../types'
 import { insertAuditEvent } from './audit'
 import { dedupedFetch, invalidateCache, type ListOptions } from './cache'
+import { payloadForUserInsert, payloadForUserUpdate } from './userPayload'
 
-export async function createUser(data: Partial<User>): Promise<User> {
+export async function createUser(data: Partial<User>, role: User['role']): Promise<User> {
   const { data: user, error } = await supabase
     .from('users')
-    .insert(data)
+    .insert(payloadForUserInsert(data, role))
     .select()
     .single()
   if (error) throw error
@@ -30,13 +31,15 @@ export async function updateUser(
   id: string,
   data: Partial<User>,
   scope?: { workspace_id: string },
+  options?: { allowWorkspaceId?: boolean },
 ): Promise<User> {
+  const patch = payloadForUserUpdate(data, options)
   let priorWorkspaceId: string | null = null
   if (!scope?.workspace_id) {
     const { data: prior } = await supabase.from('users').select('workspace_id').eq('id', id).maybeSingle()
     priorWorkspaceId = (prior as { workspace_id?: string } | null)?.workspace_id ?? null
   }
-  let q = supabase.from('users').update(data).eq('id', id)
+  let q = supabase.from('users').update(patch).eq('id', id)
   if (scope?.workspace_id) {
     q = q.eq('workspace_id', scope.workspace_id)
   }

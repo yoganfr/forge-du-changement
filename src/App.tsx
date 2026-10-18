@@ -4,10 +4,10 @@ import './App.css'
 import type { StoredMemberProfile } from './ProfileSheet'
 import type { OnboardingFlowProps } from './OnboardingFlow'
 import {
-  getAcceptedInvitationAwaitingUserRow,
   getDirectionProjets,
   getRoadmapEligibleProjects,
   getLatestPendingInvitationForEmail,
+  readInvitationBootstrap,
   getWorkspace,
   getWorkspaceConsultantMembership,
   getWorkspaceDirections,
@@ -34,7 +34,8 @@ import {
   writeWorkspaceLogoUrl,
   writeWorkspaceSnapshot,
 } from './lib/workspaceSnapshot'
-import { appRoleFromDbUser, invitationRoleToStoredRole, type AppUserRole } from './lib/appRole'
+import { appRoleFromDbUser, type AppUserRole } from './lib/appRole'
+import { INCOMPLETE_INVITATION_MESSAGE, INVITATION_READ_FAILED_MESSAGE } from './lib/inviteeRole'
 import type { User as AppDbUser } from './lib/types'
 
 /** Rôle issu de `public.users` ou d’une invitation ; pas de lecture depuis localStorage. */
@@ -786,6 +787,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authUser, setAuthUser] = useState<User | null>(null)
   const [loginForcedMessage, setLoginForcedMessage] = useState<string | null>(null)
+  const keepLoginMessageRef = useRef(false)
   const [workspaceId, setWorkspaceId] = useState<string | null>(() => localStorage.getItem('workspaceId'))
   const [workspaceData, setWorkspaceData] = useState<OnboardingData | null>(null)
   const [workspaceName, setWorkspaceName] = useState('')
@@ -1224,21 +1226,16 @@ function App() {
         console.log('[lfdc:wizard] reconcileAuthSession: invitedUser=%s, platformSuper=%s, email=%s', invitedUser ? invitedUser.id : 'null', platformSuper, emailNorm)
       }
       const skipInvFetch = Boolean(invitedUser) || platformSuper
-      const [pendingInv, acceptedInv] = skipInvFetch
-        ? [null, null]
-        : await Promise.all([
-            getLatestPendingInvitationForEmail(emailNorm),
-            getAcceptedInvitationAwaitingUserRow(emailNorm),
-          ])
+      const invitationBootstrap = skipInvFetch ? null : await readInvitationBootstrap(emailNorm)
       if (!skipInvFetch) {
         logAuthBoot(debugEnabled, 'invitation checks', startedAt)
         if (debugEnabled) {
-          console.log('[lfdc:wizard] reconcileAuthSession invitation results: pendingInv=%s, acceptedInv=%s', pendingInv ? pendingInv.id : 'null', acceptedInv ? acceptedInv.id : 'null')
+          console.log('[lfdc:wizard] reconcileAuthSession invitation bootstrap: %s', invitationBootstrap?.kind ?? 'skipped')
         }
       }
-      const invBootstrap = pendingInv ?? acceptedInv
 
       if (platformSuper || invitedUser) {
+        keepLoginMessageRef.current = false
         setLoginForcedMessage(null)
         setPlatformSuperadmin(platformSuper)
         if (platformSuper) {
@@ -1303,24 +1300,52 @@ function App() {
         logAuthBoot(debugEnabled, 'session reconciled (platform/user row)', startedAt)
         return
       }
-      if (invBootstrap?.workspace_id) {
+      if (invitationBootstrap?.kind === 'read_failed') {
+        keepLoginMessageRef.current = true
+        setLoginForcedMessage(INVITATION_READ_FAILED_MESSAGE)
+        setServerAccess(null)
+        setPlatformSuperadmin(false)
+        setMfaEnrollmentRequired(false)
+        setAuthUser(null)
+        void signOut().catch((err: unknown) => {
+          console.warn('[auth] déconnexion après lecture d’invitation échouée', err instanceof Error ? err.message : 'échec')
+        })
+        logAuthBoot(debugEnabled, 'session reconciled (invitation read failed)', startedAt)
+        return
+      }
+      if (invitationBootstrap?.kind === 'incomplete') {
+        keepLoginMessageRef.current = true
+        setLoginForcedMessage(INCOMPLETE_INVITATION_MESSAGE)
+        setServerAccess(null)
+        setPlatformSuperadmin(false)
+        setMfaEnrollmentRequired(false)
+        setAuthUser(null)
+        void signOut().catch((err: unknown) => {
+          console.warn('[auth] déconnexion après invitation incomplète', err instanceof Error ? err.message : 'échec')
+        })
+        logAuthBoot(debugEnabled, 'session reconciled (invitation incomplete)', startedAt)
+        return
+      }
+      if (invitationBootstrap?.kind === 'ready') {
+        keepLoginMessageRef.current = false
         setLoginForcedMessage(null)
         setPlatformSuperadmin(false)
         setAuthUser(user)
-        localStorage.setItem('workspaceId', invBootstrap.workspace_id)
-        setWorkspaceId(invBootstrap.workspace_id)
+        localStorage.setItem('workspaceId', invitationBootstrap.workspaceId)
+        setWorkspaceId(invitationBootstrap.workspaceId)
         localStorage.removeItem('lfdc-user-id')
         setServerAccess({
           source: 'invitation',
-          role: invitationRoleToStoredRole(invBootstrap.role),
-          workspaceId: invBootstrap.workspace_id,
+          role: invitationBootstrap.role,
+          workspaceId: invitationBootstrap.workspaceId,
         })
         logAuthBoot(debugEnabled, 'session reconciled (invitation bootstrap)', startedAt)
         if (debugEnabled) {
-          console.log('[lfdc:wizard] reconcileAuthSession completed: source=invitation, workspace_id=%s, role=%s', invBootstrap.workspace_id, invBootstrap.role)
+          console.log('[lfdc:wizard] reconcileAuthSession completed: source=invitation, workspace_id=%s, role=%s', invitationBootstrap.workspaceId, invitationBootstrap.role)
         }
         return
       }
+      keepLoginMessageRef.current = true
       setLoginForcedMessage(ACCESS_DENIED_LOGIN_MESSAGE)
       setServerAccess(null)
       if (debugEnabled) {
@@ -1350,7 +1375,7 @@ function App() {
       const sessionUser = session?.user ?? null
       if (!sessionUser) {
         setAuthUser(null)
-        setLoginForcedMessage(null)
+        if (!keepLoginMessageRef.current) setLoginForcedMessage(null)
         setPlatformSuperadmin(false)
         setServerAccess(null)
         clearStoredWorkspaceSelection()
@@ -1383,7 +1408,7 @@ function App() {
         const sessionUser = session?.user ?? null
         if (!sessionUser) {
           setAuthUser(null)
-          setLoginForcedMessage(null)
+          if (!keepLoginMessageRef.current) setLoginForcedMessage(null)
           setPlatformSuperadmin(false)
           setServerAccess(null)
           clearStoredWorkspaceSelection()
@@ -1629,21 +1654,18 @@ function App() {
   if (wizardDebugEnabled) {
     console.log('[lfdc:wizard] gate check: needsInviteeSetupGate=%s, inviteWizardWorkspaceId=%s, serverAccess.source=%s', gateResult, inviteWizardWorkspaceId, serverAccess?.source)
   }
-  if (gateResult && inviteWizardWorkspaceId) {
+  if (
+    gateResult
+    && inviteWizardWorkspaceId
+    && serverAccess
+    && (serverAccess.source === 'invitation' || serverAccess.source === 'users')
+  ) {
     if (wizardDebugEnabled) {
       console.log('[lfdc:wizard] WIZARD MOUNTED: workspace_id=%s, serverAccess.source=%s', inviteWizardWorkspaceId, serverAccess?.source)
     }
-    let wizardMode: 'invitation' | 'incomplete_profile' = 'invitation'
-    let wizardDbRole: AppDbUser['role'] = 'codir'
-    let wizardExistingId: string | null = null
-    if (serverAccess?.source === 'invitation') {
-      wizardMode = 'invitation'
-      wizardDbRole = serverAccess.role as AppDbUser['role']
-    } else if (serverAccess?.source === 'users') {
-      wizardMode = 'incomplete_profile'
-      wizardDbRole = serverAccess.dbUser.role
-      wizardExistingId = serverAccess.dbUser.id
-    }
+    const wizardMode = serverAccess.source === 'invitation' ? 'invitation' : 'incomplete_profile'
+    const wizardDbRole = serverAccess.source === 'invitation' ? serverAccess.role : serverAccess.dbUser.role
+    const wizardExistingId = serverAccess.source === 'users' ? serverAccess.dbUser.id : null
 
     return (
       <Suspense fallback={APP_SHELL_FALLBACK}>

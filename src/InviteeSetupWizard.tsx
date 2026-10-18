@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import {
   createUser,
-  getAcceptedInvitationAwaitingUserRow,
   getWorkspaceDirections,
   markInvitationsAcceptedForWorkspaceEmail,
+  resolveAcceptedInviteeRole,
   updateUser,
 } from './lib/api'
 import type { Direction, User } from './lib/types'
 import { formatClientErrorMessage } from './lib/formatClientErrorMessage'
 import type { ProfileDirectionType } from './lib/profileDirectionResolve'
 import { resolveOrCreateMemberDirection } from './lib/profileDirectionResolve'
+import { INVITATION_STATUS_CHANGED_MESSAGE } from './lib/inviteeRole'
 import { supabase } from './lib/supabase'
 
 export type InviteeSetupWizardProps = {
@@ -82,11 +83,11 @@ export default function InviteeSetupWizard({
         const em = session?.user?.email?.trim().toLowerCase() ?? ''
         let invDir: string | null = null
         if (em) {
-          try {
-            const inv = await getAcceptedInvitationAwaitingUserRow(em)
-            invDir = inv?.direction_id ?? null
-          } catch {
-            /* RLS */
+          const inv = await resolveAcceptedInviteeRole(em, workspaceId)
+          if (inv.kind === 'ready') {
+            invDir = inv.directionId
+          } else {
+            setDirectionSyncError(inv.message)
           }
         }
         if (cancelled) return
@@ -135,16 +136,6 @@ export default function InviteeSetupWizard({
     if (!authEmail) throw new Error('Session sans email.')
     if (!authUserId) throw new Error('Session sans identifiant utilisateur.')
 
-    let invitationDirId: string | null = null
-    let inheritedTrigram: string | null = null
-    try {
-      const accepted = await getAcceptedInvitationAwaitingUserRow(authEmail)
-      invitationDirId = accepted?.direction_id ?? null
-      inheritedTrigram = accepted?.trigram?.trim().toUpperCase() || null
-    } catch {
-      /* idem ProfileSheet */
-    }
-
     if (mode === 'incomplete_profile' && existingUserId) {
       await updateUser(
         existingUserId,
@@ -158,6 +149,20 @@ export default function InviteeSetupWizard({
       )
       return
     }
+
+    const invitationRole = await resolveAcceptedInviteeRole(authEmail, workspaceId)
+    if (invitationRole.kind !== 'ready') {
+      throw new Error(invitationRole.message)
+    }
+    if (invitationRole.role !== dbRole) {
+      console.warn('[invitation]', 'status_changed', {
+        invitationId: invitationRole.invitationId,
+        workspaceId,
+      })
+      throw new Error(INVITATION_STATUS_CHANGED_MESSAGE)
+    }
+    const invitationDirId = invitationRole.directionId
+    const inheritedTrigram = invitationRole.trigram
 
     let resolvedDirectionId: string | null = null
     let resolvedDirectionNom: string | null = null
@@ -217,7 +222,6 @@ export default function InviteeSetupWizard({
       nom,
       job_title: job || null,
       avatar_url: null,
-      role: dbRole,
       direction_type: resolvedDirectionType,
       direction_nom: resolvedDirectionNom,
       direction_id: resolvedDirectionId,
@@ -225,11 +229,11 @@ export default function InviteeSetupWizard({
       total_effectif: 0,
       trigram: inheritedTrigram,
       status: 'actif',
-    })
+    }, invitationRole.role)
     try {
       await markInvitationsAcceptedForWorkspaceEmail(workspaceId, authEmail)
-    } catch {
-      /* idempotent */
+    } catch (markErr) {
+      console.warn('[invitation]', 'marquage acceptée', markErr instanceof Error ? markErr.message : 'échec')
     }
     localStorage.setItem('lfdc-user-id', created.id)
   }

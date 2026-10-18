@@ -6,6 +6,7 @@ import {
   getLatestAcceptedInvitationForEmail,
   updateUser,
 } from './api'
+import { formatClientErrorMessage } from './formatClientErrorMessage'
 import type { User } from './types'
 import { clearWorkspaceSnapshot } from './workspaceSnapshot'
 
@@ -29,6 +30,10 @@ export async function alignUserWorkspaceToLatestAcceptedInvitation(
   emailNormalized: string,
 ): Promise<User> {
   if (row.role === 'consultant') return row
+  // La RLS n’accepte un changement de workspace_id que pour un admin ou un superadmin.
+  // Les autres rôles restaient déjà sur leur ligne : on n’envoie plus une écriture vouée à l’échec.
+  const canMoveWorkspace = row.role === 'admin' || row.is_platform_superadmin === true
+  if (!canMoveWorkspace) return row
   try {
     const latest = await getLatestAcceptedInvitationForEmail(emailNormalized)
     if (!latest?.workspace_id || latest.workspace_id === row.workspace_id) {
@@ -38,8 +43,11 @@ export async function alignUserWorkspaceToLatestAcceptedInvitation(
       row.id,
       { workspace_id: latest.workspace_id },
       { workspace_id: row.workspace_id },
+      { allowWorkspaceId: true },
     )
-  } catch {
+  } catch (err) {
+    // Le login ne doit pas échouer si le realignement est refusé : on garde la ligne actuelle.
+    console.warn('[session-workspace]', formatClientErrorMessage(err))
     return row
   }
 }

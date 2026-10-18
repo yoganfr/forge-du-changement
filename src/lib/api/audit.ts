@@ -1,14 +1,9 @@
 import { supabase } from '../supabase'
 import type { AuditEvent } from '../types'
+import { resolveSessionAppUserId } from './sessionUser'
 
 async function resolveAuditActorUserId(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  const email = session?.user?.email?.trim().toLowerCase()
-  if (!email) return null
-  const { data } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
-  return data?.id ?? null
+  return resolveSessionAppUserId()
 }
 
 export async function insertAuditEvent(params: {
@@ -23,7 +18,7 @@ export async function insertAuditEvent(params: {
     action: params.action,
     payload: params.payload ?? null,
   })
-  if (error && import.meta.env.DEV) {
+  if (error) {
     console.warn('[audit_events]', params.action, error.message)
   }
 }

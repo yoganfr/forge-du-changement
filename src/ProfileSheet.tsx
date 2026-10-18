@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   createUser,
-  getAcceptedInvitationAwaitingUserRow,
   getWorkspaceUsers,
   isStorageBucketNotFound,
   markInvitationsAcceptedForWorkspaceEmail,
+  resolveAcceptedInviteeRole,
   updateUser,
   uploadImageToStorage,
+  validateImageFile,
 } from './lib/api'
 import { supabase } from './lib/supabase'
 import type { User } from './lib/types'
@@ -426,8 +427,49 @@ export default function ProfileSheet({
 
   async function persistAll() {
     setSaveError(null)
-    let avatarUrlToPersist = avatarUrl
+    const storedAvatar = loadStored(storageEmail).avatar ?? null
+    const httpAvatar = (value: string | null | undefined) =>
+      value && !value.startsWith('data:') ? value : null
+
+    const roleDb: User['role'] = role.toLowerCase().includes('consultant')
+      ? 'consultant'
+      : role.toLowerCase().includes('admin')
+        ? 'admin'
+        : role.toLowerCase().includes('pilote')
+          ? 'pilote'
+          : role.toLowerCase().includes('contributeur')
+            ? 'contributeur'
+            : 'codir'
+
+    const trigramCleaned = trigram.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3)
+    const trigramToPersist: string | null = trigramCleaned.length === 3 ? trigramCleaned : null
+
+    let resolvedDirectionId: string | null = null
+    if (workspaceId && directionName.trim()) {
+      try {
+        resolvedDirectionId = await resolveOrCreateMemberDirection(
+          workspaceId,
+          directionName,
+          directionType,
+          { directionOwnerDbUserId: currentUserId },
+        )
+      } catch (err) {
+        const detail = formatClientErrorMessage(err)
+        setSaveError(
+          `La direction n’a pas pu être créée ou liée en base (${detail}). Sans cela, « Projets transformants » ne peut pas résoudre votre périmètre. Vérifiez vos droits ou demandez à un consultant / administrateur d’initialiser les directions.`,
+        )
+        return
+      }
+    }
+
+    let avatarUrlToPersist = httpAvatar(avatarUrl) ?? httpAvatar(storedAvatar)
+    let avatarWarning: string | null = null
     if (workspaceId && avatarFile) {
+      const invalidImage = validateImageFile(avatarFile)
+      if (invalidImage) {
+        setSaveError(invalidImage)
+        return
+      }
       try {
         avatarUrlToPersist = await uploadImageToStorage({
           file: avatarFile,
@@ -435,12 +477,10 @@ export default function ProfileSheet({
           filenamePrefix: `${firstName || 'user'}-${lastName || ''}`.trim() || 'user',
         })
       } catch (uploadError) {
-        if (isStorageBucketNotFound(uploadError)) {
-          // Storage bucket missing: keep current avatar value and continue saving profile fields.
-          avatarUrlToPersist = avatarUrl
-        } else {
-          avatarUrlToPersist = avatarUrl
-        }
+        avatarUrlToPersist = httpAvatar(storedAvatar)
+        avatarWarning = isStorageBucketNotFound(uploadError)
+          ? 'Bucket Storage introuvable (assets). L’avatar n’a pas été envoyé. Les autres champs seront enregistrés.'
+          : `L’avatar n’a pas pu être envoyé (${formatClientErrorMessage(uploadError)}). Les autres champs seront enregistrés.`
       }
     }
 
@@ -460,39 +500,8 @@ export default function ProfileSheet({
       avatar: avatarUrlToPersist,
       ...(emailNorm ? { savedForEmail: emailNorm } : {}),
     }
-    saveStored(payload, storageEmail)
+
     try {
-      const roleDb: User['role'] = role.toLowerCase().includes('consultant')
-        ? 'consultant'
-        : role.toLowerCase().includes('admin')
-          ? 'admin'
-          : role.toLowerCase().includes('pilote')
-            ? 'pilote'
-            : role.toLowerCase().includes('contributeur')
-              ? 'contributeur'
-              : 'codir'
-
-      const trigramCleaned = trigram.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3)
-      const trigramToPersist: string | null = trigramCleaned.length === 3 ? trigramCleaned : null
-
-      let resolvedDirectionId: string | null = null
-      if (workspaceId && directionName.trim()) {
-        try {
-          resolvedDirectionId = await resolveOrCreateMemberDirection(
-            workspaceId,
-            directionName,
-            directionType,
-            { directionOwnerDbUserId: currentUserId },
-          )
-        } catch (err) {
-          const detail = formatClientErrorMessage(err)
-          setSaveError(
-            `La direction n’a pas pu être créée ou liée en base (${detail}). Sans cela, « Projets transformants » ne peut pas résoudre votre périmètre. Vérifiez vos droits ou demandez à un consultant / administrateur d’initialiser les directions.`,
-          )
-          return
-        }
-      }
-
       if (currentUserId) {
         const userPatch: Partial<User> = {
           prenom: firstName || null,
@@ -523,15 +532,19 @@ export default function ProfileSheet({
         if (!authUserId) {
           throw new Error('Session sans identifiant utilisateur')
         }
-        // REF-7b.0 : recuperer l'invitation acceptee pour heriter de direction_id et trigram derive a l'invitation.
         let inheritedDirectionId: string | null = null
         let inheritedTrigram: string | null = null
-        try {
-          const accepted = await getAcceptedInvitationAwaitingUserRow(authEmail)
-          inheritedDirectionId = accepted?.direction_id ?? null
-          inheritedTrigram = accepted?.trigram?.trim().toUpperCase() || null
-        } catch {
-          /* invitation absente ou RLS : on cree sans heritage */
+        let roleForInsert: User['role']
+        const resolved = await resolveAcceptedInviteeRole(authEmail, workspaceId)
+        if (resolved.kind === 'absent') {
+          roleForInsert = roleDb
+        } else if (resolved.kind === 'ready') {
+          roleForInsert = resolved.role
+          inheritedDirectionId = resolved.directionId
+          inheritedTrigram = resolved.trigram
+        } else {
+          setSaveError(resolved.message)
+          return
         }
         const created = await createUser({
           id: authUserId,
@@ -541,7 +554,6 @@ export default function ProfileSheet({
           nom: lastName || null,
           job_title: jobTitle || null,
           avatar_url: avatarUrlToPersist,
-          role: roleDb,
           direction_type: directionType === 'metier' ? 'Métier' : directionType === 'geographique' ? 'Géographique' : 'Fonctionnel',
           direction_nom: directionName || null,
           direction_id: resolvedDirectionId ?? inheritedDirectionId,
@@ -549,19 +561,26 @@ export default function ProfileSheet({
           total_effectif: totalEffectif,
           trigram: trigramToPersist ?? inheritedTrigram,
           status: 'actif',
-        })
+        }, roleForInsert)
         try {
           await markInvitationsAcceptedForWorkspaceEmail(workspaceId, authEmail)
-        } catch {
-          /* idempotent si déjà acceptée */
+        } catch (markErr) {
+          console.warn('[profile]', formatClientErrorMessage(markErr))
         }
         setCurrentUserId(created.id)
         localStorage.setItem('lfdc-user-id', created.id)
       }
-    } catch {
-      // Keep UX resilient even if backend update fails
+    } catch (err) {
+      setSaveError(formatClientErrorMessage(err))
+      return
     }
+
+    saveStored(payload, storageEmail)
     onSaved?.(payload)
+    if (avatarWarning) {
+      setSaveError(avatarWarning)
+      return
+    }
     setDirty(false)
     onClose()
   }

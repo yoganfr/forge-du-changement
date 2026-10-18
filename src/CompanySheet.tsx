@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { sendInvitationMagicLink } from './lib/auth'
+import { formatClientErrorMessage } from './lib/formatClientErrorMessage'
 import {
   createInvitation,
   getWorkspaceDirections,
@@ -398,6 +399,8 @@ export default function CompanySheet({
   const [remoteMembers, setRemoteMembers] = useState<CompanyMember[] | null>(null)
   const [remoteUsers, setRemoteUsers] = useState<User[]>([])
   const [remoteMembersLoading, setRemoteMembersLoading] = useState(false)
+  const [membersLoadError, setMembersLoadError] = useState<string | null>(null)
+  const [directionsLoadError, setDirectionsLoadError] = useState<string | null>(null)
   const [membersRefreshKey, setMembersRefreshKey] = useState(0)
   const [dirigeantSaving, setDirigeantSaving] = useState(false)
   const [dirigeantError, setDirigeantError] = useState<string | null>(null)
@@ -597,6 +600,7 @@ export default function CompanySheet({
     }
     void (async () => {
       setRemoteMembersLoading(true)
+      setMembersLoadError(null)
       try {
         const [users, invitations] = await Promise.all([
           fetchAllUsers(workspaceId),
@@ -611,10 +615,12 @@ export default function CompanySheet({
           }, {}),
         )
         setRemoteMembers(mergeUsersAndInvitations(users, invitations))
-      } catch {
+        setMembersLoadError(null)
+      } catch (err) {
         if (cancelled) return
         setRemoteUsers([])
         setRemoteMembers(null)
+        setMembersLoadError(formatClientErrorMessage(err))
       } finally {
         if (!cancelled) setRemoteMembersLoading(false)
       }
@@ -628,11 +634,18 @@ export default function CompanySheet({
     if (!workspaceId) return
     let cancelled = false
     void (async () => {
+      setDirectionsLoadError(null)
       try {
         const directions = await getWorkspaceDirections(workspaceId)
-        if (!cancelled) setWorkspaceDirections(directions)
-      } catch {
-        if (!cancelled) setWorkspaceDirections([])
+        if (!cancelled) {
+          setWorkspaceDirections(directions)
+          setDirectionsLoadError(null)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setWorkspaceDirections([])
+          setDirectionsLoadError(formatClientErrorMessage(err))
+        }
       }
     })()
     return () => {
@@ -1212,8 +1225,17 @@ export default function CompanySheet({
 
         <div className="cs-section">
           <h3>Membres de l&apos;espace</h3>
+          {membersLoadError && (
+            <p className="cs-invite-msg cs-invite-msg--error" role="alert">
+              Impossible de charger les membres ({membersLoadError}).
+            </p>
+          )}
           {mergedMembers.length === 0 ? (
-            <p className="cs-members-empty">Aucun membre invité pour le moment</p>
+            <p className="cs-members-empty">
+              {membersLoadError
+                ? 'La liste des membres n’a pas pu être affichée.'
+                : 'Aucun membre invité pour le moment'}
+            </p>
           ) : (
             <>
               <div className="cs-members-meta">
@@ -1386,6 +1408,11 @@ export default function CompanySheet({
                       </option>
                     ))}
                   </select>
+                  {directionsLoadError && (
+                    <p className="cs-invite-msg cs-invite-msg--error" role="alert">
+                      Impossible de charger les directions ({directionsLoadError}).
+                    </p>
+                  )}
                 </label>
               )}
               <button

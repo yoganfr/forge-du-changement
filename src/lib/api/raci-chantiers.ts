@@ -2,6 +2,7 @@ import { supabase } from '../supabase'
 import type { RaciChantier, RaciChantierEntiteType } from '../types'
 import { dedupedFetch, invalidateCache } from './cache'
 import { insertAuditEvent } from './audit'
+import { resolveSessionAppUserId } from './sessionUser'
 
 /**
  * REF-7b.1 — matrice PCI (Pilote / Contributeur / Informé) par chantier.
@@ -37,13 +38,7 @@ function invalidateRaciChantierCaches(params: { chantier_id?: string; projet_id?
 }
 
 async function resolveCreatedByUserId(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  const email = session?.user?.email?.trim().toLowerCase()
-  if (!email) return null
-  const { data } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
-  return (data as { id?: string } | null)?.id ?? null
+  return resolveSessionAppUserId()
 }
 
 /** Liste des parties prenantes d'un chantier, triées par `ordre_affichage` puis `created_at`. */

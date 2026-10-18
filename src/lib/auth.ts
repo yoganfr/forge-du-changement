@@ -1,6 +1,5 @@
 import {
-  getAcceptedInvitationAwaitingUserRow,
-  getLatestPendingInvitationForEmail,
+  readInvitationBootstrap,
 } from './api'
 import { insertAuditEvent } from './api/audit'
 import { supabase } from './supabase'
@@ -347,8 +346,9 @@ export async function userCanAccessApp(userEmail: string | undefined | null): Pr
   if (await isPlatformSuperadmin()) return true
   const appUser = await getCurrentUser()
   if (appUser) return true
-  const pending = await getLatestPendingInvitationForEmail(e)
-  if (pending?.status === 'en_attente') return true
-  const accepted = await getAcceptedInvitationAwaitingUserRow(e)
-  return accepted !== null
+  const bootstrap = await readInvitationBootstrap(e)
+  if (bootstrap.kind === 'read_failed' || bootstrap.kind === 'incomplete' || bootstrap.kind === 'ready') {
+    return true
+  }
+  return false
 }

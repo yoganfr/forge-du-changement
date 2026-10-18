@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { resolveSessionAppUserId } from './sessionUser'
 
 async function resolveCurrentAppUser(): Promise<{ id: string | null; email: string | null }> {
   const {
@@ -6,8 +7,8 @@ async function resolveCurrentAppUser(): Promise<{ id: string | null; email: stri
   } = await supabase.auth.getSession()
   const email = session?.user?.email?.trim().toLowerCase() ?? null
   if (!email) return { id: null, email: null }
-  const { data } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
-  return { id: data?.id ?? null, email }
+  const id = await resolveSessionAppUserId()
+  return { id, email }
 }
 
 export type RoadmapSnapshotStatus = 'draft' | 'in_review' | 'closed'
@@ -109,7 +110,19 @@ export async function createRoadmapSnapshot(params: {
           payload: item.payload,
         })),
       )
-    if (itemsError) throw itemsError
+    if (itemsError) {
+      const { error: deleteError } = await supabase
+        .from('roadmap_snapshots')
+        .delete()
+        .eq('id', snapshot.id)
+      const itemMessage = itemsError.message?.trim() || 'contenu du figement refusé'
+      if (deleteError) {
+        throw new Error(
+          `Le figement a échoué (${itemMessage}). La version vide n’a pas pu être retirée (${deleteError.message?.trim() || 'suppression refusée'}).`,
+        )
+      }
+      throw new Error(itemMessage)
+    }
   }
 
   return snapshot as RoadmapSnapshot
