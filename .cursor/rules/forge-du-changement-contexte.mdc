@@ -34,7 +34,7 @@ A **chaque demande utilisateur**, lire les docs socles avant toute action (ordre
 
 ## 3. Lecture conditionnelle selon le type de demande
 
-- **Refactor / restructuration technique** : [docs/refactor_rules.md](docs/refactor_rules.md). Regle d'or : pas de refactor sans probleme concret (bug, perf mesurable, duplication claire, complexite bloquante). Supprimer > simplifier > ajouter.
+- **Refactor / restructuration technique** : [docs/refactor_rules.md](docs/refactor_rules.md). Regle d'or : pas de refactor sans probleme concret deja present (bug reproductible, lenteur deja mesuree, meme regle metier ecrite a deux endroits). Supprimer > simplifier > ajouter.
 - **Evolution produit, priorisation, sprint, feature, roadmap** : [docs/backlog.md](docs/backlog.md). Contient EPICs 1-15, convention REF-*/GH-*, trajectoire Maintenant/Apres/Plus tard.
 - **Roles, permissions, droits d'acces, matrice** : [docs/proposition-regles-matrice-permissions.md](docs/proposition-regles-matrice-permissions.md). Regle : jamais deduire un droit, toujours confirmer via la matrice et l'audit `audit_events`.
 - **UI, CSS, theme, design system, coherence visuelle** : [docs/visual-coherence-theme-rules.md](docs/visual-coherence-theme-rules.md). Source de verite tokens = [src/themes.css](src/themes.css) + [src/design-system.css](src/design-system.css) + [web/app/globals.css](web/app/globals.css).
