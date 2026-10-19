@@ -16,6 +16,7 @@ import {
   getWorkspaceUsers,
   getWorkspaceDirections,
   getProjetsForWorkspace,
+  insertAuditEvent,
   listSnapshotFeedbacks,
   listSnapshotReviewers,
   closeSnapshotReview,
@@ -32,11 +33,12 @@ import {
   updateJalon,
 } from './lib/api'
 import { directionDisplayNamesMatch } from './lib/directionLabels'
-import { getCurrentUser } from './lib/auth'
+import { getCurrentUser, sendReviewAccessEmail } from './lib/auth'
 import CreateDirectionDialog from './CreateDirectionDialog'
 import ReviewDeadlineDialog, { formatDeadlinePreview } from './ReviewDeadlineDialog'
 import OpenReviewDialog from './OpenReviewDialog'
 import { buildReviewAudience, type ReviewAudience } from './lib/openReviewAudience'
+import { formatReviewOpenResult, reviewEmailFailureReason } from './lib/reviewOpenNotice'
 import FreezeRoadmapDialog from './FreezeRoadmapDialog'
 import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
@@ -722,10 +724,44 @@ export default function MaturityRoadmap({
       } catch {
         copied = false
       }
+      const sent: string[] = []
+      const failed: { name: string; reason: string }[] = []
+      for (const reviewerId of reviewerIds) {
+        const member = workspaceUsers.find((user) => user.id === reviewerId)
+        const name =
+          [member?.prenom, member?.nom].filter(Boolean).join(' ').trim() ||
+          member?.email?.trim() ||
+          'Une personne'
+        const email = member?.email?.trim()
+        if (!email) {
+          failed.push({ name, reason: 'e-mail manquant' })
+          continue
+        }
+        try {
+          await sendReviewAccessEmail(email, snapshotId)
+          sent.push(name)
+        } catch (error) {
+          failed.push({ name, reason: reviewEmailFailureReason(error) })
+        }
+      }
+      const traced = await insertAuditEvent({
+        workspace_id: workspaceId,
+        action: 'snapshot_review_opened',
+        payload: {
+          snapshot_id: snapshotId,
+          reviewer_ids: reviewerIds,
+          deadline: reviewDeadline,
+        },
+      })
       setSnapshotFeedback(
-        copied
-          ? `Revue ouverte sur ${openedLabel}. Lien copié. Transmettez-le aux personnes cochées : aucun email n’est envoyé.`
-          : `Revue ouverte sur ${openedLabel}. Le lien n’a pas pu être copié : ${reviewerUrl}. Aucun email n’est envoyé.`,
+        formatReviewOpenResult({
+          label: openedLabel,
+          copied,
+          link: reviewerUrl,
+          sent,
+          failed,
+          traced,
+        }),
       )
       const idsToFetch = new Set(list.slice(0, 5).map((s) => s.id))
       const openedInReview = list.find((x) => x.status === 'in_review')

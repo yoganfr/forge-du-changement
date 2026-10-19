@@ -69,6 +69,20 @@ export async function sendInvitationMagicLink(inviteeEmail: string) {
   if (error) throw error
 }
 
+/** E-mail de connexion existant, vers la revue. Ne crée pas de compte. */
+export async function sendReviewAccessEmail(email: string, snapshotId: string): Promise<void> {
+  const next = `/review/${snapshotId}`
+  assertOtpCooldown(email)
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email.trim().toLowerCase(),
+    options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      shouldCreateUser: false,
+    },
+  })
+  if (error) throw error
+}
+
 // Déconnexion
 export async function signOut() {
   const { error } = await supabase.auth.signOut()

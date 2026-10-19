@@ -69,15 +69,33 @@ Validations métier :
 
 Maintenant :
 
-1. Choisir entre la fin des indicateurs sur la grille (**REF-7b.5ter**) et le masquage de la navigation des reviewers (**REF-7b.4**).
+1. Choisir entre les indicateurs sur la grille (**REF-7b.5ter**) et le masquage de la navigation des reviewers (**REF-7b.4**).
 
 Après :
 
-2. Magic link et audit d’ouverture (**REF-7b.3** restant).
-3. Rejouer l’ouverture avec un membre du CODIR dont la fiche a une direction.
+2. Rejouer l’ouverture avec un membre du CODIR dont la fiche a une direction.
 
 ## 8) Références
 
 - Backlog : `docs/backlog.md`
 - Point d’entrée revue : `docs/README_ref7b-reviewerpage.md`
-- Commit(s) : le commit `feat(roadmap)` de cette session sur `main`
+- Commit fenêtre : `5b939e6`
+- Commit e-mail de connexion : le commit `feat(roadmap)` de clôture de **REF-7b.3** sur `main`
+## 9) Suite du 19 octobre 2026, 13 h 53 — e-mail de connexion
+
+Décision : ne pas construire un e-mail sur mesure. Le nom de la version et la date limite restent sur la page de revue.
+
+Fait :
+
+- Chaque personne cochée reçoit l’e-mail de connexion déjà utilisé. Le lien ramène vers sa revue après connexion.
+- Le message à l’écran dit qui a reçu l’e-mail, qui ne l’a pas reçu, et si la trace `snapshot_review_opened` est enregistrée.
+- Si l’envoi échoue, la revue reste ouverte et le lien copié reste disponible.
+
+Recette :
+
+- Message d’envoi et de trace confirmé.
+- E-mail reçu. Ouvert sur le même ordinateur, il arrive sur la revue.
+
+**REF-7b.3** est clos pour ce périmètre.
+
+Dernière mise à jour : **19 octobre 2026**, 13 h 53 (Europe/Paris)

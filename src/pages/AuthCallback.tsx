@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { userCanAccessApp, signOut } from '../lib/auth'
 import { consumeAuthRedirectUrl } from '../lib/authRedirect'
+import { reviewPathFromAuthNext } from '../lib/reviewOpenNotice'
 import { supabase } from '../lib/supabase'
 
 const STALL_MS = 45_000
@@ -22,7 +23,8 @@ export default function AuthCallback() {
         window.location.replace('/')
         return
       }
-      window.location.replace('/')
+      const next = reviewPathFromAuthNext(new URLSearchParams(window.location.search).get('next'))
+      window.location.replace(next ?? '/')
     }
 
     function tryContinueWithSession(session: { user?: { email?: string | null } } | null) {

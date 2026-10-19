@@ -148,8 +148,8 @@ export default function OpenReviewDialog({
         ) : null}
 
         <p className="mr-modal__meta">
-          Aucun email n’est envoyé. Après la date limite, le lien sera copié pour que vous le
-          transmettiez.
+          Un e-mail de connexion sera envoyé aux personnes cochées. Il ouvre leur revue. Le lien
+          sera aussi copié, au cas où un envoi échoue.
         </p>
 
         <div className="mr-modal__actions">

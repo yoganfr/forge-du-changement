@@ -10,7 +10,7 @@ export async function insertAuditEvent(params: {
   workspace_id: string | null
   action: string
   payload?: Record<string, unknown>
-}): Promise<void> {
+}): Promise<boolean> {
   const actor_user_id = await resolveAuditActorUserId()
   const { error } = await supabase.from('audit_events').insert({
     workspace_id: params.workspace_id,
@@ -20,7 +20,9 @@ export async function insertAuditEvent(params: {
   })
   if (error) {
     console.warn('[audit_events]', params.action, error.message)
+    return false
   }
+  return true
 }
 
 export async function listWorkspaceAuditEvents(
