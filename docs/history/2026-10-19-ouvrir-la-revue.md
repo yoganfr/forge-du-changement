@@ -80,7 +80,8 @@ Après :
 - Backlog : `docs/backlog.md`
 - Point d’entrée revue : `docs/README_ref7b-reviewerpage.md`
 - Commit fenêtre : `5b939e6`
-- Commit e-mail de connexion : le commit `feat(roadmap)` de clôture de **REF-7b.3** sur `main`
+- Commit e-mail de connexion : `4049ac8`
+
 ## 9) Suite du 19 octobre 2026, 13 h 53 — e-mail de connexion
 
 Décision : ne pas construire un e-mail sur mesure. Le nom de la version et la date limite restent sur la page de revue.
@@ -98,4 +99,4 @@ Recette :
 
 **REF-7b.3** est clos pour ce périmètre.
 
-Dernière mise à jour : **19 octobre 2026**, 13 h 53 (Europe/Paris)
+Dernière mise à jour : **19 octobre 2026**, 13 h 56 (Europe/Paris)

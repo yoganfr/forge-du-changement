@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **19 octobre 2026**, 13 h 53 (Europe/Paris)
+Dernière mise à jour : **19 octobre 2026**, 13 h 56 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -726,7 +726,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 - **REF-7b.3** passe à ✅. À l’ouverture, chaque personne cochée reçoit l’e-mail de connexion déjà utilisé. Le lien ouvre sa revue. Le nom de la version et la date limite restent sur la page, pas dans l’e-mail : l’e-mail sur mesure a été jugé trop lourd.
 - Si un envoi échoue, la revue reste ouverte et le lien copié reste disponible. Le message dit qui a reçu l’e-mail.
 - Trace `snapshot_review_opened` : version, personnes, date limite.
-- Recette : message d’envoi et de trace confirmé ; e-mail reçu ; le lien ouvre la revue sur le même ordinateur.
+- Recette : message d’envoi et de trace confirmé ; e-mail reçu ; le lien ouvre la revue sur le même ordinateur. Commit `4049ac8`.
 
 #### À suivre
 - **REF-7b.4** : masquer la navigation principale pour les contributeurs en revue.
