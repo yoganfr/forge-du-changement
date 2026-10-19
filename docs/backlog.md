@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **18 octobre 2026**, 16 h 58 (Europe/Paris)
+Dernière mise à jour : **19 octobre 2026**, 13 h 28 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -138,7 +138,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 7b.1d | Polish UX final du module PCI (remplacement `alert`/`confirm`, feedbacks homogènes, confirmations destructives cohérentes) | 🟡 | ⬜ |
 | 7b.1e | Durcissement technique / performance PCI (bulk updates batch, robustesse gros volumes, recette accessibilité clavier) | 🟡 | ⬜ |
 | 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS + audit triggers) — **spec** [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) + **plan** [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) + **DDL** [`docs/supabase-roadmap-review-cycle.sql`](supabase-roadmap-review-cycle.sql) — Complété 11/06/2026 : colonne `reaction_acknowledged_at`, policies INSERT/SELECT/UPDATE/DELETE renforcées, 3 triggers audit (`reviewer_submitted`, `snapshot_review_reopened`, `feedback_arbitrated`) | 🔴 | ✅ |
-| 7b.3 | Modal "Ouvrir la revue" côté CODIR (multi-sélect reviewers + deadline + magic link + transition draft→in_review + audit). Constat 18/10/2026 : `openSnapshotReview` passe le snapshot en `in_review`, `ReviewDeadlineDialog` pose la deadline, la sélection passe par un `window.prompt` d’emails de membres déjà présents, le lien `/review/:id` est copié. Absents : modal multi-sélect, magic link, audit `snapshot_review_opened` | 🔴 | 🚧 |
+| 7b.3 | Fenêtre « Ouvrir la revue » côté CODIR. Livré le 19/10/2026 : choix des contributeurs actifs (d’abord ceux de la direction du membre du CODIR ; autres directions seulement si la version figée contient un projet transverse), avertissement pour figer la bonne version, date limite déjà en place, lien copié, aucun email. Recette sur compte sans direction. Restent : magic link, audit `snapshot_review_opened`, et la liste « ma direction » vue par un membre du CODIR qui a une direction | 🔴 | 🚧 |
 | 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers). Constat 18/10/2026 : route `/review/:snapshotId` et query super-admin `?reviewer=` livrées (`App.tsx`). Le masquage de la nav principale est absent | 🟠 | 🚧 |
 | 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + modal "Soumettre ma review") — **architecture UX** [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) + **plan** [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md). Cœur V1 livré. Restent : PCI figé (`raci_chantier`), drawer plein écran sous 768 px, autosave | 🔴 | 🚧 |
 | 7b.5bis | Polish ReviewerPage : alignement frontend sur policies RLS (édition granulaire feedbacks, indicateurs visuels CODIR, suppression draft, bandeau réouverture, empty state pédagogique, sidebar sticky, labels axes) — **plan Cursor** `ref-7b.5_polish_frontend_b28a3469.plan.md`. Recetté le 15/06/2026 | 🟠 | ✅ |
@@ -678,7 +678,7 @@ Ce bloc est la référence produit pour la navbar applicative `/src` (workspace 
 
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
-- **Maintenant** : fermer les trous du cycle de revue (EPIC 3 · **REF-7b.3**, **REF-7b.4**, **REF-7b.5**) et traiter le retour de recette **REF-7b.5ter** (indicateurs sur la grille). Le prochain lot n’est pas encore choisi : voir le constat du 18 octobre 2026. **REF-7b.6** reste le panneau flottant. En parallèle de trajectoire : gap décideur transverse (EPIC 2 · REF-3) et lots Discours **REF-93 → REF-95**. **REF-7b.1bis** (PCI jalon) reste ouvert, hors du fil revue.
+- **Maintenant** : fermer les trous restants du cycle de revue. La fenêtre de choix des contributeurs de **REF-7b.3** est livrée (19/10/2026) ; il reste le magic link et l’audit d’ouverture. Ensuite **REF-7b.4**, **REF-7b.5** et le retour de recette **REF-7b.5ter**. **REF-7b.6** reste le panneau flottant. En parallèle de trajectoire : gap décideur transverse (EPIC 2 · REF-3) et lots Discours **REF-93 → REF-95**. **REF-7b.1bis** (PCI jalon) reste ouvert, hors du fil revue.
 - **Après** : poser les fondations de l'EPIC 15 (REF-76 + REF-77), arbitrer l'export PDF autonome (EPIC 13), puis lancer l’harmonisation **PCI / RACI** et le polish final du module PCI (REF-7b.1c → 7b.1e).
 - **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète ; **veille infra** **EPIC 10 · REF-47a** (migration clés Supabase réservées Edge / Next server).
 
@@ -692,7 +692,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 **CONSTAT CODE 18/10/2026** (le prochain lot n’est pas tranché) :
 
-1. EPIC 3 · **REF-7b.3** 🚧 — ouverture de revue partielle (prompt d’emails + deadline + passage `in_review`). Modal, magic link et audit d’ouverture absents.
+1. EPIC 3 · **REF-7b.3** 🚧 — fenêtre de choix des contributeurs livrée et recettée le 19/10/2026. Restent le magic link et l’audit `snapshot_review_opened`.
 2. EPIC 3 · **REF-7b.4** 🚧 — route `/review/:snapshotId` livrée. Masquage de la nav principale absent.
 3. EPIC 3 · **REF-7b.5** 🚧 — cœur ReviewerPage livré. Restent PCI figé, drawer mobile, autosave.
 4. EPIC 3 · **REF-7b.5ter** ⬜ — indicateurs de feedbacks sur la grille (retour de recette du 15/06, ancien libellé erroné « 7b.6 »).
@@ -720,6 +720,18 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 19 octobre 2026 — Fenêtre « Ouvrir la revue »
+
+#### Fait
+- **REF-7b.3** : la saisie d’emails est remplacée par une fenêtre. Elle propose les contributeurs actifs de la direction du membre du CODIR, et ceux des autres directions seulement si la version figée contient un projet transverse.
+- Avertissement pour vérifier que la version soumise est bien figée, puis date limite déjà en place. Le lien est copié. Aucun email n’est envoyé.
+- Recette sur World Company : ouverture réelle de **V1 mai 2026** (5 personnes, échéance 10/11/2026 23 h 59) ; bouton inactif sans coche ; retour à la liste si la date est annulée. Compte sans direction : la première liste le dit, Corinne apparaît dans « Sans direction » sur un brouillon transverse.
+
+#### À suivre
+- Magic link et audit `snapshot_review_opened`.
+- Rejouer l’ouverture avec un membre du CODIR dont la fiche a une direction.
+- Choisir ensuite entre **7b.5ter** et la finition **7b.4**.
 
 ### 18 octobre 2026 — Redressement documentaire du cycle de revue
 

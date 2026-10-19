@@ -2,7 +2,7 @@
 
 **Point d'entrée unique pour une IA qui commence une session sur REF-7b.2 (backend) ou REF-7b.5 (frontend).**
 
-Dernière mise à jour : **18 octobre 2026**, 16 h 58 (Europe/Paris)
+Dernière mise à jour : **19 octobre 2026**, 13 h 28 (Europe/Paris)
 
 ---
 
@@ -19,19 +19,19 @@ Dernière mise à jour : **18 octobre 2026**, 16 h 58 (Europe/Paris)
 
 **Où** : `/src/pages/ReviewerSnapshotPage.tsx` (V1 grille + panneau + Partie 3 branchés)
 
-**État au 18 octobre 2026** : le schéma **REF-7b.2** est ✅ (ne pas rouvrir les policies RLS). **REF-7b.5bis** est ✅ recetté le 15 juin. La source de vérité des statuts est [`docs/backlog.md`](backlog.md), section EPIC 3 et priorisation **Maintenant**.
+**État au 19 octobre 2026** : le schéma **REF-7b.2** est ✅ (ne pas rouvrir les policies RLS). **REF-7b.5bis** est ✅ recetté le 15 juin. La fenêtre de choix des contributeurs de **REF-7b.3** est livrée. La source de vérité des statuts est [`docs/backlog.md`](backlog.md), section EPIC 3 et priorisation **Maintenant**.
 
 | REF | Statut | Constat |
 |-----|--------|---------|
 | 7b.2 | ✅ | Tables, RLS, triggers d’audit (`reviewer_submitted`, `snapshot_review_reopened`, `feedback_arbitrated`) |
-| 7b.3 | 🚧 | `openSnapshotReview` + deadline. Sélection par `window.prompt`. Modal, magic link et audit `snapshot_review_opened` absents |
+| 7b.3 | 🚧 | Fenêtre de choix des contributeurs livrée le 19/10/2026. Restent magic link et audit `snapshot_review_opened` |
 | 7b.4 | 🚧 | Route `/review/:snapshotId` livrée. Nav principale non masquée |
 | 7b.5 | 🚧 | Cœur V1 livré. Restent PCI figé, drawer &lt; 768 px, autosave |
 | 7b.5bis | ✅ | Polish recetté le 15/06/2026 |
 | 7b.5ter | ⬜ | Indicateurs de feedbacks sur la grille (retour de recette). Ne pas le nommer 7b.6 |
 | 7b.6 | ⬜ | Panneau flottant `react-rnd` — sens d’origine conservé |
 
-Le prochain lot produit n’est pas choisi. Candidats : **7b.5ter**, finition **7b.3**, finition **7b.4**.
+Le prochain lot produit n’est pas choisi. Candidats : **7b.5ter**, finition **7b.3** (magic link et audit), finition **7b.4**.
 
 ---
 

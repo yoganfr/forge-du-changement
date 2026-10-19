@@ -38,6 +38,7 @@ export {
   deleteProjet,
   getDirectionProjets,
   getProjet,
+  getProjetsForWorkspace,
   updateProjet,
 } from './api/projets'
 export {

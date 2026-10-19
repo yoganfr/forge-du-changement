@@ -15,10 +15,12 @@ import {
   getRoadmapEligibleProjectsForRestrictedMember,
   getWorkspaceUsers,
   getWorkspaceDirections,
+  getProjetsForWorkspace,
   listSnapshotFeedbacks,
   listSnapshotReviewers,
   closeSnapshotReview,
   listRoadmapSnapshots,
+  listRoadmapSnapshotItems,
   monthToQuarter,
   openSnapshotReview,
   recalculateOrdreSequentielForChantierAxe,
@@ -33,6 +35,8 @@ import { directionDisplayNamesMatch } from './lib/directionLabels'
 import { getCurrentUser } from './lib/auth'
 import CreateDirectionDialog from './CreateDirectionDialog'
 import ReviewDeadlineDialog, { formatDeadlinePreview } from './ReviewDeadlineDialog'
+import OpenReviewDialog from './OpenReviewDialog'
+import { buildReviewAudience, type ReviewAudience } from './lib/openReviewAudience'
 import FreezeRoadmapDialog from './FreezeRoadmapDialog'
 import ChantierLineModal from './ChantierLineModal'
 import JalonQuickAddModal from './JalonQuickAddModal'
@@ -199,9 +203,21 @@ export default function MaturityRoadmap({
     Array<{ id: string; kind: string; codir_status: string | null; reviewer_user_id: string; comment: string | null; constat: string | null; proposition: string | null; benefice: string | null }>
   >([])
   const [reviewersBySnapshot, setReviewersBySnapshot] = useState<Record<string, number>>({})
+  const [openingReview, setOpeningReview] = useState(false)
+  const [openReviewDialog, setOpenReviewDialog] = useState<{
+    snapshotId: string
+    snapshotLabel: string
+    audience: ReviewAudience
+    selectedIds: string[]
+  } | null>(null)
   const [reviewDeadlineDialog, setReviewDeadlineDialog] = useState<{
     snapshotId: string
     reviewerIds: string[]
+    reopen: {
+      snapshotLabel: string
+      audience: ReviewAudience
+      selectedIds: string[]
+    }
   } | null>(null)
   const [freezeRoadmapDialog, setFreezeRoadmapDialog] = useState<{ suggestedLabel: string } | null>(null)
   /** `live` = grille éditable ; sinon id de snapshot (revue, arbitrage, cohérence métier). */
@@ -645,35 +661,39 @@ export default function MaturityRoadmap({
   }
 
   async function handleOpenReview() {
-    if (readOnly) return
+    if (readOnly || openingReview) return
     const snapshotId =
       snapshotFocusId !== 'live' ? snapshotFocusId : (snapshots[0]?.id ?? null)
     if (!snapshotId) {
       setSnapshotFeedback('Figez d’abord une version de roadmap pour ouvrir une revue.')
       return
     }
-    if (workspaceUsers.length === 0) {
-      setSnapshotFeedback('Aucun membre disponible pour la revue.')
-      return
+    const snapshot = snapshots.find((item) => item.id === snapshotId)
+    try {
+      setOpeningReview(true)
+      const [items, projets] = await Promise.all([
+        listRoadmapSnapshotItems(snapshotId),
+        getProjetsForWorkspace(workspaceId),
+      ])
+      const audience = buildReviewAudience({
+        items,
+        projets,
+        users: workspaceUsers,
+        memberDirectionId,
+        directions,
+      })
+      setOpenReviewDialog({
+        snapshotId,
+        snapshotLabel: snapshot?.label?.trim() || 'Version figée',
+        audience,
+        selectedIds: [],
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Impossible de préparer la revue'
+      setSnapshotFeedback(message)
+    } finally {
+      setOpeningReview(false)
     }
-    const emailsRaw = window.prompt(
-      'Emails reviewers (séparés par virgule)',
-      workspaceUsers.slice(0, 3).map((u) => u.email).join(', '),
-    )
-    if (!emailsRaw) return
-    const emails = emailsRaw
-      .split(',')
-      .map((x) => x.trim().toLowerCase())
-      .filter(Boolean)
-    if (emails.length === 0) return
-    const reviewerIds = workspaceUsers
-      .filter((u) => emails.includes(u.email.trim().toLowerCase()))
-      .map((u) => u.id)
-    if (reviewerIds.length === 0) {
-      setSnapshotFeedback('Aucun reviewer valide trouvé pour ces emails.')
-      return
-    }
-    setReviewDeadlineDialog({ snapshotId, reviewerIds })
   }
 
   async function completeOpenReview(
@@ -691,10 +711,22 @@ export default function MaturityRoadmap({
         reviewDeadline,
       })
       const reviewerUrl = `${window.location.origin}/review/${snapshotId}`
-      void navigator.clipboard?.writeText(reviewerUrl)
-      setSnapshotFeedback(null)
       const list = await listRoadmapSnapshots(workspaceId)
       setSnapshots(list)
+      const openedLabel =
+        list.find((item) => item.id === snapshotId)?.label?.trim() || 'cette version'
+      let copied = false
+      try {
+        await navigator.clipboard.writeText(reviewerUrl)
+        copied = true
+      } catch {
+        copied = false
+      }
+      setSnapshotFeedback(
+        copied
+          ? `Revue ouverte sur ${openedLabel}. Lien copié. Transmettez-le aux personnes cochées : aucun email n’est envoyé.`
+          : `Revue ouverte sur ${openedLabel}. Le lien n’a pas pu être copié : ${reviewerUrl}. Aucun email n’est envoyé.`,
+      )
       const idsToFetch = new Set(list.slice(0, 5).map((s) => s.id))
       const openedInReview = list.find((x) => x.status === 'in_review')
       if (openedInReview) idsToFetch.add(openedInReview.id)
@@ -900,10 +932,11 @@ export default function MaturityRoadmap({
                         }}
                         disabled={
                           snapshotSaving ||
+                          openingReview ||
                           (snapshotFocusId === 'live' ? snapshots.length === 0 : false)
                         }
                       >
-                        Ouvrir la revue
+                        {openingReview ? 'Préparation…' : 'Ouvrir la revue'}
                       </button>
                     )}
                   </div>
@@ -1297,9 +1330,44 @@ export default function MaturityRoadmap({
         }}
       />
 
+      <OpenReviewDialog
+        open={openReviewDialog !== null}
+        snapshotLabel={openReviewDialog?.snapshotLabel ?? ''}
+        transverse={openReviewDialog?.audience.transverse ?? false}
+        sameDirection={openReviewDialog?.audience.sameDirection ?? []}
+        otherDirections={openReviewDialog?.audience.otherDirections ?? []}
+        memberHasDirection={Boolean(memberDirectionId)}
+        initialSelectedIds={openReviewDialog?.selectedIds ?? []}
+        onCancel={() => setOpenReviewDialog(null)}
+        onConfirm={(reviewerIds) => {
+          const flow = openReviewDialog
+          if (!flow) return
+          setOpenReviewDialog(null)
+          setReviewDeadlineDialog({
+            snapshotId: flow.snapshotId,
+            reviewerIds,
+            reopen: {
+              snapshotLabel: flow.snapshotLabel,
+              audience: flow.audience,
+              selectedIds: reviewerIds,
+            },
+          })
+        }}
+      />
+
       <ReviewDeadlineDialog
         open={reviewDeadlineDialog !== null}
-        onCancel={() => setReviewDeadlineDialog(null)}
+        onCancel={() => {
+          const flow = reviewDeadlineDialog
+          setReviewDeadlineDialog(null)
+          if (!flow) return
+          setOpenReviewDialog({
+            snapshotId: flow.snapshotId,
+            snapshotLabel: flow.reopen.snapshotLabel,
+            audience: flow.reopen.audience,
+            selectedIds: flow.reviewerIds,
+          })
+        }}
         onConfirm={(reviewDeadline) => {
           const flow = reviewDeadlineDialog
           setReviewDeadlineDialog(null)
