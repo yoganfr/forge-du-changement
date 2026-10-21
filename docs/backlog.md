@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **19 octobre 2026**, 13 h 56 (Europe/Paris)
+Dernière mise à jour : **21 octobre 2026**, 03 h 14 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -65,6 +65,24 @@ Issues créées pour ancrer les lots **hors jeu GH-1–GH-15**. **GH-16** et **G
 - ✅ Terminé
 - 🚧 En cours
 - ⬜ À faire
+
+---
+
+## EPIC 18 — Fiabiliser les permissions 🔴 PRIORITÉ MAXIMALE
+
+Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Session : [docs/history/2026-10-21-fiabiliser-permissions.md](history/2026-10-21-fiabiliser-permissions.md).
+
+Constat du 21 octobre 2026 : le dossier `assets` n’est plus public, mais toute personne connectée peut encore lire, ajouter, modifier et supprimer n’importe quel fichier. 2 logos d’entreprise sont à déplacer. 3 fichiers orphelins deviennent invisibles, sans être effacés. L’historique est déjà protégé en lecture et en ajout. On retire seulement les droits SQL de modification et d’effacement.
+
+Aucun temps n’est commencé. Chaque temps s’arrête avant le suivant. La base ne change qu’au temps 2b, après la nouvelle application et un accord explicite.
+
+| REF | Titre | Priorité | Statut |
+|---|-------|----------|--------|
+| 102 | Contrôles automatiques : tests, et lint seulement s’il est déjà vert. Aucun écran, aucun SQL | 🔴 | ⬜ |
+| 103 | Photos et logos : d’abord l’application (2a), ensuite la base (2b) — déplacer les 2 logos cités, masquer les orphelins, réserver chaque dossier à la bonne entreprise | 🔴 | ⬜ |
+| 104 | Historique : retirer UPDATE et DELETE au rôle connecté, sans réécrire qui lit ni qui ajoute | 🔴 | ⬜ |
+
+Ce lot passe devant le fil revue (**REF-7b.4** et la suite) tant qu’il n’est pas terminé. Il n’annule pas ce fil.
 
 ---
 
@@ -139,7 +157,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 7b.1e | Durcissement technique / performance PCI (bulk updates batch, robustesse gros volumes, recette accessibilité clavier) | 🟡 | ⬜ |
 | 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS + audit triggers) — **spec** [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) + **plan** [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) + **DDL** [`docs/supabase-roadmap-review-cycle.sql`](supabase-roadmap-review-cycle.sql) — Complété 11/06/2026 : colonne `reaction_acknowledged_at`, policies INSERT/SELECT/UPDATE/DELETE renforcées, 3 triggers audit (`reviewer_submitted`, `snapshot_review_reopened`, `feedback_arbitrated`) | 🔴 | ✅ |
 | 7b.3 | Fenêtre « Ouvrir la revue » et e-mail de connexion. Livré le 19/10/2026 : contributeurs actifs, autres directions seulement si la version figée est transverse, date limite, lien copié. L’e-mail est celui de connexion déjà utilisé : il ouvre la revue, sans y écrire le nom de la version ni la date limite (décision du 19/10, l’e-mail sur mesure a été jugé trop lourd). Trace `snapshot_review_opened`. Recette : message d’envoi, trace, e-mail reçu, arrivée sur la revue. Reste hors lot : rejouer avec un membre du CODIR dont la fiche a une direction | 🔴 | ✅ |
-| 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers). Constat 18/10/2026 : route `/review/:snapshotId` et query super-admin `?reviewer=` livrées (`App.tsx`). Le masquage de la nav principale est absent | 🟠 | 🚧 |
+| 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers). Route `/review/:snapshotId` et query super-admin `?reviewer=` déjà livrées. Masquage codé le 19/10/2026 dans `App.tsx` / `App.css` (parcours, menu décideur et hamburger absents pour un contributeur sur la revue ; marque statique ; thème, profil et déconnexion restent ; retour par « Retour dashboard »). **Pas recetté, pas commité** — reprise le 20/10 | 🟠 | 🚧 |
 | 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + modal "Soumettre ma review") — **architecture UX** [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) + **plan** [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md). Cœur V1 livré. Restent : PCI figé (`raci_chantier`), drawer plein écran sous 768 px, autosave | 🔴 | 🚧 |
 | 7b.5bis | Polish ReviewerPage : alignement frontend sur policies RLS (édition granulaire feedbacks, indicateurs visuels CODIR, suppression draft, bandeau réouverture, empty state pédagogique, sidebar sticky, labels axes) — **plan Cursor** `ref-7b.5_polish_frontend_b28a3469.plan.md`. Recetté le 15/06/2026 | 🟠 | ✅ |
 | 7b.5ter | Indicateurs feedbacks sur la grille roadmap (jalons et chantiers déjà commentés + accès à l’édition depuis la grille). Retour de recette du 15/06/2026, d’abord noté par erreur sous le numéro 7b.6 | 🟠 | ⬜ |
@@ -678,7 +696,7 @@ Ce bloc est la référence produit pour la navbar applicative `/src` (workspace 
 
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
-- **Maintenant** : **REF-7b.3** est livré (fenêtre, e-mail de connexion vers la revue, trace d’ouverture, 19/10/2026). Fermer ensuite **REF-7b.4** (masquage de la navigation des reviewers), **REF-7b.5** et le retour de recette **REF-7b.5ter**. **REF-7b.6** reste le panneau flottant. En parallèle de trajectoire : gap décideur transverse (EPIC 2 · REF-3) et lots Discours **REF-93 → REF-95**. **REF-7b.1bis** (PCI jalon) reste ouvert, hors du fil revue.
+- **Maintenant** : **EPIC 18 · REF-102 → REF-104** passe en premier. Le dossier photos est encore ouvert à toute personne connectée. Ensuite seulement le fil revue : **REF-7b.3** est livré (19/10/2026). **REF-7b.4** est codé en local, en attente de recette et de commit. Puis **REF-7b.5** et **REF-7b.5ter**. **REF-7b.6** reste le panneau flottant. En parallèle, une fois le lot permissions avancé : gap décideur transverse (EPIC 2 · REF-3) et lots Discours **REF-93 → REF-95**. **REF-7b.1bis** (PCI jalon) reste ouvert, hors du fil revue.
 - **Après** : poser les fondations de l'EPIC 15 (REF-76 + REF-77), arbitrer l'export PDF autonome (EPIC 13), puis lancer l’harmonisation **PCI / RACI** et le polish final du module PCI (REF-7b.1c → 7b.1e).
 - **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète ; **veille infra** **EPIC 10 · REF-47a** (migration clés Supabase réservées Edge / Next server).
 
@@ -688,16 +706,22 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
+**PRIORITÉ MAXIMALE** : EPIC 18 · **REF-102 → REF-104** — fiabiliser les permissions. Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Rien n’est commencé.
+
+1. EPIC 18 · **REF-102** ⬜ — contrôles automatiques, puis arrêt.
+2. EPIC 18 · **REF-103** ⬜ — photos et logos, application puis base.
+3. EPIC 18 · **REF-104** ⬜ — historique ineffaçable, sans changer qui lit.
+
 **TERMINÉ** : EPIC 3 · **REF-7b.5bis** — Polish ReviewerPage (alignement frontend sur policies RLS, indicateurs CODIR, édition granulaire, empty state pédagogique, sidebar sticky, labels axes). Implémenté et recetté le 15/06/2026.
 
-**CONSTAT CODE 18/10/2026** (le prochain lot n’est pas tranché) :
+**CONSTAT CODE 19/10/2026, 19 h 37** : **REF-7b.4** est codé en local sur `main`, non recetté, non commité. Reprise après le lot permissions : recette contributeur puis commit.
 
-1. EPIC 3 · **REF-7b.4** 🚧 — route `/review/:snapshotId` livrée. Masquage de la nav principale absent. **REF-7b.3** est ✅ (19/10/2026).
-2. EPIC 3 · **REF-7b.5** 🚧 — cœur ReviewerPage livré. Restent PCI figé, drawer mobile, autosave.
-3. EPIC 3 · **REF-7b.5ter** ⬜ — indicateurs de feedbacks sur la grille (retour de recette du 15/06, ancien libellé erroné « 7b.6 »).
-4. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier à la granularité jalon.
-5. EPIC 16 · **REF-94 / REF-95** — diagnostic jargon et comparaison V1/V2 du module Discours.
-6. EPIC 2 · **REF-3** — Gantt macro consolidé.
+4. EPIC 3 · **REF-7b.4** 🚧 — masquage codé, recette et commit en attente. **REF-7b.3** est ✅. Passe après EPIC 18.
+5. EPIC 3 · **REF-7b.5** 🚧 — cœur ReviewerPage livré. Restent PCI figé, drawer mobile, autosave.
+6. EPIC 3 · **REF-7b.5ter** ⬜ — indicateurs de feedbacks sur la grille (retour de recette du 15/06, ancien libellé erroné « 7b.6 »).
+7. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier à la granularité jalon.
+8. EPIC 16 · **REF-94 / REF-95** — diagnostic jargon et comparaison V1/V2 du module Discours.
+9. EPIC 2 · **REF-3** — Gantt macro consolidé.
 
 **REF-7b.6** reste le panneau flottant `react-rnd`, après 7b.5ter.
 
@@ -720,6 +744,45 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ## Journal d'avancement (historique opérationnel)
 
+### 21 octobre 2026 — Plan de fiabilisation des permissions (priorité maximale)
+
+Dernière mise à jour : **21 octobre 2026**, 03 h 14 (Europe/Paris)
+
+#### Fait
+- Plan enregistré : `docs/plan-fiabiliser-permissions.md`.
+- Session : `docs/history/2026-10-21-fiabiliser-permissions.md`.
+- **EPIC 18 · REF-102, REF-103, REF-104** ouverts en priorité 🔴, en tête de « Maintenant », devant **REF-7b.4**.
+- Constat lu en base : 5 fichiers dans `assets`, 2 logos à déplacer, 3 orphelins à masquer, historique déjà protégé en lecture et en ajout.
+
+#### Non fait
+- Temps 1, 2 et 3. Aucune règle de la base modifiée. Aucun écran modifié pour ce lot.
+
+#### Reprise
+1. **REF-102**, puis arrêt.
+2. **REF-103** seulement après validation du temps 1.
+3. **REF-104** seulement après validation du temps 2.
+
+### 19 octobre 2026 — Navigation masquée pendant la revue contributeur (pause)
+
+Dernière mise à jour : **19 octobre 2026**, 19 h 37 (Europe/Paris)
+
+#### Fait
+- Masquage codé dans `src/App.tsx` et `src/App.css`, branche `main`, **non commité**.
+- Sur `/review/:snapshotId`, un **contributeur** ne doit plus voir le parcours, le menu décideur ni le hamburger. La marque n’est plus un lien. Thème, profil et déconnexion restent. Sortie par « Retour dashboard ».
+- Un membre CODIR, un admin, un consultant ou un super-admin (y compris `?reviewer=`) garde la navigation.
+- Contrôle TypeScript de `App.tsx` : rien à signaler. Le dashboard local répond sur `http://localhost:5173/`.
+
+#### Non fait
+- Recette visuelle. La session ouverte le 19/10 au soir était **Recette Consultant** sur l’accueil : la barre complète est le comportement attendu, elle ne prouve pas le masquage.
+- Commit et push. Ne pas inclure `recovery-codes vercel.txt`.
+
+#### Reprise du 20 octobre
+1. `npm run dev` si le serveur est arrêté, puis compte **contributeur**.
+2. Ouvrir une revue réelle `/review/…`. Vérifier l’absence du parcours, de « Vue décideur » et du hamburger (largeur bureau et sous 1100 px).
+3. La marque ne ramène pas à l’accueil. **Retour dashboard** réaffiche la navigation.
+4. Rejouer avec un compte consultant ou CODIR : la navigation reste.
+5. Si la recette passe, commit atomique puis push. Sinon, corriger avant de passer **REF-7b.4** en ✅.
+
 ### 19 octobre 2026 — E-mail de connexion à l’ouverture de la revue
 
 #### Fait
@@ -729,7 +792,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 - Recette : message d’envoi et de trace confirmé ; e-mail reçu ; le lien ouvre la revue sur le même ordinateur. Commit `4049ac8`.
 
 #### À suivre
-- **REF-7b.4** : masquer la navigation principale pour les contributeurs en revue.
+- **REF-7b.4** : code local du 19/10 au soir, recette et commit reportés au 20/10.
 - Rejouer l’ouverture avec un membre du CODIR dont la fiche a une direction.
 
 ### 19 octobre 2026 — Fenêtre « Ouvrir la revue »
