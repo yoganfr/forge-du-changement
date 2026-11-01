@@ -1,8 +1,8 @@
 # Plan — Fiabiliser la suite, après l’audit OWASP
 
-Dernière mise à jour : **1 novembre 2026**, 14 h 23 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 15 h 17 (Europe/Paris)
 
-Statut : tranche A livrée. Les tranches B et C ne sont pas commencées. Le fil revue n’est pas mélangé.
+Statut : tranches A, B et C traitées. Une relecture le 1 novembre 2026, 15 h 17, ne trouve pas de trou nouveau. Le refus des mots de passe compromis reste bloqué par l’offre gratuite. Le script du site public reste en observation. Le fil revue n’est pas mélangé. L’enregistrement à la volée de la fiche entreprise est hors de ce plan : il réutilise la même mise à jour, sans nouveau droit.
 
 Source : [docs/OWASP audit.md](OWASP%20audit.md), revu dans le code le 1 novembre 2026. Ce n’est pas un audit certifié.
 
@@ -39,13 +39,13 @@ Résultat : une personne non connectée ne peut plus appeler ces fonctions. Une 
 1. Vérifier que le plafond d’envoi des liens de connexion est actif.
 2. Activer le refus des mots de passe déjà compromis.
 
-Preuve : une capture du réglage, ou une phrase dans l’historique de session. Pas de test qui inonde les boîtes mail.
+Résultat, lu le 1 novembre 2026, 14 h 39, sans envoyer d’e-mail : la ligne « Rate limit for sending emails » vaut **30**. C’est un plafond horaire. On ne le change pas. Le refus des mots de passe déjà compromis n’est proposé que sur l’offre payante. L’organisation est sur l’offre gratuite, donc ce réglage reste éteint.
 
-## Tranche C — quand la revue a repris son fil
+## Tranche C — faite le 1 novembre 2026, 14 h 43
 
-1. **Alertes de dépendances.** Un rapport dans la CI, qui ne bloque pas la publication tant qu’on n’a pas trié. Même leçon que le lint : on n’ajoute pas un feu rouge déjà allumé.
-2. **Script du site public.** Le commentaire fixe le 1er novembre 2026 pour passer `script-src` en bloquant. Il n’y a pas de collecteur de violations. On le fait après un essai sur une prévisualisation, pas en aveugle.
-3. **Taille des fichiers dans le dossier.** L’écran limite déjà le type et le poids. Le dossier, non. On aligne le dossier sur l’écran.
+1. **Alertes de dépendances.** Un rapport dans la CI, qui ne bloque pas la publication. Même leçon que le lint : on n’ajoute pas un feu rouge déjà allumé.
+2. **Script du site public.** Il reste en observation. Le cadre du site ajoute d’autres scripts que celui du thème. Le passer en bloquant sans essai sur une prévisualisation casserait la page.
+3. **Taille des fichiers dans le dossier.** Le dossier `assets` accepte au plus 10 Mo, et seulement JPEG, PNG, WebP, GIF, HEIC. Les six fichiers déjà là sont en dessous, en JPEG ou PNG. Le retour arrière remet l’absence de plafond et de liste de types.
 
 ## Plus tard, avant un premier client payant
 

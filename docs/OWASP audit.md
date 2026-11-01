@@ -1,12 +1,12 @@
 # OWASP audit — ASVS 5.0.0
 
-Dernière mise à jour : **1 novembre 2026**, 14 h 06 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 15 h 17 (Europe/Paris)
 
 Référence : [OWASP ASVS 5.0.0](https://github.com/OWASP/ASVS/tree/v5.0.0) (mai 2025).
 
 ## Portée
 
-Lecture du dépôt au regard d’OWASP ASVS 5.0.0. Ce n’est pas un audit certifié : chaque exigence du document n’a pas été rejouée, et la configuration du tableau Supabase ou de Vercel n’a pas été inspectée.
+Lecture du dépôt au regard d’OWASP ASVS 5.0.0. Ce n’est pas un audit certifié : chaque exigence du document n’a pas été rejouée. Les en-têtes du tableau de bord dans `vercel.json` ont été relus. Le plafond d’e-mails Auth a été lu le 1 novembre 2026. Les avertisseurs Supabase ont été relus le 1 novembre 2026, 15 h 17.
 
 Pour ce SaaS multi-entreprises, le bon objectif est le **niveau 2** : données d’entreprise, plusieurs clients. Le niveau 3 (menace ciblée, revues formelles, chiffrement applicatif des champs) n’est pas le prochain palier utile.
 
@@ -27,34 +27,54 @@ Pour ce SaaS multi-entreprises, le bon objectif est le **niveau 2** : données d
 
 Fermé le 1 novembre 2026 par REF-103. Une personne connectée ne voit plus que les logos de son entreprise, et sa propre photo.
 
-### 2. V3 Frontend et V13 Configuration — le tableau de bord n’a pas d’en-têtes
+### 2. V3 Frontend et V13 Configuration — en-têtes du tableau de bord
 
-`vercel.json` ne fait que renvoyer toutes les adresses vers `index.html`. Pas de CSP, pas de HSTS, pas de `nosniff`, pas de `frame-ancestors`. Le site Next est mieux couvert, mais `script-src` est encore en observation seulement, et le commentaire de `web/next.config.ts` fixe l’échéance au **1er novembre 2026**.
+Fermé le 1 novembre 2026. `vercel.json` envoie HSTS, `nosniff`, `frame-ancestors` et une politique de script limitée aux fichiers de l’application plus l’empreinte du thème. En local seulement, Vite a le droit d’injecter son script, sinon la page reste blanche. L’aperçu et Vercel restent stricts. Le script du site public reste en observation : le cadre de page ajoute d’autres scripts que celui du thème.
 
-### 3. V4 API — les fonctions ouvertes à tous les sites
+### 3. V4 API — origine des fonctions
 
-`discours-analyze` et `remove-member-auth-cleanup` envoient `Access-Control-Allow-Origin: *`. Le jeton de session limite l’appel, mais n’importe quel site peut tenter la requête depuis un navigateur où la personne est connectée. L’origine devrait être limitée aux deux domaines de l’application.
+Fermé le 1 novembre 2026. `discours-analyze` et `remove-member-auth-cleanup` n’acceptent plus tous les sites. Restent les deux applications et l’adresse locale. La session et le contrôle d’entreprise restent.
 
 ### 4. V16 Journal et V6 anti-automatisation
 
-REF-104 est fait le 1 novembre 2026 : une personne connectée ne peut plus modifier ni effacer l’historique. Le code dit que le plafond des liens de connexion est le réglage Supabase Auth. Le navigateur ne fait qu’éviter le double-clic. Il reste à vérifier que ce réglage est actif, pas à en écrire un nouveau.
+REF-104 est fait le 1 novembre 2026 : une personne connectée ne peut plus modifier ni effacer l’historique. Le plafond des liens de connexion est le réglage Supabase Auth, pas un nouveau plafond dans le navigateur. Il a été lu le 1 novembre 2026 : 30 e-mails par heure. Le refus des mots de passe déjà compromis reste éteint, parce que le projet est sur l’offre gratuite.
 
 ### 5. V1 Encodage
 
-Le `dangerouslySetInnerHTML` du thème et du JSON-LD est borné (script fixe, JSON échappé). Il ne faut pas étendre ce motif à un texte saisi par un utilisateur. Le tableau de bord n’a pas de politique de script qui l’interdirait.
+Le `dangerouslySetInnerHTML` du thème et du JSON-LD est borné (script fixe, JSON échappé). Il ne faut pas étendre ce motif à un texte saisi par un utilisateur. Le tableau de bord a maintenant une politique de script. Le site public la garde en observation.
 
 ### 6. V13 Secrets
 
-Un fichier `recovery-codes vercel.txt` est présent dans le dossier de travail et ne doit jamais être commité. Les codes de secours Vercel sont des secrets de compte.
+Fermé le 1 novembre 2026. `recovery-codes vercel.txt` est ignoré par Git. Les codes de secours Vercel restent des secrets de compte.
 
 ### 7. V14 Données et V15 Preuves
 
-Pas de durée de conservation ni d’export/effacement des données personnelles dans le code. La CI lance les tests, pas une analyse de dépendances, et le lint racine est resté dehors à cause de quatre erreurs anciennes. ASVS niveau 2 attend une vérification répétable, pas seulement une relecture.
+Pas de durée de conservation ni d’export/effacement des données personnelles dans le code. La CI lance les tests et, depuis le 1 novembre 2026, un rapport de dépendances qui ne bloque pas la publication. Le lint racine est resté dehors à cause de quatre erreurs anciennes.
 
 ## Ce qui peut attendre
 
 Le MD5 ne sert qu’à l’adresse Gravatar, pas à stocker un mot de passe. La cryptographie de session est celle de Supabase et de TLS.
 
+## Relecture du 1 novembre 2026, 15 h 17
+
+Relu après les trois tranches et l’enregistrement à la volée de la fiche entreprise. Les avertisseurs Supabase du projet ont été relus à ce moment.
+
+| Sujet | État |
+|---|---|
+| En-têtes du tableau de bord | Fermés. Stricts sur Vercel et sur l’aperçu. Souples seulement sur le serveur local. |
+| Origine des deux fonctions | Fermée. |
+| Dossier photos | Fermé, puis plafonné à 10 Mo et aux images. Le type envoyé suit le fichier, y compris un HEIC sans type déclaré. |
+| Historique | Fermé. Une personne connectée ne réécrit plus une trace. |
+| E-mails de connexion | 30 par heure. Inchangé. Aucun e-mail envoyé. |
+| Mots de passe déjà compromis | Toujours éteint. L’offre gratuite ne propose pas ce réglage. |
+| Codes de secours | Ignorés par Git. |
+| Dépendances | Rapport dans la porte qualité, sans bloquer. |
+| Script du site public | Toujours en observation. |
+| 22 fonctions sensibles | Toujours appelables par une personne connectée. C’est voulu : droits et déclencheurs. L’anonyme ne les appelle plus. L’avertisseur les signale encore, sans nom nouveau. |
+| Fiche entreprise | L’enregistrement à la volée passe par la même mise à jour, donc par les mêmes droits. Un nom vide n’est pas envoyé. Le nom de fichier du logo est nettoyé. |
+
+Rien de nouveau à corriger tout de suite.
+
 ## Suite utile
 
-EPIC 18 est terminé. La suite est écrite dans [plan-suite-apres-owasp.md](plan-suite-apres-owasp.md) : en-têtes du tableau de bord, origine des deux fonctions, fonctions sensibles, puis les réglages Supabase. Le fil revue reprend en parallèle. Le plafond des liens de connexion est déjà celui de Supabase Auth : on le vérifie, on ne le reconstruit pas.
+EPIC 18 est terminé. Les trois tranches de [plan-suite-apres-owasp.md](plan-suite-apres-owasp.md) sont traitées. Le refus des mots de passe compromis attend une offre payante. Le script du site public attend un essai sur une prévisualisation. Le fil revue n’est pas mélangé.

@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **1 novembre 2026**, 14 h 23 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 15 h 17 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -743,6 +743,43 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 1 novembre 2026 — Fiche entreprise à la volée, puis relecture
+
+Dernière mise à jour : **1 novembre 2026**, 15 h 17 (Europe/Paris)
+
+#### Fait
+- La fiche entreprise n’a plus le couple Modifier / Enregistrer. Le nom, le secteur et la taille partent après une pause. Le logo et la convention partent tout de suite.
+- Les champs sont du texte, avec un crayon. La convention s’ouvre en trois choix lisibles.
+- Relecture des avertisseurs Supabase : aucun nom nouveau. Restent les 22 fonctions de droit, voulues pour les personnes connectées, et le refus des mots de passe compromis, bloqué par l’offre gratuite.
+
+#### Non fait
+- Le passage du script du site public en bloquant.
+- La recette de **REF-7b.4**.
+
+### 1 novembre 2026 — Tranche C du plan après l'audit
+
+Dernière mise à jour : **1 novembre 2026**, 14 h 43 (Europe/Paris)
+
+#### Fait
+- La porte qualité affiche les alertes de dépendances sans bloquer la publication.
+- Le dossier photos refuse au-delà de 10 Mo, et n'accepte que les images déjà acceptées par l'écran.
+- Le script du site public reste en observation : le cadre de la page ajoute d'autres scripts que celui du thème.
+
+#### Non fait
+- Le passage du script du site public en bloquant. Il attend un essai sur une prévisualisation.
+- La recette de **REF-7b.4**.
+
+### 1 novembre 2026 — Tranche B, réglages Supabase
+
+Dernière mise à jour : **1 novembre 2026**, 14 h 39 (Europe/Paris)
+
+#### Fait
+- Le plafond d'envoi des e-mails de connexion est actif : 30 par heure. Aucun e-mail n'a été envoyé pour le vérifier.
+
+#### Non fait
+- Le refus des mots de passe déjà compromis. L'organisation est sur l'offre gratuite, et ce réglage n'existe que sur l'offre payante.
+- La tranche C. La recette de **REF-7b.4**.
 
 ### 1 novembre 2026 — Tranche A du plan après l'audit
 

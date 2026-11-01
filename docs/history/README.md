@@ -32,6 +32,7 @@ Exemples:
 ## Index des sessions
 
 - [Template session](./_template-session.md)
+- [2026-11-01 - Suite après l'audit](./2026-11-01-suite-apres-audit.md)
 - [2026-10-21 - Fiabiliser les permissions](./2026-10-21-fiabiliser-permissions.md)
 - [2026-10-19 - Fenêtre Ouvrir la revue](./2026-10-19-ouvrir-la-revue.md)
 - [2026-10-18 - Invitations, photos, vitrine, regles de refactor](./2026-10-18-invites-photos-vitrine-refactor.md)
