@@ -7,6 +7,7 @@ import {
   getWorkspaceDirections,
   getWorkspaceInvitations,
   getWorkspaceUsers,
+  deleteStoredAsset,
   isStorageBucketNotFound,
   insertAuditEvent,
   listWorkspaceAuditEvents,
@@ -14,8 +15,10 @@ import {
   invokeRemoveMemberAuthCleanup,
   removeWorkspaceMember,
   setWorkspaceDirigeant,
+  releaseReplacedAsset,
   updateWorkspace,
   uploadImageToStorage,
+  workspaceLogoFolder,
 } from './lib/api'
 import type { AuditEvent, Direction, Invitation, User } from './lib/types'
 
@@ -389,12 +392,14 @@ export default function CompanySheet({
   onDirigeantChange,
 }: CompanySheetProps) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const previousLogoRef = useRef<string | null>(companyLogoProp?.startsWith('http') ? companyLogoProp : null)
   const [editing, setEditing] = useState(false)
   const [draftName, setDraftName] = useState(companyName)
   const [draftSector, setDraftSector] = useState(sector)
   const [draftSize, setDraftSize] = useState(size)
   const [logoUrl, setLogoUrl] = useState<string | null>(companyLogoProp ?? null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoRemoved, setLogoRemoved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [remoteMembers, setRemoteMembers] = useState<CompanyMember[] | null>(null)
@@ -433,6 +438,8 @@ export default function CompanySheet({
   useEffect(() => {
     setLogoUrl(companyLogoProp ?? null)
     setLogoFile(null)
+    setLogoRemoved(false)
+    previousLogoRef.current = companyLogoProp?.startsWith('http') ? companyLogoProp : null
   }, [companyLogoProp])
 
   useEffect(() => {
@@ -568,10 +575,17 @@ export default function CompanySheet({
       setLogoFile(null)
       return
     }
+    setLogoRemoved(false)
     setLogoFile(file)
     const reader = new FileReader()
     reader.onload = () => setLogoUrl(typeof reader.result === 'string' ? reader.result : null)
     reader.readAsDataURL(file)
+  }
+
+  function clearLogo() {
+    setLogoRemoved(true)
+    setLogoFile(null)
+    setLogoUrl(null)
   }
 
   useEffect(() => {
@@ -917,22 +931,22 @@ export default function CompanySheet({
   async function persist() {
     setSaveError(null)
     setSaving(true)
+    let uploadedLogo: string | null = null
     try {
-      const remoteBefore =
-        (companyLogoProp?.startsWith('http') ? companyLogoProp : null)
-        ?? (logoUrl?.startsWith('http') ? logoUrl : null)
+      const remoteBefore = previousLogoRef.current
 
       let logoForDb: string | null = remoteBefore
 
-      if (logoUrl === null && !logoFile) {
+      if (logoRemoved) {
         logoForDb = null
       } else if (workspaceId && logoFile) {
         try {
-          logoForDb = await uploadImageToStorage({
+          uploadedLogo = await uploadImageToStorage({
             file: logoFile,
-            folder: 'workspaces/logos',
+            folder: workspaceLogoFolder(workspaceId),
             filenamePrefix: draftName.trim() || 'workspace',
           })
+          logoForDb = uploadedLogo
         } catch (uploadError) {
           if (isStorageBucketNotFound(uploadError)) {
             setSaveError("Bucket Storage introuvable (assets). Le logo n'a pas été uploadé, mais les autres modifications seront enregistrées.")
@@ -956,8 +970,21 @@ export default function CompanySheet({
         if (logoForDb && !updated.logo_url) {
           updated = await updateWorkspace(workspaceId, { logo_url: logoForDb })
         }
+        const freshLogo = uploadedLogo
+        uploadedLogo = null
+        try {
+          if (logoRemoved && remoteBefore) {
+            await deleteStoredAsset(remoteBefore)
+          } else if (freshLogo && remoteBefore && remoteBefore !== freshLogo) {
+            await releaseReplacedAsset(remoteBefore)
+          }
+        } catch (removeError) {
+          console.warn('[assets]', removeError)
+        }
+        setLogoRemoved(false)
         setLogoFile(null)
         setLogoUrl(updated.logo_url ?? null)
+        previousLogoRef.current = updated.logo_url?.startsWith('http') ? updated.logo_url : null
         setTrigramConvention(updated.trigram_convention ?? 'prenom_nom_3')
         onCompanyUpdate?.({
           companyName: updated.company_name,
@@ -975,6 +1002,7 @@ export default function CompanySheet({
       }
       setEditing(false)
     } catch (error) {
+      if (uploadedLogo) await releaseReplacedAsset(uploadedLogo)
       const message = typeof error === 'object' && error && 'message' in error
         ? String((error as { message?: unknown }).message ?? '')
         : ''
@@ -1065,6 +1093,11 @@ export default function CompanySheet({
                 <button type="button" className="cs-change-logo" onClick={() => fileRef.current?.click()}>
                   Changer le logo
                 </button>
+                {logoUrl ? (
+                  <button type="button" className="cs-change-logo" onClick={clearLogo}>
+                    Retirer
+                  </button>
+                ) : null}
               </>
             )}
           </div>

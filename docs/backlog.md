@@ -74,12 +74,12 @@ Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Se
 
 Constat du 21 octobre 2026 : le dossier `assets` n’est plus public, mais toute personne connectée peut encore lire, ajouter, modifier et supprimer n’importe quel fichier. 2 logos d’entreprise sont à déplacer. 3 fichiers orphelins deviennent invisibles, sans être effacés. L’historique est déjà protégé en lecture et en ajout. On retire seulement les droits SQL de modification et d’effacement.
 
-Le temps 1 est livré le 1 novembre 2026. Les temps 2 et 3 ne sont pas commencés. Chaque temps s’arrête avant le suivant. La base ne change qu’au temps 2b, après la nouvelle application et un accord explicite.
+Le temps 1 est livré. Le temps 2a est livré le 1 novembre 2026. Le temps 2b et le temps 3 ne sont pas commencés. Chaque temps s’arrête avant le suivant. La base ne change qu’au temps 2b, après un oui explicite.
 
 | REF | Titre | Priorité | Statut |
 |---|-------|----------|--------|
 | 102 | Contrôles automatiques : tests, et lint seulement s’il est déjà vert. Aucun écran, aucun SQL. Preuve : 42 tests verts ; lint racine laissé dehors (4 erreurs déjà présentes) ; `npm test` ajouté à la CI | 🔴 | ✅ |
-| 103 | Photos et logos : d’abord l’application (2a), ensuite la base (2b) — déplacer les 2 logos cités, masquer les orphelins, réserver chaque dossier à la bonne entreprise | 🔴 | ⬜ |
+| 103 | Photos et logos : d’abord l’application (2a), ensuite la base (2b). 2a livré le 1 novembre 2026 : dossiers par fiche, création avant le logo, retrait du fichier. 2b non commencé | 🔴 | 🚧 |
 | 104 | Historique : retirer UPDATE et DELETE au rôle connecté, sans réécrire qui lit ni qui ajoute | 🔴 | ⬜ |
 
 Ce lot passe devant le fil revue (**REF-7b.4** et la suite) tant qu’il n’est pas terminé. Il n’annule pas ce fil.
@@ -706,10 +706,10 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-**PRIORITÉ MAXIMALE** : EPIC 18 · **REF-103 → REF-104** — fiabiliser les permissions. Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Le temps 1 est livré.
+**PRIORITÉ MAXIMALE** : EPIC 18 · **REF-103 temps 2b → REF-104** — fiabiliser les permissions. Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Le temps 2a est livré.
 
 1. EPIC 18 · **REF-102** ✅ — contrôles automatiques livrés le 1 novembre 2026. Tests dans la CI. Lint racine laissé dehors.
-2. EPIC 18 · **REF-103** ⬜ — photos et logos, application puis base.
+2. EPIC 18 · **REF-103** 🚧 — application livrée le 1 novembre 2026. La base attend un oui explicite.
 3. EPIC 18 · **REF-104** ⬜ — historique ineffaçable, sans changer qui lit.
 
 **TERMINÉ** : EPIC 3 · **REF-7b.5bis** — Polish ReviewerPage (alignement frontend sur policies RLS, indicateurs CODIR, édition granulaire, empty state pédagogique, sidebar sticky, labels axes). Implémenté et recetté le 15/06/2026.
@@ -743,6 +743,32 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 1 novembre 2026 — REF-103 temps 2a, dossiers par fiche
+
+Dernière mise à jour : **1 novembre 2026**, 13 h 09 (Europe/Paris)
+
+#### Fait
+- Logos dans `workspaces/{id}/logos/`, photos dans `users/{id}/avatars/`.
+- L’entreprise est créée avant le logo. Un second clic ne rappelle pas la création.
+- Remplacer ou retirer une image efface le fichier du dossier au moment de l’enregistrement. Gravatar et Google ne sont pas effacés.
+- Espace d’essai **Essai REF-103** créé sans logo pendant la preuve.
+
+#### Non fait
+- Envoi réel d’un fichier dans le navigateur de contrôle. Temps 2b. REF-104.
+
+### 1 novembre 2026 — Plan des temps 2 et 3 tranché
+
+Dernière mise à jour : **1 novembre 2026**, 12 h 58 (Europe/Paris)
+
+#### Fait
+- Décisions produit inscrites dans `docs/plan-fiabiliser-permissions.md`.
+- Temps 2a : dossiers par entreprise et par personne, entreprise créée avant le logo, second clic sans deuxième entreprise, remplacement et retrait qui effacent le fichier. Commit après la preuve navigateur.
+- Temps 2b : recompte le jour même, copie puis vérification puis effacement de l’ancien, règles de lecture pour les personnes de l’entreprise. Exécution par l’agent seulement après un oui explicite.
+- REF-104 : les personnes de l’application ne peuvent pas réécrire une trace. La maintenance le peut encore.
+
+#### Non fait
+- Le code du temps 2a. La base. REF-104.
 
 ### 1 novembre 2026 — REF-102, contrôles automatiques (arrêt)
 

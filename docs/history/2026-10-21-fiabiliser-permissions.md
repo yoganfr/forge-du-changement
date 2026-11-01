@@ -3,7 +3,7 @@
 Date : 21 octobre 2026  
 Statut : temps 1 livré le 1 novembre 2026, arrêt avant le temps 2
 
-Dernière mise à jour : **1 novembre 2026**, 12 h 41 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 13 h 09 (Europe/Paris)
 
 ## 1) Contexte et objectif
 
@@ -65,10 +65,12 @@ Sécurité :
 
 ## 7) Prochaines étapes
 
+Décisions du 1 novembre 2026, 12 h 58 : le plan des temps 2 et 3 est tranché dans `docs/plan-fiabiliser-permissions.md`. Fichiers d’essai, méthode simple. Page publique hors lot.
+
 Maintenant :
 
 1. **REF-102** — livré. Le lint racine reste dehors.
-2. **REF-103** — application, preuve des images, arrêt, puis base seulement sur accord.
+2. **REF-103** — temps 2a livré le 1 novembre 2026, 13 h 09. La base attend un oui explicite.
 3. **REF-104** — retrait des droits SQL de modification et d’effacement de l’historique.
 
 Après :

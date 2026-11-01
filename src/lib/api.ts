@@ -7,8 +7,12 @@ export { insertAuditEvent, listWorkspaceAuditEvents } from './api/audit'
 export {
   STORAGE_BUCKET_ASSETS,
   createSignedAssetUrl,
+  deleteStoredAsset,
   isStorageBucketNotFound,
+  releaseReplacedAsset,
   uploadImageToStorage,
+  userAvatarFolder,
+  workspaceLogoFolder,
 } from './api/storage'
 export { validateImageFile } from './api/storageValidation'
 export type { ListOptions } from './api/cache'

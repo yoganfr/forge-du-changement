@@ -42,6 +42,55 @@ export async function resolveStoredAssetUrl(value: string | null | undefined): P
   }
 }
 
+const OWNER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function requireAssetOwnerId(id: string): string {
+  const trimmed = id.trim()
+  if (!OWNER_ID.test(trimmed)) {
+    throw new Error('Identifiant de dossier invalide')
+  }
+  return trimmed
+}
+
+/** Dossier du logo d’une entreprise. L’ancienne règle du bucket reste ouverte. */
+export function workspaceLogoFolder(workspaceId: string): string {
+  return `workspaces/${requireAssetOwnerId(workspaceId)}/logos`
+}
+
+/** Dossier de la photo d’une personne. */
+export function userAvatarFolder(userId: string): string {
+  return `users/${requireAssetOwnerId(userId)}/avatars`
+}
+
+/**
+ * Chemin effaçable dans le dossier photos.
+ * Gravatar, Google et aperçus locaux ne le sont pas.
+ */
+export function deletableAssetPath(value: string | null | undefined): string | null {
+  if (!value?.trim()) return null
+  const path = assetPathFromStoredValue(value)
+  if (!path) return null
+  const parts = path.split('/')
+  if (parts.some((part) => !part || part === '.' || part === '..')) return null
+  return path
+}
+
+export async function deleteStoredAsset(value: string | null | undefined): Promise<void> {
+  const path = deletableAssetPath(value)
+  if (!path) return
+  const { error } = await supabase.storage.from(STORAGE_BUCKET_ASSETS).remove([path])
+  if (error) throw error
+}
+
+/** Efface un fichier déjà remplacé. Un échec ne remet pas l’ancienne image. */
+export async function releaseReplacedAsset(value: string | null | undefined): Promise<void> {
+  try {
+    await deleteStoredAsset(value)
+  } catch (err) {
+    console.warn('[assets]', err instanceof Error ? err.message : 'suppression impossible')
+  }
+}
+
 export function isStorageBucketNotFound(error: unknown): boolean {
   const msg =
     typeof error === 'object' && error && 'message' in error

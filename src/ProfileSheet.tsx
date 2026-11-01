@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   createUser,
+  deleteStoredAsset,
   getWorkspaceUsers,
   isStorageBucketNotFound,
   markInvitationsAcceptedForWorkspaceEmail,
+  releaseReplacedAsset,
   resolveAcceptedInviteeRole,
   updateUser,
   uploadImageToStorage,
+  userAvatarFolder,
   validateImageFile,
 } from './lib/api'
 import { supabase } from './lib/supabase'
@@ -270,6 +273,8 @@ export default function ProfileSheet({
   const [totalEffectif, setTotalEffectif] = useState(totalEffectifProp)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(avatarUrlProp)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarRemoved, setAvatarRemoved] = useState(false)
+  const previousAvatarRef = useRef<string | null>(avatarUrlProp?.startsWith('http') ? avatarUrlProp : null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem('lfdc-user-id'))
   const [trigram, setTrigram] = useState<string>('')
   const [mfaLoading, setMfaLoading] = useState(false)
@@ -290,8 +295,11 @@ export default function ProfileSheet({
     setDirectionType(s.directionType ?? directionTypeProp)
     setManagedCount(s.managedCount ?? managedCountProp)
     setTotalEffectif(s.totalEffectif ?? totalEffectifProp)
-    setAvatarUrl(s.avatar ?? avatarUrlProp ?? null)
+    const openedAvatar = s.avatar ?? avatarUrlProp ?? null
+    setAvatarUrl(openedAvatar)
     setAvatarFile(null)
+    setAvatarRemoved(false)
+    previousAvatarRef.current = openedAvatar?.startsWith('http') ? openedAvatar : null
     setDirty(false)
   }, [
     open,
@@ -462,22 +470,31 @@ export default function ProfileSheet({
       }
     }
 
-    let avatarUrlToPersist = httpAvatar(avatarUrl) ?? httpAvatar(storedAvatar)
+    const previousAvatar = previousAvatarRef.current
+    let avatarUrlToPersist = avatarRemoved ? null : httpAvatar(avatarUrl) ?? httpAvatar(storedAvatar) ?? previousAvatar
     let avatarWarning: string | null = null
-    if (workspaceId && avatarFile) {
+    let uploadedAvatar: string | null = null
+    if (avatarRemoved) {
+      avatarUrlToPersist = null
+    } else if (avatarFile) {
       const invalidImage = validateImageFile(avatarFile)
       if (invalidImage) {
         setSaveError(invalidImage)
         return
       }
       try {
-        avatarUrlToPersist = await uploadImageToStorage({
+        const sessionUserId = (await supabase.auth.getSession()).data.session?.user?.id?.trim()
+        const ownerId = currentUserId?.trim() || sessionUserId
+        if (!ownerId) throw new Error('Session sans identifiant utilisateur')
+        uploadedAvatar = await uploadImageToStorage({
           file: avatarFile,
-          folder: 'users/avatars',
+          folder: userAvatarFolder(ownerId),
           filenamePrefix: `${firstName || 'user'}-${lastName || ''}`.trim() || 'user',
         })
+        avatarUrlToPersist = uploadedAvatar
       } catch (uploadError) {
-        avatarUrlToPersist = httpAvatar(storedAvatar)
+        uploadedAvatar = null
+        avatarUrlToPersist = previousAvatar
         avatarWarning = isStorageBucketNotFound(uploadError)
           ? 'Bucket Storage introuvable (assets). L’avatar n’a pas été envoyé. Les autres champs seront enregistrés.'
           : `L’avatar n’a pas pu être envoyé (${formatClientErrorMessage(uploadError)}). Les autres champs seront enregistrés.`
@@ -571,9 +588,23 @@ export default function ProfileSheet({
         localStorage.setItem('lfdc-user-id', created.id)
       }
     } catch (err) {
+      if (uploadedAvatar) await releaseReplacedAsset(uploadedAvatar)
       setSaveError(formatClientErrorMessage(err))
       return
     }
+
+    try {
+      if (avatarRemoved && previousAvatar) {
+        await deleteStoredAsset(previousAvatar)
+      } else if (uploadedAvatar && previousAvatar && previousAvatar !== uploadedAvatar) {
+        await releaseReplacedAsset(previousAvatar)
+      }
+    } catch (removeError) {
+      console.warn('[profile]', removeError)
+    }
+    previousAvatarRef.current = avatarUrlToPersist?.startsWith('http') ? avatarUrlToPersist : null
+    setAvatarRemoved(false)
+    setAvatarFile(null)
 
     saveStored(payload, storageEmail)
     onSaved?.(payload)
@@ -585,8 +616,16 @@ export default function ProfileSheet({
     onClose()
   }
 
+  function clearAvatar() {
+    setAvatarRemoved(true)
+    setAvatarFile(null)
+    setAvatarUrl(null)
+    markDirty()
+  }
+
   function onAvatarFile(f: File | null) {
     if (!f) return
+    setAvatarRemoved(false)
     setAvatarFile(f)
     const reader = new FileReader()
     reader.onload = () => {
@@ -615,6 +654,11 @@ export default function ProfileSheet({
           <button type="button" className="psd-change-photo" onClick={() => fileRef.current?.click()}>
             Changer la photo
           </button>
+          {avatarUrl ? (
+            <button type="button" className="psd-change-photo" onClick={clearAvatar}>
+              Retirer
+            </button>
+          ) : null}
         </div>
 
         <div className="psd-name-block">

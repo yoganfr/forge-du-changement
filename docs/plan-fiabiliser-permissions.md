@@ -1,8 +1,8 @@
 # Plan — Fiabiliser les permissions
 
-Dernière mise à jour : **1 novembre 2026**, 12 h 41 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 13 h 09 (Europe/Paris)
 
-Statut : temps 1 livré, arrêt avant le temps 2. Note de cadrage : 8/10.
+Statut : temps 2a livré dans l’application, arrêt avant le SQL. Note de cadrage : 8/10.
 
 Identifiants backlog : **EPIC 18 · REF-102, REF-103, REF-104**.
 
@@ -24,9 +24,26 @@ Le lien temporaire d’une photo ne s’enregistre pas en base (session du 18 oc
 
 - Fichiers orphelins masqués au temps 2b, non supprimés.
 - Trois temps. Le temps 2 est coupé en deux : d’abord l’application, ensuite la base.
-- Chaque temps s’arrête. Pas de publication ni de modification de la base tant que ce n’est pas demandé à cet arrêt.
-- Les fichiers déjà modifiés ailleurs (écran, docs de revue, `recovery-codes vercel.txt`) ne sont pas embarqués.
+- Chaque temps s’arrête. Pas de modification de la base tant que ce n’est pas demandé à cet arrêt.
+- Les fichiers déjà modifiés ailleurs (écran de revue, docs de revue, `recovery-codes vercel.txt`) ne sont pas embarqués.
 - Hors lot : sauvegardes, alertes de panne, logo sur la page publique, limite de poids, découpage de fichiers, document métier de 200 lignes.
+
+### Décisions du 1 novembre 2026, 12 h 58
+
+Tranchées avec le produit avant d’écrire le temps 2.
+
+- Le jour du temps 2b, on recompte. Tout logo ou toute photo cité par une fiche est déplacé. Le reste devient invisible, sans être effacé. Le constat du 21 octobre (2 logos, 0 photo, 3 orphelins) n’est pas une liste figée.
+- Adresses Gravatar et Google inchangées. La fiche garde une adresse complète. Seul le dossier à l’intérieur change.
+- Déplacement simple, fichiers d’essai : copier, mettre à jour la fiche, vérifier l’image, effacer l’ancien. Si ça rate, on renvoie le logo depuis la fiche. Pas de machine de retour arrière pour les fichiers.
+- L’entreprise est créée d’abord. Si le logo échoue, elle reste sans logo. Un second clic renvoie le logo et ne crée pas une deuxième entreprise.
+- Lecture du logo : toute personne de l’entreprise (CODIR, pilote, contributeur, admin), le consultant du dossier, le super-admin. On relie ça à `can_access_workspace` seulement si la fonction en base a ce sens. Sinon on s’arrête.
+- Photo de profil : la personne elle-même, et quiconque voit une entreprise où elle est membre.
+- Écriture du logo : qui gère l’entreprise. Écriture de la photo : seulement son propre dossier.
+- Suppression : le gestionnaire peut effacer le logo de son entreprise, la personne sa propre photo. Remplacer une image efface l’ancien fichier une fois le nouveau enregistré. Retirer l’image de la fiche efface le fichier.
+- La page publique vitrine ne change pas.
+- Le temps 2a est commité après la preuve dans le navigateur, puis on s’arrête avant le SQL.
+- Le SQL du temps 2b et de REF-104 est exécuté par l’agent sur le projet distant, seulement après un oui explicite dans le chat.
+- REF-104 : les personnes dans l’application ne peuvent pas réécrire ni effacer une trace (« untel a ouvert la revue », « untel a retiré un membre »). Elles peuvent toujours les lire et en ajouter. L’outil de maintenance, hors écran, peut encore corriger une trace fausse. On ne change pas qui lit ni qui ajoute.
 
 ## Risques
 
@@ -54,30 +71,36 @@ Preuve du **1 novembre 2026**, rejouée à 12 h 41 : `npm test` vert (42 tests).
 
 Nouveaux dossiers : `workspaces/{id}/logos/` et `users/{id}/avatars/`. L’ancienne règle du dossier reste ouverte. Fichiers : `src/lib/api/storage.ts`, `src/lib/api/storagePath.test.ts`, `src/CompanySheet.tsx`, `src/ProfileSheet.tsx`, `src/OnboardingFlow.tsx`. Le constructeur de chemin reste dans `storage.ts`.
 
-Preuve dans le navigateur : logo de fiche, photo de profil, création d’entreprise avec logo, second clic sans deuxième entreprise. Arrêt, avant tout SQL.
+1. Créer l’entreprise, puis envoyer le logo dans son dossier. Si l’envoi échoue, l’entreprise reste. Un second clic met à jour le logo sans recréer l’entreprise.
+2. La fiche entreprise et la photo de profil envoient dans le dossier de l’identifiant.
+3. Remplacer ou retirer une image efface le fichier précédent, une fois le nouveau enregistré ou la fiche vidée.
+4. L’adresse enregistrée reste une adresse complète.
 
-### REF-103 — Temps 2b, base, après accord
+Preuve du **1 novembre 2026**, 13 h 09 : 46 tests verts. Dans le navigateur, compte Recette Consultant : « Changer le logo » et « Retirer » sur World Company ; « Changer la photo » et « Retirer » sur le profil (fermé sans enregistrer). Création de l’espace **Essai REF-103** sans logo, une seule fois, fiche ouverte ensuite avec « Changer le logo ». L’envoi d’un fichier et le second clic après échec n’ont pas pu être joués : le navigateur de contrôle ne peut pas choisir un fichier. Arrêt, avant tout SQL.
 
-La nouvelle application est déjà en place. Sinon on n’applique pas.
+### REF-103 — Temps 2b, base, après un oui explicite
 
-Avant le SQL : vérifier que `authenticated` peut exécuter `can_manage_workspace` et `can_access_workspace`. Si non, on s’arrête.
+La nouvelle application est déjà en place et commitée. Sinon on n’applique pas. L’agent exécute le SQL sur le projet distant.
 
-En une transaction :
+Avant les règles : relire `can_manage_workspace` et `can_access_workspace`. Si la lecture du logo ne couvre pas les personnes de l’entreprise, on s’arrête. Vérifier que `authenticated` peut exécuter ces deux fonctions.
 
-1. Montrer la liste des 2 logos à déplacer. Pas de Gravatar.
-2. Les déplacer et mettre à jour `logo_url`. Les orphelins restent sans droit, non effacés.
-3. Écriture logo : `can_manage_workspace` sur l’identifiant du dossier. Lecture logo : `can_access_workspace`.
-4. Photo de profil : écriture seulement dans son propre dossier. Lecture si la personne est dans une entreprise visible par l’appelant.
+Ensuite :
 
-Le SQL inverse est écrit avant l’application. Si le renommage est refusé, on annule tout.
+1. Recompter les fichiers cités par une fiche. Montrer la liste. Pas de Gravatar.
+2. Pour chacun : copier vers le nouveau dossier, mettre à jour l’adresse, vérifier l’image, effacer l’ancien. Les orphelins restent sans droit, non effacés.
+3. Écriture logo : qui gère l’entreprise, sur l’identifiant du dossier. Lecture logo : les personnes de l’entreprise, le consultant du dossier, le super-admin.
+4. Photo : écriture seulement dans son dossier. Lecture pour soi et pour qui voit une entreprise où la personne est membre.
+5. Suppression : le gestionnaire pour le logo de son entreprise, la personne pour sa photo.
+
+Le SQL inverse des règles est écrit avant de les appliquer. Les fichiers d’essai n’ont pas de retour arrière automatique : un logo perdu se renvoie depuis la fiche.
 
 Preuve : le logo s’affiche encore pour les bonnes personnes ; une autre entreprise ne peut pas l’ouvrir. Arrêt.
 
 ### REF-104 — Temps 3, historique
 
-Ne pas modifier `audit_events_select` ni `audit_events_insert`. Retirer au rôle `authenticated` les droits SQL UPDATE et DELETE.
+Ne pas modifier qui lit une trace ni qui en ajoute une. Retirer au rôle `authenticated` les droits SQL UPDATE et DELETE. Le rôle de maintenance les garde.
 
-Preuve : une trace s’ajoute encore, l’historique reste lisible, la modification et l’effacement sont refusés. Arrêt.
+Preuve : une trace s’ajoute encore, l’historique reste lisible, une personne connectée ne peut ni modifier ni effacer une trace. Arrêt.
 
 ## Temps de travail
 

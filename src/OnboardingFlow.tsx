@@ -4,7 +4,10 @@ import {
   createInvitation,
   createWorkspace,
   isStorageBucketNotFound,
+  releaseReplacedAsset,
+  updateWorkspace,
   uploadImageToStorage,
+  workspaceLogoFolder,
 } from './lib/api'
 import type { Workspace } from './lib/types'
 
@@ -95,35 +98,46 @@ export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowP
     setApiError(null)
     setSubmittingStep1(true)
     try {
-      let logoUrlForDb: string | null = null
-      if (companyLogoFile) {
+      let workspace = createdWorkspace
+      let id = workspaceId
+      if (!id) {
+        workspace = await createWorkspace({
+          company_name: companyName.trim(),
+          sector,
+          size,
+          logo_url: null,
+        })
+        id = workspace.id
+        setCreatedWorkspace(workspace)
+        setWorkspaceId(id)
+      }
+
+      if (companyLogoFile && id) {
+        let uploaded: string | null = null
         try {
-          logoUrlForDb = await uploadImageToStorage({
+          const previous = workspace?.logo_url ?? null
+          uploaded = await uploadImageToStorage({
             file: companyLogoFile,
-            folder: 'workspaces/logos',
+            folder: workspaceLogoFolder(id),
             filenamePrefix: companyName.trim() || 'workspace',
           })
-        } catch (uploadError) {
-          if (isStorageBucketNotFound(uploadError)) {
-            // Keep flow working even if storage bucket is missing.
-            logoUrlForDb = null
-            setApiError("Bucket Storage introuvable (assets). L'espace sera créé sans logo.")
-          } else {
-            throw uploadError
+          workspace = await updateWorkspace(id, { logo_url: uploaded })
+          if (previous && previous !== uploaded) {
+            await releaseReplacedAsset(previous)
           }
+          setCompanyLogoFile(null)
+        } catch (uploadError) {
+          if (uploaded) await releaseReplacedAsset(uploaded)
+          if (isStorageBucketNotFound(uploadError)) {
+            setApiError("Bucket Storage introuvable (assets). L'espace existe sans logo. Un nouvel envoi réessaie le logo.")
+            return
+          }
+          throw uploadError
         }
-      } else if (companyLogo && companyLogo.startsWith('http')) {
-        logoUrlForDb = companyLogo
       }
-      const workspace = await createWorkspace({
-        company_name: companyName.trim(),
-        sector,
-        size,
-        logo_url: logoUrlForDb,
-      })
+
       setCreatedWorkspace(workspace)
-      setCompanyLogo(workspace.logo_url ?? logoUrlForDb)
-      setWorkspaceId(workspace.id)
+      setCompanyLogo(workspace?.logo_url ?? null)
       goTo(2)
     } catch (error) {
       setApiError(getApiErrorMessage(error))
