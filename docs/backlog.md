@@ -74,11 +74,11 @@ Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Se
 
 Constat du 21 octobre 2026 : le dossier `assets` n’est plus public, mais toute personne connectée peut encore lire, ajouter, modifier et supprimer n’importe quel fichier. 2 logos d’entreprise sont à déplacer. 3 fichiers orphelins deviennent invisibles, sans être effacés. L’historique est déjà protégé en lecture et en ajout. On retire seulement les droits SQL de modification et d’effacement.
 
-Aucun temps n’est commencé. Chaque temps s’arrête avant le suivant. La base ne change qu’au temps 2b, après la nouvelle application et un accord explicite.
+Le temps 1 est livré le 1 novembre 2026. Les temps 2 et 3 ne sont pas commencés. Chaque temps s’arrête avant le suivant. La base ne change qu’au temps 2b, après la nouvelle application et un accord explicite.
 
 | REF | Titre | Priorité | Statut |
 |---|-------|----------|--------|
-| 102 | Contrôles automatiques : tests, et lint seulement s’il est déjà vert. Aucun écran, aucun SQL | 🔴 | ⬜ |
+| 102 | Contrôles automatiques : tests, et lint seulement s’il est déjà vert. Aucun écran, aucun SQL. Preuve : 42 tests verts ; lint racine laissé dehors (4 erreurs déjà présentes) ; `npm test` ajouté à la CI | 🔴 | ✅ |
 | 103 | Photos et logos : d’abord l’application (2a), ensuite la base (2b) — déplacer les 2 logos cités, masquer les orphelins, réserver chaque dossier à la bonne entreprise | 🔴 | ⬜ |
 | 104 | Historique : retirer UPDATE et DELETE au rôle connecté, sans réécrire qui lit ni qui ajoute | 🔴 | ⬜ |
 
@@ -696,7 +696,7 @@ Ce bloc est la référence produit pour la navbar applicative `/src` (workspace 
 
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
-- **Maintenant** : **EPIC 18 · REF-102 → REF-104** passe en premier. Le dossier photos est encore ouvert à toute personne connectée. Ensuite seulement le fil revue : **REF-7b.3** est livré (19/10/2026). **REF-7b.4** est codé en local, en attente de recette et de commit. Puis **REF-7b.5** et **REF-7b.5ter**. **REF-7b.6** reste le panneau flottant. En parallèle, une fois le lot permissions avancé : gap décideur transverse (EPIC 2 · REF-3) et lots Discours **REF-93 → REF-95**. **REF-7b.1bis** (PCI jalon) reste ouvert, hors du fil revue.
+- **Maintenant** : **EPIC 18 · REF-102 → REF-104** passe en premier. **REF-102** est livré le 1 novembre 2026 (tests dans la CI, lint racine laissé dehors). Le dossier photos est encore ouvert à toute personne connectée. Ensuite seulement le fil revue : **REF-7b.3** est livré (19/10/2026). **REF-7b.4** est codé en local, en attente de recette et de commit. Puis **REF-7b.5** et **REF-7b.5ter**. **REF-7b.6** reste le panneau flottant. En parallèle, une fois le lot permissions avancé : gap décideur transverse (EPIC 2 · REF-3) et lots Discours **REF-93 → REF-95**. **REF-7b.1bis** (PCI jalon) reste ouvert, hors du fil revue.
 - **Après** : poser les fondations de l'EPIC 15 (REF-76 + REF-77), arbitrer l'export PDF autonome (EPIC 13), puis lancer l’harmonisation **PCI / RACI** et le polish final du module PCI (REF-7b.1c → 7b.1e).
 - **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète ; **veille infra** **EPIC 10 · REF-47a** (migration clés Supabase réservées Edge / Next server).
 
@@ -706,9 +706,9 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-**PRIORITÉ MAXIMALE** : EPIC 18 · **REF-102 → REF-104** — fiabiliser les permissions. Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Rien n’est commencé.
+**PRIORITÉ MAXIMALE** : EPIC 18 · **REF-103 → REF-104** — fiabiliser les permissions. Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Le temps 1 est livré.
 
-1. EPIC 18 · **REF-102** ⬜ — contrôles automatiques, puis arrêt.
+1. EPIC 18 · **REF-102** ✅ — contrôles automatiques livrés le 1 novembre 2026. Tests dans la CI. Lint racine laissé dehors.
 2. EPIC 18 · **REF-103** ⬜ — photos et logos, application puis base.
 3. EPIC 18 · **REF-104** ⬜ — historique ineffaçable, sans changer qui lit.
 
@@ -743,6 +743,23 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 1 novembre 2026 — REF-102, contrôles automatiques (arrêt)
+
+Dernière mise à jour : **1 novembre 2026**, 12 h 41 (Europe/Paris)
+
+#### Fait
+- `eslint.config.js` ignore `web/**`. Le lint racine ne juge plus l’application Next.
+- `.github/workflows/quality-gates.yml` lance `npm test` après `npm ci` à la racine.
+- Preuve rejouée : 42 tests verts. Lint de `web` : 0 erreur, 3 avertissements. Lint racine : 4 erreurs déjà présentes, laissées telles quelles. Le lint n’entre pas dans la CI.
+- Ce commit ne contient pas le masquage de revue ni `recovery-codes vercel.txt`.
+
+#### Non fait
+- Temps 2 et 3. Aucune règle de la base modifiée. Aucun écran modifié.
+
+#### Reprise
+1. **REF-103** seulement après accord : application, preuve des images, arrêt, puis base.
+2. **REF-104** seulement après validation du temps 2.
 
 ### 21 octobre 2026 — Plan de fiabilisation des permissions (priorité maximale)
 

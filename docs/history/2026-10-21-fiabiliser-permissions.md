@@ -1,9 +1,9 @@
 # Session — fiabiliser les permissions
 
 Date : 21 octobre 2026  
-Statut : en cours, plan enregistré, aucun des trois temps commencé
+Statut : temps 1 livré le 1 novembre 2026, arrêt avant le temps 2
 
-Dernière mise à jour : **21 octobre 2026**, 03 h 14 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 12 h 41 (Europe/Paris)
 
 ## 1) Contexte et objectif
 
@@ -33,7 +33,9 @@ Documentation :
 
 Fonctionnel :
 
-- Aucun. Les trois temps ne sont pas commencés.
+- Temps 1, le 1 novembre 2026 : `web/**` ignoré par le lint racine. `npm test` ajouté à `.github/workflows/quality-gates.yml`, après l’installation des dépendances racine. Le lint n’y entre pas.
+- Preuve rejouée à 12 h 41 : 42 tests verts. Lint `web` : 0 erreur, 3 avertissements. Lint racine : 4 erreurs déjà présentes, non corrigées.
+- Temps 2 et 3 non commencés.
 
 Sécurité :
 
@@ -44,11 +46,12 @@ Sécurité :
 - Lecture des règles du dossier `assets`, de `workspaces` et de `audit_events` : faite.
 - Comptage : 5 fichiers, 2 logos cités, 3 orphelins, 0 photo de profil enregistrée sur une fiche.
 - Parcours navigateur : non fait. Il appartient au temps 2a.
-- Contrôles automatiques : non branchés. Ils appartiennent au temps 1.
+- Contrôles automatiques, 1 novembre 2026, rejoués à 12 h 41 : `npm test` vert (42). Lint racine rouge (4 erreurs hors sujet), laissé dehors. Lint `web` sans erreur.
 
 ## 5) Risques / limites restantes
 
-- Le trou du dossier photos est toujours ouvert.
+- Le trou du dossier photos est toujours ouvert. Le temps 1 ne le ferme pas.
+- La CI lance les tests une fois ce commit sur `main`. Elle ne lance pas le lint.
 - Le plan est noté 8/10. Avant le temps 2b, il faut le droit d’exécuter les deux fonctions, et le SQL de retour arrière.
 - Le temps 1 ne bloque pas Vercel à lui seul.
 - Les 38 documents de `docs/` n’ont pas été relus un par un. Les règles de refactor, la session du 18 octobre et le constat de base gouvernent ce lot.
@@ -64,7 +67,7 @@ Sécurité :
 
 Maintenant :
 
-1. **REF-102** — contrôles automatiques, puis arrêt.
+1. **REF-102** — livré. Le lint racine reste dehors.
 2. **REF-103** — application, preuve des images, arrêt, puis base seulement sur accord.
 3. **REF-104** — retrait des droits SQL de modification et d’effacement de l’historique.
 

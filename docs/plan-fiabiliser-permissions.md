@@ -1,8 +1,8 @@
 # Plan — Fiabiliser les permissions
 
-Dernière mise à jour : **21 octobre 2026**, 03 h 14 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 12 h 41 (Europe/Paris)
 
-Statut : enregistré, non commencé. Note de cadrage : 8/10.
+Statut : temps 1 livré, arrêt avant le temps 2. Note de cadrage : 8/10.
 
 Identifiants backlog : **EPIC 18 · REF-102, REF-103, REF-104**.
 
@@ -48,7 +48,7 @@ Aucun écran, aucun SQL. Fichiers : `eslint.config.js` (ignorer `web/`), `.githu
 2. Si le lint est déjà rouge hors de ce sujet, on ne l’ajoute pas à la CI et on ne corrige pas le dépôt pour le faire taire. Les tests y entrent s’ils sont verts.
 3. Ensuite seulement, modifier la CI.
 
-Preuve : tests verts, et lint vert ou lint laissé dehors. Arrêt.
+Preuve du **1 novembre 2026**, rejouée à 12 h 41 : `npm test` vert (42 tests). Lint de `web` : 0 erreur, 3 avertissements. Lint racine encore rouge après avoir ignoré `web/` : 4 erreurs déjà présentes (`ProjectSelector.tsx`, `ReviewDeadlineDialog.tsx`, `RoadmapTimelineGrid.tsx`, `supabase/functions/discours-analyze/index.ts`). Elles ne sont pas corrigées. Le lint n’entre pas dans la CI. `npm test` y entre, après `npm ci` à la racine. Arrêt avant le temps 2.
 
 ### REF-103 — Temps 2a, application
 
