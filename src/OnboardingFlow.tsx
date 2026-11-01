@@ -67,7 +67,6 @@ export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowP
   const [companyName, setCompanyName] = useState('')
   const [sector, setSector] = useState(SECTORS[0])
   const [size, setSize] = useState<(typeof SIZES)[number]>('PME')
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null)
   const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null)
 
   const [memberEmail, setMemberEmail] = useState('')
@@ -137,7 +136,6 @@ export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowP
       }
 
       setCreatedWorkspace(workspace)
-      setCompanyLogo(workspace?.logo_url ?? null)
       goTo(2)
     } catch (error) {
       setApiError(getApiErrorMessage(error))
@@ -168,15 +166,7 @@ export default function OnboardingFlow({ onCancel, onComplete }: OnboardingFlowP
   }
 
   function onLogoChange(file: File | null) {
-    if (!file) {
-      setCompanyLogo(null)
-      setCompanyLogoFile(null)
-      return
-    }
     setCompanyLogoFile(file)
-    const reader = new FileReader()
-    reader.onload = () => setCompanyLogo(typeof reader.result === 'string' ? reader.result : null)
-    reader.readAsDataURL(file)
   }
 
   async function submitInvitations() {
