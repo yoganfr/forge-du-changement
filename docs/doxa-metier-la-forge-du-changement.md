@@ -2,7 +2,7 @@
 
 **Document de synthèse narrative** pour aligner produit, implémentations et agents IA sur le **sens métier** de l’outil. Il **ne remplace pas** les règles détaillées (`docs/# Règles métier — Maturity Roadmap.md`, `docs/# Règles métier — REF-7b.2 …`, matrice permissions, backlog) : il les **ordonne** et en donne la **lecture d’ensemble**.
 
-Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 16 h 19 (Europe/Paris)
 
 ---
 
@@ -14,7 +14,7 @@ Dernière mise à jour : **6 mai 2026**, 22 h 10 (Europe/Paris)
 | **Agents IA** | Point d’entrée **avant** les specs fines ; évite les réponses « hors rails » quand le contexte conversationnel est incomplet. |
 | **Implémentation** | Chaîne de dépendance conceptuelle : **pourquoi** avant **comment** (tables, écrans, RLS). |
 
-**En cas de conflit** entre ce résumé et un document détaillé ultérieur, **la source détaillée et le backlog font foi** ; ce fichier doit alors être corrigé.
+**En cas de conflit** entre ce résumé et un document détaillé, **la source détaillée et le backlog font foi**, et ce fichier doit alors être corrigé. Exception : les décisions du **1 novembre 2026** sur le dirigeant, la lecture entre CODIR, le reviewer, le chef de projet, l’administrateur de l’espace, le projet présent sur plusieurs directions, et l’écran de la revue. Elles priment ici tant que les pages détaillées disent encore l’ancienne règle. Ces pages sont `docs/# Règles métier — Maturity Roadmap.md` §1 bis, `docs/maturity-roadmap-synthese-evolutions-produit.md` §6 et `docs/proposition-regles-matrice-permissions.md`.
 
 ---
 
@@ -45,7 +45,7 @@ La méthode sous-jacente suit un **continuum** déjà posé dans les documents f
 - La **direction générale** pilote le cap global.  
 - Le **comité de direction** rassemble les **membres CODIR** par domaines (DRH, DAF, DSI, etc.) : **piliers fonctionnels**.  
 - Sous chaque pilier, des **managers** (N‑1 hiérarchiques et dans le **périmètre métier** du CODIR) portent l’exécution.  
-- Ce sont en général **ces managers** qui sont **sollicités comme reviewers** de la roadmap préparée par **leur** membre CODIR : ils donnent les **feedbacks** qui nourrissent le passage **V1 → V2**.
+- Un **reviewer** est un N-1 du CODIR qui possède la roadmap, dans son périmètre fonctionnel. Ce n’est pas un rôle à part : au moment d’ouvrir la revue, on l’invite **comme contributeur**. Cela vient **après** une réunion réelle où la V1 a été partagée. Ces personnes commentent la version figée et nourrissent le passage **V1 → V2**.
 
 ### 4.2 Côté plateforme (rôles techniques)
 
@@ -53,22 +53,27 @@ Les **rôles métier** sont portés par la table `users.role` et la matrice docu
 
 | Rôle app | Qui c’est dans le récit |
 |----------|-------------------------|
-| **codir** | Membre du comité / pilier fonctionnel ; prépare et porte **sa** roadmap de direction ; lance la **revue** vers ses N‑1. |
-| **pilote** | Chef de projet / conduit des projets transformants dans l’outil. |
-| **contributeur** | Participation ciblée ; **les reviewers de revue roadmap** sont des contributeurs **invités** sur le périmètre (pas un rôle séparé « reviewer »). |
+| **codir** | Membre du comité. Il **possède sa roadmap** et les **chantiers** qui y sont rattachés. Il lance la **revue** vers ses N-1. Il **lit** les roadmaps des autres CODIR du même espace. Sur un projet qui traverse plusieurs directions, il **contribue pour sa part, sur sa roadmap**. |
+| **pilote** | Chef de projet. Il **voit et peut modifier toutes les roadmaps** de l’entreprise, et il peut **ouvrir une revue**. Quand il consulte une revue, il **garde le menu complet**. L’arbitrage des retours reste au CODIR. |
+| **contributeur** | Personne invitée à commenter **cette** revue, en général le N-1 du comité, après la réunion de partage de la V1. Pendant cette revue, **son écran se resserre** : elle reste sur la revue, sans le reste du produit. |
 | **consultant** | Accompagne le client ; droits selon owner / collaborateur sur le workspace. |
-| **admin** | Administrateur de **l’espace entreprise** (invitations, paramètres selon règles). |
+| **admin** | Administrateur de **l’espace entreprise** (invitations, paramètres). Il **voit et peut modifier toutes les roadmaps**, comme le chef de projet. Il peut **ouvrir une revue**. Il **n’arbitre pas** les retours : cela reste au comité. |
 | **superadmin** | Plateforme ; exceptionnel, traçable. |
 
 **Invitations** : consultants (sur le dossier), admins client et **CODIR** peuvent inviter selon les règles *(voir `docs/proposition-regles-matrice-permissions.md`).*
 
-**Vue décideur** (ex-DG) : accès **lecture / validation décideur / historique** pour certains rôles ; **exclus** pour `codir` et `contributeur` dans la matrice actuelle — la **validation décideur** est un **jalon de gouvernance** (date + commentaire obligatoires).
+**Dirigeant** : ce n’est pas un rôle de la table `users`. C’est un membre **CODIR désigné** sur l’espace pour porter le discours de transformation. **Tant qu’il est désigné**, il ouvre la **Vue décideur** en plus de son rôle CODIR.
+
+**Vue décideur** (ex-DG) : lecture, validation décideur et historique pour **superadmin**, **consultant**, **admin**, **pilote**, et pour le **dirigeant** désigné. Les autres **codir** et les **contributeurs** ne l’ouvrent pas. La **validation décideur** est un **jalon de gouvernance** (date + commentaire obligatoires).
 
 ### 4.3 Périmètre projet BUILD et CODIR (règle d’or)
 
-- Chaque membre **CODIR** porte **sa** roadmap de direction : le périmètre **n’est pas** implicitement le même que celui d’un autre CODIR du même workspace (pas de « même grille » entre voisins).
-- **Hors roadmap transversale** : deux CODIR **ne portent pas** les **mêmes** projets transformants (**BUILD**) — les ensembles de BUILD assignés à des CODIR différents sont **disjoints**.
-- **Exception** : une **roadmap transversale**, où plusieurs périmètres métiers sont **explicitement** engagés sur les **mêmes** BUILD (gouvernance et co‑owners documentés). Dans ce cadre seulement, le recoupement BUILD entre CODIR est **légitime** ; partout ailleurs, il est **exclu** par conception métier.
+Décision du **1 novembre 2026**, précisée à **16 h 19**. Elle remplace à la fois « les BUILD sont disjoints, sauf roadmap transversale explicite » et « le voisin ne modifie que les lignes du projet sur la roadmap de l’autre ».
+
+- Chaque membre **CODIR** **possède sa roadmap** et les **chantiers** qui y sont rattachés. Ce n’est pas la grille du voisin.
+- Il **lit** la roadmap d’un autre CODIR du même espace.
+- Un projet qui traverse plusieurs directions est porté **sur la roadmap de chaque direction concernée**. Chaque comité **contribue pour sa part, sur sa propre roadmap**. Il ne réécrit pas la part du voisin.
+- Dans l’outil aujourd’hui, un projet peut être **marqué transverse**. La fenêtre « Ouvrir la revue » propose alors les personnes des autres directions. Le Gantt qui lirait toutes les directions ensemble reste à faire (EPIC 2 · REF-3).
 
 ---
 
@@ -77,7 +82,7 @@ Les **rôles métier** sont portés par la table `users.role` et la matrice docu
 - Un **workspace** = une **entreprise cliente** (dossier fermé, isolation par RLS).  
 - Les **directions** segmentent les roadmaps (ex. DRH, DAF) ; les utilisateurs peuvent avoir un `direction_id` (fondations REF-7b.0, invitations CSV).  
 - La **roadmap par direction** est le support naturel du **CODIR** qui pilote ce domaine.  
-- Les roadmaps **transverses** (projets transformants qui couvrent **plusieurs** directions) sont le **seul** cadre où plusieurs CODIR peuvent **légitimement** partager les **mêmes** BUILD — **cas de gouvernance distinct** (co‑owners, voir synthèse roadmap §6 et backlog). Pour le **premier livrable** du **tableau de pilotage de revue**, la logique est la **même** que pour une roadmap « classique » : seules les règles de **qui lance la campagne** et de **qui est reviewer** changent — pas un écran entièrement différent.
+- Un projet qui couvre **plusieurs directions** est porté **sur la roadmap de chaque direction**, chacun pour sa part. Le comité **lit** la part du voisin et ne la réécrit pas. Pour le **tableau de pilotage de revue**, la campagne reste classique : la fenêtre propose les autres directions quand la version figée contient un tel projet.
 
 ---
 
@@ -127,7 +132,7 @@ Traitement dédié **Vue décideur** : pas un clic anodin ; **traçabilité** vi
 
 ## 8. Cycle de revue roadmap (REF-7b)
 
-**But** : après préparation **humaine** (réunion de mise en main, etc.), le **CODIR** ouvre la revue sur une **roadmap figée** ; les **reviewers** (managers N‑1 du périmètre) commentent ; le **CODIR** arbitre ; la roadmap évolue vers **V2**.
+**But** : une réunion réelle partage la **V1**. Ensuite seulement, le **CODIR** ouvre la revue sur la roadmap figée et invite ses **N-1** comme **contributeurs**. Ils commentent. Le **CODIR** arbitre. La roadmap évolue vers **V2**. Le chef de projet et l’administrateur de l’espace peuvent ouvrir une revue ; ils n’arbitrent pas les retours. Quand le chef de projet consulte la revue, il garde le menu complet. L’écran se resserre seulement pour les personnes invitées à commenter **cette** revue.
 
 Points **structurels** *(détail exhaustif dans `docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`)* :
 
@@ -144,9 +149,10 @@ Points **structurels** *(détail exhaustif dans `docs/# Règles métier — REF-
 | Thème | Décision |
 |--------|----------|
 | **Première victoire visible** | Le **CODIR** dispose d’un **tableau simple** par campagne de revue basé sur une **chaîne d’états** lisible (voir §8.2) — sans attendre un chantier « organisation hiérarchique » complet en base. |
-| **Constitution de l’équipe de revue (MVP)** | **Suggestion** par **domaine / direction** dans l’outil ; **choix final** des reviewers par le **CODIR** au moment d’**ouvrir** la revue (personnes explicitement assignées à **ce** snapshot / cette campagne). La **mémoire longue** du type « sous quel CODIR hiérarchique » pourra compléter plus tard sans bloquer ce MVP. |
+| **Constitution de l’équipe de revue** | Après la réunion réelle de partage de la V1, le CODIR invite ses N-1 **comme contributeurs** en ouvrant la revue. S’il y a un projet transverse, la fenêtre propose aussi les personnes des autres directions. |
 | **Visibilité du tableau de pilotage** | **CODIR** concerné ; **consultants** rattachés au dossier ; **super admin** plateforme ; **administrateur de l’espace entreprise** (`admin`) lorsqu’il existe ; **chef de projet** (`pilote`) lorsqu’il existe. *(À recouper avec `docs/proposition-regles-matrice-permissions.md` lors de l’implémentation RLS / écran.)* |
-| **Roadmap transverse** | **Même type de tableau** de pilotage ; adaptation des règles **qui lance** / **qui est reviewer** (gouvernance transverse), pas un produit « à part » pour la consultation d’état de campagne. |
+| **Projet transverse** | Le même projet est porté sur la roadmap de chaque direction, chacun pour sa part. Le tableau de pilotage reste celui d’une campagne classique. La fenêtre d’ouverture propose les autres directions quand la version figée contient un tel projet. |
+| **Écran pendant la revue** | Seules les personnes invitées à commenter **cette** revue voient l’écran resserré. Le chef de projet garde le menu complet. Décision du 1 novembre 2026, 16 h 19. |
 | **Pilotage sans « flicage »** | **Pas d’horodatage** (heure / minute) sur les états pour les managers : l’objectif est la **clarté du pilotage** et la **responsabilisation**, pas la surveillance fine. Les échéances métier (deadline de revue) restent un cadre **collectif** affiché ailleurs, pas une traque individuelle. |
 
 #### §8.2 Chaîne d’états — pilotage reviewer (décision produit)
@@ -191,7 +197,9 @@ Pour chaque personne assignée comme **reviewer** sur une campagne (snapshot), l
 | **Chantier** | Regroupement thématique sous un projet. |
 | **Jalon** | État cible atteint à une date (pas une « todo »). |
 | **Snapshot** | Copie figée de la roadmap à un instant T (revue, historique). |
-| **Reviewer** | Contributeur **invité** à commenter un snapshot précis (souvent manager N‑1 du CODIR). |
+| **Reviewer** | N-1 du CODIR propriétaire, invité **comme contributeur** au moment de la revue, après la réunion réelle de partage de la V1. Pas un rôle à part. |
+| **Dirigeant** | Membre CODIR désigné sur l’espace pour porter le discours. Tant qu’il l’est, il ouvre la Vue décideur. |
+| **Projet transverse** | Même projet porté sur la roadmap de chaque direction concernée, chacun pour sa part. |
 | **PCI** | Parties prenantes au niveau **chantier** (matrice dans la grille). |
 | **PAE** | Plan d’action d’équipe — module **futur**, sous le jalon. |
 
