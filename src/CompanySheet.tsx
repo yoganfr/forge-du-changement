@@ -18,6 +18,7 @@ import {
   releaseReplacedAsset,
   updateWorkspace,
   uploadImageToStorage,
+  validateImageFile,
   workspaceLogoFolder,
 } from './lib/api'
 import type { AuditEvent, Direction, Invitation, User } from './lib/types'
@@ -38,6 +39,36 @@ type InviteFormRole = 'Membre CODIR' | 'Pilote de projet' | 'Contributeur'
 
 const INVITE_ROLE_OPTIONS: InviteFormRole[] = ['Membre CODIR', 'Pilote de projet', 'Contributeur']
 const REMOTE_PAGE_SIZE = 500
+const IDENTITY_PAUSE_MS = 700
+
+function normOptional(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed || trimmed === 'Non renseigné') return null
+  return trimmed
+}
+
+type IdentitySaveState = 'idle' | 'saving' | 'saved' | 'error'
+type TrigramConvention = 'prenom_nom_3' | 'nom_prenom_3' | 'custom'
+type IdentityField = 'name' | 'sector' | 'size' | 'trigram'
+
+const TRIGRAM_CHOICES: readonly { value: TrigramConvention; label: string; example: string }[] = [
+  { value: 'prenom_nom_3', label: 'Prénom + Nom', example: 'MAD = MArie Dupont' },
+  { value: 'nom_prenom_3', label: 'Nom + Prénom', example: 'DUM = DUpont Marie' },
+  { value: 'custom', label: 'Personnalisée', example: 'saisie à la main' },
+]
+
+function trigramLabel(value: TrigramConvention): string {
+  return TRIGRAM_CHOICES.find((choice) => choice.value === value)?.label ?? 'Prénom + Nom'
+}
+
+function PencilIcon() {
+  return (
+    <svg className="cs-quiet-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  )
+}
 
 function mapApiRoleToLabel(role: string): string {
   const r = role.toLowerCase()
@@ -393,15 +424,26 @@ export default function CompanySheet({
 }: CompanySheetProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const previousLogoRef = useRef<string | null>(companyLogoProp?.startsWith('http') ? companyLogoProp : null)
-  const [editing, setEditing] = useState(false)
+  const savedName = useRef(companyName)
+  const savedSector = useRef(sector)
+  const savedSize = useRef(size)
+  const savedTrigram = useRef<TrigramConvention>('prenom_nom_3')
+  const draftNameRef = useRef(companyName)
+  const draftSectorRef = useRef(sector)
+  const draftSizeRef = useRef(size)
+  const textTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flushTextRef = useRef<() => Promise<void>>(async () => {})
+  const saveGen = useRef(0)
+  const textBusy = useRef(false)
+  const textAgain = useRef(false)
   const [draftName, setDraftName] = useState(companyName)
   const [draftSector, setDraftSector] = useState(sector)
   const [draftSize, setDraftSize] = useState(size)
   const [logoUrl, setLogoUrl] = useState<string | null>(companyLogoProp ?? null)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoRemoved, setLogoRemoved] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [logoBusy, setLogoBusy] = useState(false)
+  const [saveState, setSaveState] = useState<IdentitySaveState>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [editingField, setEditingField] = useState<IdentityField | null>(null)
   const [remoteMembers, setRemoteMembers] = useState<CompanyMember[] | null>(null)
   const [remoteUsers, setRemoteUsers] = useState<User[]>([])
   const [remoteMembersLoading, setRemoteMembersLoading] = useState(false)
@@ -432,21 +474,41 @@ export default function CompanySheet({
   const [userEmailById, setUserEmailById] = useState<Record<string, string>>({})
   const [workspaceDirections, setWorkspaceDirections] = useState<Direction[]>([])
   const [inviteDirectionId, setInviteDirectionId] = useState<string>('')
-  const [trigramConvention, setTrigramConvention] = useState<'prenom_nom_3' | 'nom_prenom_3' | 'custom'>('prenom_nom_3')
-  const [draftTrigramConvention, setDraftTrigramConvention] = useState<'prenom_nom_3' | 'nom_prenom_3' | 'custom'>('prenom_nom_3')
+  const [trigramConvention, setTrigramConvention] = useState<TrigramConvention>('prenom_nom_3')
 
   useEffect(() => {
+    if (logoBusy) return
     setLogoUrl(companyLogoProp ?? null)
-    setLogoFile(null)
-    setLogoRemoved(false)
     previousLogoRef.current = companyLogoProp?.startsWith('http') ? companyLogoProp : null
-  }, [companyLogoProp])
+  }, [companyLogoProp, logoBusy])
 
   useEffect(() => {
+    if (draftNameRef.current !== savedName.current) return
+    savedName.current = companyName
+    draftNameRef.current = companyName
     setDraftName(companyName)
+  }, [companyName])
+
+  useEffect(() => {
+    if (draftSectorRef.current !== savedSector.current) return
+    savedSector.current = sector
+    draftSectorRef.current = sector
     setDraftSector(sector)
+  }, [sector])
+
+  useEffect(() => {
+    if (draftSizeRef.current !== savedSize.current) return
+    savedSize.current = size
+    draftSizeRef.current = size
     setDraftSize(size)
-  }, [companyName, sector, size])
+  }, [size])
+
+  useEffect(() => () => {
+    if (!textTimer.current) return
+    clearTimeout(textTimer.current)
+    textTimer.current = null
+    void flushTextRef.current()
+  }, [])
 
   const roleLabel = getRoleLabel(currentUserRole)
   const roleColor =
@@ -569,23 +631,203 @@ export default function CompanySheet({
     setExpandedGroups(target)
   }
 
-  function onLogoFile(file: File | null) {
-    if (!file) {
-      setLogoUrl(null)
-      setLogoFile(null)
+  function errorMessage(error: unknown): string {
+    if (typeof error === 'object' && error && 'message' in error) {
+      const message = String((error as { message?: unknown }).message ?? '')
+      if (message) return message
+    }
+    return 'Impossible d’enregistrer les modifications'
+  }
+
+  function publishIdentity(updated: {
+    company_name: string
+    sector: string | null
+    size: string | null
+    logo_url: string | null
+  }) {
+    onCompanyUpdate?.({
+      companyName: updated.company_name,
+      sector: updated.sector ?? 'Non renseigné',
+      size: updated.size ?? 'Non renseigné',
+      logo: updated.logo_url,
+    })
+  }
+
+  async function savePatch(
+    patch: Parameters<typeof updateWorkspace>[1],
+    after: (updated: Awaited<ReturnType<typeof updateWorkspace>>) => void,
+  ) {
+    if (!workspaceId) return
+    const gen = ++saveGen.current
+    setSaveState('saving')
+    setSaveError(null)
+    try {
+      const updated = await updateWorkspace(workspaceId, patch)
+      after(updated)
+      if (gen !== saveGen.current) return
+      setSaveState('saved')
+    } catch (error) {
+      if (gen !== saveGen.current) return
+      setSaveState('error')
+      setSaveError(errorMessage(error))
+    }
+  }
+
+  async function flushTextSave() {
+    if (!workspaceId || !canEdit) return
+    if (textBusy.current) {
+      textAgain.current = true
       return
     }
-    setLogoRemoved(false)
-    setLogoFile(file)
+    const name = draftNameRef.current.trim()
+    if (!name) {
+      draftNameRef.current = savedName.current
+      setDraftName(savedName.current)
+      setSaveState('error')
+      setSaveError('Le nom ne peut pas être vide.')
+    }
+    const sectorValue = normOptional(draftSectorRef.current)
+    const sizeValue = normOptional(draftSizeRef.current)
+    const patch: Parameters<typeof updateWorkspace>[1] = {}
+    if (name && name !== savedName.current) patch.company_name = name
+    if (sectorValue !== normOptional(savedSector.current)) patch.sector = sectorValue
+    if (sizeValue !== normOptional(savedSize.current)) {
+      patch.size = sizeValue as 'PME' | 'ETI' | 'Grand groupe' | null
+    }
+    if (Object.keys(patch).length === 0) return
+    textBusy.current = true
+    try {
+      await savePatch(patch, (updated) => {
+        savedName.current = updated.company_name
+        savedSector.current = updated.sector ?? 'Non renseigné'
+        savedSize.current = updated.size ?? 'Non renseigné'
+        publishIdentity(updated)
+      })
+    } finally {
+      textBusy.current = false
+      if (textAgain.current) {
+        textAgain.current = false
+        void flushTextSave()
+      }
+    }
+  }
+
+  flushTextRef.current = flushTextSave
+
+  function queueTextSave() {
+    if (textTimer.current) clearTimeout(textTimer.current)
+    textTimer.current = setTimeout(() => {
+      textTimer.current = null
+      void flushTextRef.current()
+    }, IDENTITY_PAUSE_MS)
+  }
+
+  function flushTextSoon() {
+    if (textTimer.current) {
+      clearTimeout(textTimer.current)
+      textTimer.current = null
+    }
+    void flushTextRef.current()
+  }
+
+  function onNameChange(value: string) {
+    draftNameRef.current = value
+    setDraftName(value)
+    setSaveState('idle')
+    queueTextSave()
+  }
+
+  function onSectorChange(value: string) {
+    draftSectorRef.current = value
+    setDraftSector(value)
+    setSaveState('idle')
+    queueTextSave()
+  }
+
+  function onSizeChange(value: string) {
+    draftSizeRef.current = value
+    setDraftSize(value)
+    setSaveState('idle')
+    queueTextSave()
+  }
+
+  async function onTrigramChange(value: TrigramConvention) {
+    setTrigramConvention(value)
+    if (!workspaceId || value === savedTrigram.current) return
+    await savePatch({ trigram_convention: value }, (updated) => {
+      const convention = updated.trigram_convention ?? 'prenom_nom_3'
+      savedTrigram.current = convention
+      setTrigramConvention(convention)
+    })
+  }
+
+  function onLogoFile(file: File | null) {
+    if (!file || !workspaceId || logoBusy) return
+    const invalid = validateImageFile(file)
+    if (invalid) {
+      setSaveState('error')
+      setSaveError(invalid)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => setLogoUrl(typeof reader.result === 'string' ? reader.result : null)
     reader.readAsDataURL(file)
+    void (async () => {
+      setLogoBusy(true)
+      let uploaded: string | null = null
+      try {
+        uploaded = await uploadImageToStorage({
+          file,
+          folder: workspaceLogoFolder(workspaceId),
+          filenamePrefix: draftNameRef.current.trim() || 'workspace',
+        })
+        const previous = previousLogoRef.current
+        await savePatch({ logo_url: uploaded }, (updated) => {
+          previousLogoRef.current = updated.logo_url?.startsWith('http') ? updated.logo_url : uploaded
+          setLogoUrl(updated.logo_url ?? uploaded)
+          publishIdentity(updated)
+        })
+        if (previous && previous !== uploaded) await releaseReplacedAsset(previous)
+      } catch (error) {
+        if (uploaded) await releaseReplacedAsset(uploaded)
+        setLogoUrl(previousLogoRef.current)
+        setSaveState('error')
+        setSaveError(
+          isStorageBucketNotFound(error)
+            ? "Le dossier des photos est introuvable. Le logo n'a pas été changé."
+            : errorMessage(error),
+        )
+      } finally {
+        setLogoBusy(false)
+      }
+    })()
   }
 
   function clearLogo() {
-    setLogoRemoved(true)
-    setLogoFile(null)
+    if (!workspaceId || logoBusy || !previousLogoRef.current) {
+      setLogoUrl(null)
+      return
+    }
+    const previous = previousLogoRef.current
     setLogoUrl(null)
+    void (async () => {
+      setLogoBusy(true)
+      try {
+        await savePatch({ logo_url: null }, (updated) => {
+          previousLogoRef.current = null
+          setLogoUrl(null)
+          publishIdentity(updated)
+        })
+        await deleteStoredAsset(previous)
+      } catch (error) {
+        previousLogoRef.current = previous
+        setLogoUrl(previous)
+        setSaveState('error')
+        setSaveError(errorMessage(error))
+      } finally {
+        setLogoBusy(false)
+      }
+    })()
   }
 
   useEffect(() => {
@@ -678,8 +920,8 @@ export default function CompanySheet({
         if (cancelled) return
         const current = all.find((w) => w.id === workspaceId)
         const convention = current?.trigram_convention ?? 'prenom_nom_3'
+        savedTrigram.current = convention
         setTrigramConvention(convention)
-        setDraftTrigramConvention(convention)
       } catch {
         /* RLS ou reseau : on garde le defaut */
       }
@@ -928,90 +1170,6 @@ export default function CompanySheet({
     }
   }
 
-  async function persist() {
-    setSaveError(null)
-    setSaving(true)
-    let uploadedLogo: string | null = null
-    try {
-      const remoteBefore = previousLogoRef.current
-
-      let logoForDb: string | null = remoteBefore
-
-      if (logoRemoved) {
-        logoForDb = null
-      } else if (workspaceId && logoFile) {
-        try {
-          uploadedLogo = await uploadImageToStorage({
-            file: logoFile,
-            folder: workspaceLogoFolder(workspaceId),
-            filenamePrefix: draftName.trim() || 'workspace',
-          })
-          logoForDb = uploadedLogo
-        } catch (uploadError) {
-          if (isStorageBucketNotFound(uploadError)) {
-            setSaveError("Bucket Storage introuvable (assets). Le logo n'a pas été uploadé, mais les autres modifications seront enregistrées.")
-            logoForDb = remoteBefore
-          } else {
-            throw uploadError
-          }
-        }
-      } else if (!logoFile && logoUrl?.startsWith('http')) {
-        logoForDb = logoUrl
-      }
-
-      if (workspaceId) {
-        let updated = await updateWorkspace(workspaceId, {
-          company_name: draftName.trim() || companyName,
-          sector: draftSector || null,
-          size: (draftSize || null) as 'PME' | 'ETI' | 'Grand groupe' | null,
-          logo_url: logoForDb,
-          trigram_convention: draftTrigramConvention,
-        })
-        if (logoForDb && !updated.logo_url) {
-          updated = await updateWorkspace(workspaceId, { logo_url: logoForDb })
-        }
-        const freshLogo = uploadedLogo
-        uploadedLogo = null
-        try {
-          if (logoRemoved && remoteBefore) {
-            await deleteStoredAsset(remoteBefore)
-          } else if (freshLogo && remoteBefore && remoteBefore !== freshLogo) {
-            await releaseReplacedAsset(remoteBefore)
-          }
-        } catch (removeError) {
-          console.warn('[assets]', removeError)
-        }
-        setLogoRemoved(false)
-        setLogoFile(null)
-        setLogoUrl(updated.logo_url ?? null)
-        previousLogoRef.current = updated.logo_url?.startsWith('http') ? updated.logo_url : null
-        setTrigramConvention(updated.trigram_convention ?? 'prenom_nom_3')
-        onCompanyUpdate?.({
-          companyName: updated.company_name,
-          sector: updated.sector ?? 'Non renseigné',
-          size: updated.size ?? 'Non renseigné',
-          logo: updated.logo_url,
-        })
-      } else {
-        onCompanyUpdate?.({
-          companyName: draftName,
-          sector: draftSector,
-          size: draftSize,
-          logo: logoUrl,
-        })
-      }
-      setEditing(false)
-    } catch (error) {
-      if (uploadedLogo) await releaseReplacedAsset(uploadedLogo)
-      const message = typeof error === 'object' && error && 'message' in error
-        ? String((error as { message?: unknown }).message ?? '')
-        : ''
-      setSaveError(message || 'Impossible d’enregistrer les modifications')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   useEffect(() => {
     if (!removeMemberConfirm) return
     function onKeyDown(e: KeyboardEvent) {
@@ -1088,13 +1246,17 @@ export default function CompanySheet({
                   type="file"
                   accept="image/*"
                   className="cs-file"
-                  onChange={(e) => onLogoFile(e.target.files?.[0] ?? null)}
+                  disabled={logoBusy}
+                  onChange={(e) => {
+                    onLogoFile(e.target.files?.[0] ?? null)
+                    e.target.value = ''
+                  }}
                 />
-                <button type="button" className="cs-change-logo" onClick={() => fileRef.current?.click()}>
+                <button type="button" className="cs-change-logo" onClick={() => fileRef.current?.click()} disabled={logoBusy}>
                   Changer le logo
                 </button>
                 {logoUrl ? (
-                  <button type="button" className="cs-change-logo" onClick={clearLogo}>
+                  <button type="button" className="cs-change-logo" onClick={clearLogo} disabled={logoBusy}>
                     Retirer
                   </button>
                 ) : null}
@@ -1102,12 +1264,29 @@ export default function CompanySheet({
             )}
           </div>
           <div className="cs-heading">
-            {canEdit && editing ? (
-              <input value={draftName} onChange={(e) => setDraftName(e.target.value)} className="cs-edit-input cs-edit-input--title" />
+            {canEdit && editingField === 'name' ? (
+              <input
+                value={draftName}
+                onChange={(e) => onNameChange(e.target.value)}
+                onBlur={() => {
+                  flushTextSoon()
+                  setEditingField((current) => (current === 'name' ? null : current))
+                }}
+                className="cs-quiet-input cs-quiet-input--title"
+                aria-label="Nom de l'entreprise"
+                autoFocus
+              />
             ) : (
-              <h2>{draftName}</h2>
+              <div className="cs-quiet-field">
+                <h2>{draftName}</h2>
+                {canEdit ? (
+                  <button type="button" className="cs-quiet-edit" aria-label="Modifier le nom" onClick={() => setEditingField('name')}>
+                    <PencilIcon />
+                  </button>
+                ) : null}
+              </div>
             )}
-            {!editing && (
+            {!canEdit && (
               <p>{draftSector} · {draftSize}</p>
             )}
           </div>
@@ -1119,43 +1298,101 @@ export default function CompanySheet({
           <div className="cs-info-grid">
             <div>
               <span className="cs-label">Secteur d&apos;activité</span>
-              {canEdit && editing ? (
-                <input value={draftSector} onChange={(e) => setDraftSector(e.target.value)} className="cs-edit-input" />
+              {canEdit && editingField === 'sector' ? (
+                <input
+                  value={draftSector}
+                  onChange={(e) => onSectorChange(e.target.value)}
+                  onBlur={() => {
+                    flushTextSoon()
+                    setEditingField((current) => (current === 'sector' ? null : current))
+                  }}
+                  className="cs-quiet-input"
+                  aria-label="Secteur d'activité"
+                  autoFocus
+                />
               ) : (
-                <strong>{draftSector}</strong>
+                <div className="cs-quiet-field">
+                  <strong>{draftSector}</strong>
+                  {canEdit ? (
+                    <button type="button" className="cs-quiet-edit" aria-label="Modifier le secteur" onClick={() => setEditingField('sector')}>
+                      <PencilIcon />
+                    </button>
+                  ) : null}
+                </div>
               )}
             </div>
             <div>
               <span className="cs-label">Taille</span>
-              {canEdit && editing ? (
-                <input value={draftSize} onChange={(e) => setDraftSize(e.target.value)} className="cs-edit-input" />
+              {canEdit && editingField === 'size' ? (
+                <input
+                  value={draftSize}
+                  onChange={(e) => onSizeChange(e.target.value)}
+                  onBlur={() => {
+                    flushTextSoon()
+                    setEditingField((current) => (current === 'size' ? null : current))
+                  }}
+                  className="cs-quiet-input"
+                  aria-label="Taille"
+                  autoFocus
+                />
               ) : (
-                <strong>{draftSize}</strong>
+                <div className="cs-quiet-field">
+                  <strong>{draftSize}</strong>
+                  {canEdit ? (
+                    <button type="button" className="cs-quiet-edit" aria-label="Modifier la taille" onClick={() => setEditingField('size')}>
+                      <PencilIcon />
+                    </button>
+                  ) : null}
+                </div>
               )}
             </div>
-            <div>
+            <div className="cs-trigram">
               <span className="cs-label">Convention trigramme</span>
-              {canEdit && editing ? (
-                <select
-                  value={draftTrigramConvention}
-                  onChange={(e) => setDraftTrigramConvention(e.target.value as 'prenom_nom_3' | 'nom_prenom_3' | 'custom')}
-                  className="cs-edit-input"
+              {canEdit && editingField === 'trigram' ? (
+                <div
+                  className="cs-trigram-choices"
+                  role="listbox"
+                  aria-label="Convention trigramme"
+                  onBlur={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+                    setEditingField((current) => (current === 'trigram' ? null : current))
+                  }}
                 >
-                  <option value="prenom_nom_3">Prénom + Nom (ex : MAD = MArie Dupont)</option>
-                  <option value="nom_prenom_3">Nom + Prénom (ex : DUM = DUpont Marie)</option>
-                  <option value="custom">Personnalisée (édition manuelle)</option>
-                </select>
+                  {TRIGRAM_CHOICES.map((choice, index) => (
+                    <button
+                      key={choice.value}
+                      type="button"
+                      role="option"
+                      aria-selected={choice.value === trigramConvention}
+                      autoFocus={index === 0}
+                      className={choice.value === trigramConvention ? 'cs-trigram-choice cs-trigram-choice--on' : 'cs-trigram-choice'}
+                      onClick={() => {
+                        void onTrigramChange(choice.value)
+                        setEditingField(null)
+                      }}
+                    >
+                      <span>{choice.label}</span>
+                      <span className="cs-trigram-example">{choice.example}</span>
+                    </button>
+                  ))}
+                </div>
               ) : (
-                <strong>
-                  {trigramConvention === 'nom_prenom_3'
-                    ? 'Nom + Prénom'
-                    : trigramConvention === 'custom'
-                      ? 'Personnalisée'
-                      : 'Prénom + Nom'}
-                </strong>
+                <div className="cs-quiet-field">
+                  <strong>{trigramLabel(trigramConvention)}</strong>
+                  {canEdit ? (
+                    <button type="button" className="cs-quiet-edit" aria-label="Modifier la convention trigramme" onClick={() => setEditingField('trigram')}>
+                      <PencilIcon />
+                    </button>
+                  ) : null}
+                </div>
               )}
             </div>
           </div>
+          {canEdit && saveState !== 'idle' ? (
+            <p className={saveState === 'error' ? 'cs-invite-msg cs-invite-msg--error' : 'cs-save-status'} role="status">
+              {saveState === 'saving' ? 'Enregistrement…' : saveState === 'saved' ? 'Enregistré' : saveError}
+            </p>
+          ) : null}
         </div>
 
         {workspaceId && (
@@ -1549,23 +1786,6 @@ export default function CompanySheet({
           </div>
         )}
 
-        {canEdit && (
-          <div className="cs-actions">
-            {editing ? (
-              <>
-                {saveError && <p className="cs-save-error">{saveError}</p>}
-                <button type="button" className="cs-primary-btn" onClick={() => { void persist() }} disabled={saving}>
-                  {saving ? 'Enregistrement...' : 'Enregistrer'}
-                </button>
-              </>
-            ) : (
-              <button type="button" className="cs-primary-btn" onClick={() => setEditing(true)}>
-                Modifier la fiche
-              </button>
-            )}
-          </div>
-        )}
-
         {!canEdit && canInvite && (
           <p className="cs-note">
             Seul le consultant ou l’administrateur peut modifier la fiche entreprise (logo, nom, secteur). Vous pouvez
@@ -1754,6 +1974,62 @@ const CSS = `
   color: var(--theme-text);
 }
 
+.cs-quiet-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.cs-quiet-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--transition), background var(--transition);
+}
+
+.cs-quiet-edit:hover,
+.cs-quiet-edit:focus-visible {
+  color: var(--theme-text);
+  background: color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+
+.cs-quiet-edit:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+.cs-quiet-input {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
+  font-weight: 700;
+}
+
+.cs-quiet-input--title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cs-quiet-input:focus {
+  outline: none;
+}
+
 .cs-heading p {
   margin: 6px 0 0;
   font-size: 14px;
@@ -1787,6 +2063,48 @@ const CSS = `
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.cs-trigram {
+  grid-column: 1 / -1;
+}
+
+.cs-trigram-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.cs-trigram-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--theme-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cs-trigram-choice--on {
+  border-color: var(--theme-accent);
+  background: color-mix(in srgb, var(--theme-accent) 12%, transparent);
+}
+
+.cs-trigram-example {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.cs-trigram-choice:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
 }
 
 .cs-label {
@@ -2262,34 +2580,10 @@ const CSS = `
   color: var(--theme-text);
 }
 
-.cs-actions {
-  margin-top: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.cs-save-error {
-  margin: 0;
+.cs-save-status {
+  margin: 12px 0 0;
   font-size: 12px;
-  color: #B91C1C;
-}
-
-.cs-primary-btn {
-  height: 46px;
-  border: none;
-  border-radius: 12px;
-  background: #8E3B46;
-  color: white;
-  font-weight: 700;
-  padding: 0 16px;
-}
-
-.cs-primary-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+  color: var(--theme-text-muted);
 }
 
 .cs-edit-input {
