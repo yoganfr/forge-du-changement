@@ -22,7 +22,7 @@ Ensure consistent decisions by reading core business and process documents first
 
 Read in this order:
 
-1. `docs/doxa-metier-la-forge-du-changement.md` — single narrative spine (method continuum, CODIR / N‑1 reviewers, **BUILD scope per CODIR — disjoint unless transversal roadmap**, glossary); short; does not replace detailed rules below.
+1. `docs/doxa-metier-la-forge-du-changement.md` — single narrative spine (method continuum, CODIR / N‑1 reviewers, **each CODIR owns its roadmap; a cross-direction project sits on each roadmap, each for its own part**, glossary); short; does not replace detailed rules below. The detailed pages may still state the older formula; the doxa prevails until they are aligned.
 2. `docs/# Règles métier — Maturity Roadmap.md`
 3. `docs/git-commit-conventions.md`
 4. `docs/maturity-roadmap-synthese-evolutions-produit.md`
@@ -35,6 +35,7 @@ Read in this order:
   - `docs/regles-securite-codage.md`
 - If the request is about product evolution (features, roadmap, priorities, sprint planning), also read:
   - `docs/backlog.md`
+- If the request is a new behavior, a right, or a fix: read the 1 November 2026 decision at the top of `docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md`. A qualified fix follows the existing short plan: no story file, no passage conditions. Any other subject follows that workflow before any technical plan. A critical review precedes any story approval; a new story revision refreshes it, and the sensitive review too when that review applies. Set « approuvée » or « autorisé » only to record an explicit user phrase, quoted and tied to the revisions. A clarification is not an agreement. A blocker leaves the scope only with an explicit user agreement. On resume, suspend only the validation actually invalidated, say why, and restore it only after a new explicit agreement. A message that starts with a keyword from section 3 of `docs/GUIDE-UTILISATEUR-IA-CURSOR.md` stands for that prompt and its stops. Accents are optional. `approuve`, `planifie`, and `code` require the REF and the revisions in the same message. `planifie` and `code` wait while a blocker is open. `historise` records the lot, pushes it, updates the backlog, writes the session history, then pushes those texts. It does not invent a REF number. It approves nothing and authorizes nothing. A keyword in the middle of a sentence does not count.
 - If there is any doubt about roles, permissions, or access rights, also read:
   - `docs/proposition-regles-matrice-permissions.md`
 - If the request touches UI, CSS, components styling, theme, or visual consistency, also read:
@@ -75,7 +76,7 @@ Garantir des decisions coherentes en lisant d'abord les documents socles metier 
 
 Ordre recommande :
 
-1. `docs/doxa-metier-la-forge-du-changement.md` — fil narratif unique (continuum methode, organisation CODIR / reviewers N-1, **perimetre BUILD par CODIR — disjoint sauf roadmap transversale**, glossaire) ; court ; ne remplace pas les regles detaillees ci-dessous.
+1. `docs/doxa-metier-la-forge-du-changement.md` — fil narratif unique (continuum methode, organisation CODIR / reviewers N-1, **chaque CODIR possède sa roadmap ; un projet transverse est porté sur chaque roadmap, chacun pour sa part**, glossaire) ; court ; ne remplace pas les regles detaillees ci-dessous. Les pages détaillées peuvent encore dire l'ancienne formule ; la doxa prime tant qu'elles ne sont pas alignées.
 2. `docs/# Règles métier — Maturity Roadmap.md`
 3. `docs/git-commit-conventions.md`
 4. `docs/maturity-roadmap-synthese-evolutions-produit.md`
@@ -88,6 +89,7 @@ Ordre recommande :
   - `docs/regles-securite-codage.md`
 - Si la demande concerne l'evolution produit (features, roadmap, priorites, sprint planning), lire aussi:
   - `docs/backlog.md`
+- Si la demande est un comportement nouveau, un droit ou un correctif : lire la décision du 1 novembre 2026 en tête de `docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md`. Même consigne que dans `.cursor/rules/forge-du-changement-contexte.mdc`, y compris les mots-clés de la section 3 de `docs/GUIDE-UTILISATEUR-IA-CURSOR.md`.
 - Au moindre doute sur les roles, permissions ou droits d'acces, lire aussi:
   - `docs/proposition-regles-matrice-permissions.md`
 - Si la demande touche l'UI, le CSS, le styling de composants, le theme ou la coherence visuelle, lire aussi:

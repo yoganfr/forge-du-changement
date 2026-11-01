@@ -2,9 +2,67 @@
 
 **Guide du processus : De la clarification métier à l'implémentation prête**
 
-Dernière mise à jour : **6 mai 2026**, 01 h 10 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 15 h 55 (Europe/Paris)
 
 ---
+
+## Décision du 1 novembre 2026
+
+Elle prime sur les cinq phases plus bas. Ces phases restent l'exemple REF-7b.2 / 7b.5. Elles ne sont pas un second processus.
+
+Hors correctif qualifié, un sujet tient dans un seul fichier, `docs/plan-ref-XXXX.md`, lié depuis la ligne REF de `docs/backlog.md`. On le crée en préparant la story. Les règles métier se citent depuis la doxa, la matrice ou les règles roadmap. On ne les recopie pas. Une hypothèse reste une hypothèse.
+
+Pour un sujet qui n'est pas un correctif qualifié, ce workflow s'applique avant tout plan technique. Le plan court des étapes « Avant de coder » est réservé aux correctifs qualifiés.
+
+### Correctif qualifié
+
+Il restaure un attendu déjà écrit dans une source, sans décision métier nouvelle et sans changement de droit. L'agent cite l'écart. Si la qualification est ambiguë, il demande. Il ne code pas sur une hypothèse.
+
+Un correctif qualifié n'a pas de fichier story. Il ne passe pas par les conditions de passage. Il suit le plan court : reformuler, plan court, points de vigilance, puis code.
+
+### Ce que l'agent peut écrire sans accord
+
+Dans le fichier story : les faits sourcés, les questions, le résultat d'une revue dont le texte est disponible. Une réponse de clarification se consigne. Elle n'approuve pas la story et n'autorise rien.
+
+### Accords reportés
+
+L'agent peut passer une ligne à « approuvée » ou « autorisé » seulement pour reporter un accord explicite de l'utilisateur. Il cite la phrase. Il la rattache à la REF et aux révisions concernées. Il ne s'accorde rien.
+
+### Questions et blocages
+
+Une question ouverte est un point encore dans le périmètre, sans réponse. Un blocage est une question ouverte encore dans le périmètre, ou une conclusion de revue marquée bloquante. Un blocage ne sort du périmètre, et ne cesse donc de bloquer, qu'après un accord explicite de l'utilisateur. L'agent ne déclasse pas une question bloquante de lui-même.
+
+### Revue critique
+
+Aucune story n'est approuvée sans une revue critique déjà écrite dans le fichier, avec son résultat. Cette revue est indépendante de la revue sensible. Toute nouvelle révision de story exige une revue critique actualisée.
+
+### Revue sensible
+
+Droits, isolation entre entreprises, changement transverse : une conversation distincte, en plus de la revue critique. Le fichier ne contient son résultat que s'il est disponible. Sinon la ligne dit « pas de résultat disponible », et c'est un blocage pour planifier ce sujet. Si le sujet ne touche aucun de ces trois points, la ligne dit « non requise », avec la raison. Si une révision de story concerne l'un de ces trois points, la revue sensible est actualisée avant la nouvelle approbation.
+
+### Passage
+
+Ces conditions ne s'appliquent pas à un correctif qualifié.
+
+Planifier exige les quatre : revue critique disponible pour cette révision de story ; story approuvée pour cette REF et cette révision de story, par une phrase citée ; aucun blocage ouvert ; une phrase d'autorisation de planifier, citée, qui vise cette REF et cette révision de story. Une autorisation seule ne suffit pas si un blocage reste ouvert.
+
+Coder exige ensuite les trois : le plan est présenté dans le fichier, avec sa révision de plan ; une phrase d'autorisation de coder, citée, vise ce plan (REF, révision de story, révision de plan) ; aucun blocage ouvert.
+
+### Après un changement
+
+Un comportement, un droit ou un périmètre modifié augmente la révision de story. La revue critique est actualisée, ainsi que la revue sensible si elle est concernée. L'approbation et les deux autorisations sont à redonner. Un plan substantiellement modifié augmente la révision de plan et retire l'autorisation de coder. Un ajustement technique conforme au plan présenté ne redemande pas d'approbation produit.
+
+### Reprise
+
+Avant de continuer, relire les sources citées et le code concerné. Juger l'incidence sur la story, le plan et les critères. Suspendre seulement la validation réellement invalidée, et écrire laquelle et pourquoi. Ne la rétablir qu'après un nouvel accord utilisateur explicite.
+
+### Critères
+
+Un critère se vérifie par l'interface, un test, l'API ou les données. Masquer une navigation n'est pas un contrôle d'accès.
+
+### Story
+
+Problème, valeur, faits sourcés, hypothèses, points à valider, incréments, critères.
 
 ## Intro : Pourquoi ce processus ?
 
@@ -15,6 +73,8 @@ Quand une feature est mal documentée, les IAs qui arrivent en session N+1 perde
 ---
 
 ## Les 5 phases du workflow
+
+Exemple historique REF-7b.2 / 7b.5. Le passage en vigueur est la décision du 1 novembre 2026, en tête. Ne pas les rouvrir pour un sujet nouveau. Hors correctif qualifié, le fichier du sujet est `docs/plan-ref-XXXX.md`, pas un plan dans `.cursor/plans/`.
 
 ### Phase 1 : CLARIFICATION MÉTIER (✅ Obligatoire avant code)
 

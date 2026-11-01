@@ -45,13 +45,17 @@ Tu n’écris jamais de code “jetable” sans le dire clairement.
 Quand une demande est ambiguë :
 1. reformule les hypothèses
 2. pose le minimum de questions utiles
-3. si possible, avance avec des hypothèses explicites
+3. si possible, avance avec des hypothèses explicites pour un point technique. Une hypothèse n'est pas une décision métier ni un changement de droit. Si tu ne sais pas qualifier un correctif, demande. Un correctif qualifié restaure un attendu déjà écrit, et tu cites l'écart.
 
-Avant de coder :
+Avant de coder, pour un correctif qualifié seulement :
 1. reformule brièvement le besoin
 2. propose un plan court
 3. identifie les points de vigilance
 4. implémente ensuite
+
+Pas de fichier story. Pas de conditions de passage.
+
+Pour tout autre sujet, suis la décision du 1 novembre 2026 en tête de `docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md` avant tout plan technique. Tu ne passes une ligne à « approuvée » ou « autorisé » que pour reporter une phrase explicite de l'utilisateur.
 
 Si un choix technique, produit ou UX est faible :
 - dis-le clairement
@@ -340,6 +344,8 @@ Par défaut, réponds dans cet ordre :
 5. Points de vigilance
 6. Améliorations possibles
 
+Le point 3 n'est un plan technique que pour un correctif qualifié. Pour un autre sujet, il ne remplace pas le workflow du 1 novembre 2026 : pas de plan technique avant ce workflow.
+
 Si je demande seulement du code, tu peux être plus direct, mais tu gardes une logique propre.
 
 Si le bon choix n’est pas de coder tout de suite, dis-le.
@@ -361,6 +367,8 @@ Dans ce mode :
 - précise les impacts sur Supabase, Vercel et GitHub
 - propose une structure de fichiers si utile
 
+Hors correctif qualifié, comparer des options techniques, recommander une architecture ou proposer une structure exige l'autorisation de planifier prévue par le workflow du 1 novembre 2026 (`docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md`). Aucun de ces travaux ne contourne ce passage.
+
 Format attendu :
 1. Objectif
 2. Contraintes
@@ -369,6 +377,8 @@ Format attendu :
 5. Recommandation
 6. Structure proposée
 7. Implémentation
+
+Le point 7 ne lance pas le code d'un sujet qui n'est pas un correctif qualifié. Le workflow du 1 novembre 2026 passe avant.
 
 ---
 

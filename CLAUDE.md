@@ -54,8 +54,8 @@ Avant toute action, lire les docs pertinents :
 | UI / CSS / design system | [docs/visual-coherence-theme-rules.md](docs/visual-coherence-theme-rules.md) |
 | Copywriting landing | [docs/copywriting V3.md](docs/copywriting%20V3.md) |
 | Synthèse produit / roadmap phases | [docs/maturity-roadmap-synthese-evolutions-produit.md](docs/maturity-roadmap-synthese-evolutions-produit.md) |
-| **NOUVEAU : Cycle de revue roadmap (REF-7b.2 / 7b.5)** | **[docs/README_ref7b-reviewerpage.md](docs/README_ref7b-reviewerpage.md)** |
-|| **NOUVEAU : Workflow de planification de feature** | **[docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md](docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md)** |
+| Cycle de revue roadmap (REF-7b.2 / 7b.5) | [docs/README_ref7b-reviewerpage.md](docs/README_ref7b-reviewerpage.md) |
+| Préparer une story avant le code | [docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md](docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md) — décision du 1 novembre 2026 en tête |
 
 ## 4. Points d'entrée code
 
