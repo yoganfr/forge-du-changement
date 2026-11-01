@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **1 novembre 2026**, 15 h 17 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 16 h 25 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -12,6 +12,8 @@ Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heu
 | **`EPIC k`** | Bloc thématique du backlog (priorisation et périmètre). |
 
 Les valeurs **`REF-*`** et **`GH-*`** sont indépendantes (ex. `GH-11` = plan de charge côté GitHub, alors que **`REF-11`** en **EPIC 4** = actions PAE).
+
+Préparer un sujet avant le code suit la décision du 1 novembre 2026, en tête de [docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md](AI-AGENT-FEATURE-PLANNING-WORKFLOW.md). Le guide d’usage est [docs/GUIDE-UTILISATEUR-IA-CURSOR.md](GUIDE-UTILISATEUR-IA-CURSOR.md). Ce n’est pas une REF. Un statut de cette page n’approuve pas une story et n’autorise ni le plan ni le code.
 
 ## Traçabilité GitHub ([yoganfr/forge-du-changement](https://github.com/yoganfr/forge-du-changement))
 
@@ -139,7 +141,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 
 ## EPIC 3 — Maturity Roadmap (Rôles & Rythmes) 🚧 EN COURS
 
-> **Règle métier (périmètre BUILD / CODIR)** : chaque CODIR porte **sa** roadmap ; les BUILD sont **disjoints** entre CODIR **sauf** dans une **roadmap transversale** explicite. Source : `docs/doxa-metier-la-forge-du-changement.md` §4.3, `docs/# Règles métier — Maturity Roadmap.md` §1 bis, `docs/maturity-roadmap-synthese-evolutions-produit.md` §6.
+> **Règle métier (périmètre BUILD / CODIR)** : chaque membre du CODIR possède **sa** roadmap et les chantiers qui y sont rattachés. Un projet qui traverse plusieurs directions est porté sur la roadmap de **chaque** direction, chacun pour sa part. Il lit la roadmap du voisin et ne réécrit pas sa part. Source qui prime : `docs/doxa-metier-la-forge-du-changement.md` §4.3, décision du 1 novembre 2026, 16 h 19. Les règles métier §1 bis, la synthèse §6 et la matrice disent encore l’ancienne formule.
 
 | REF | Titre | Priorité | Statut |
 |---|-------|----------|--------|
@@ -157,7 +159,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 7b.1e | Durcissement technique / performance PCI (bulk updates batch, robustesse gros volumes, recette accessibilité clavier) | 🟡 | ⬜ |
 | 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS + audit triggers) — **spec** [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) + **plan** [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) + **DDL** [`docs/supabase-roadmap-review-cycle.sql`](supabase-roadmap-review-cycle.sql) — Complété 11/06/2026 : colonne `reaction_acknowledged_at`, policies INSERT/SELECT/UPDATE/DELETE renforcées, 3 triggers audit (`reviewer_submitted`, `snapshot_review_reopened`, `feedback_arbitrated`) | 🔴 | ✅ |
 | 7b.3 | Fenêtre « Ouvrir la revue » et e-mail de connexion. Livré le 19/10/2026 : contributeurs actifs, autres directions seulement si la version figée est transverse, date limite, lien copié. L’e-mail est celui de connexion déjà utilisé : il ouvre la revue, sans y écrire le nom de la version ni la date limite (décision du 19/10, l’e-mail sur mesure a été jugé trop lourd). Trace `snapshot_review_opened`. Recette : message d’envoi, trace, e-mail reçu, arrivée sur la revue. Reste hors lot : rejouer avec un membre du CODIR dont la fiche a une direction | 🔴 | ✅ |
-| 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers). Route `/review/:snapshotId` et query super-admin `?reviewer=` déjà livrées. Masquage codé le 19/10/2026 dans `App.tsx` / `App.css` (parcours, menu décideur et hamburger absents pour un contributeur sur la revue ; marque statique ; thème, profil et déconnexion restent ; retour par « Retour dashboard »). **Pas recetté, pas commité** — reprise le 20/10 | 🟠 | 🚧 |
+| 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers). Route `/review/:snapshotId` et query super-admin `?reviewer=` déjà livrées. Masquage codé le 19/10/2026 dans `App.tsx` / `App.css` (parcours, menu décideur et hamburger absents pour un contributeur sur la revue ; marque statique ; thème, profil et déconnexion restent ; retour par « Retour dashboard »). **Pas recetté, pas commité.** Arbitrage du 1 novembre 2026, 16 h 19, dans la doxa : l’écran se resserre seulement pour les personnes invitées à commenter cette revue ; le chef de projet garde le menu complet ; l’administrateur de l’espace peut ouvrir une revue et n’arbitre pas. Ce n’est pas une approbation de story | 🟠 | 🚧 |
 | 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + modal "Soumettre ma review") — **architecture UX** [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) + **plan** [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md). Cœur V1 livré. Restent : PCI figé (`raci_chantier`), drawer plein écran sous 768 px, autosave | 🔴 | 🚧 |
 | 7b.5bis | Polish ReviewerPage : alignement frontend sur policies RLS (édition granulaire feedbacks, indicateurs visuels CODIR, suppression draft, bandeau réouverture, empty state pédagogique, sidebar sticky, labels axes) — **plan Cursor** `ref-7b.5_polish_frontend_b28a3469.plan.md`. Recetté le 15/06/2026 | 🟠 | ✅ |
 | 7b.5ter | Indicateurs feedbacks sur la grille roadmap (jalons et chantiers déjà commentés + accès à l’édition depuis la grille). Retour de recette du 15/06/2026, d’abord noté par erreur sous le numéro 7b.6 | 🟠 | ⬜ |
@@ -716,7 +718,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 **CONSTAT CODE 19/10/2026, 19 h 37** : **REF-7b.4** est codé en local sur `main`, non recetté, non commité. Reprise après le lot permissions : recette contributeur puis commit.
 
-4. EPIC 3 · **REF-7b.4** 🚧 — masquage codé, recette et commit en attente. **REF-7b.3** est ✅. Passe après EPIC 18.
+4. EPIC 3 · **REF-7b.4** 🚧 — masquage codé, recette et commit en attente. L’arbitrage du 1 novembre 2026, 16 h 19, est dans la doxa : écran resserré seulement pour les invités de cette revue, menu complet pour le chef de projet, l’administrateur peut ouvrir une revue sans arbitrer. **REF-7b.3** est ✅.
 5. EPIC 3 · **REF-7b.5** 🚧 — cœur ReviewerPage livré. Restent PCI figé, drawer mobile, autosave.
 6. EPIC 3 · **REF-7b.5ter** ⬜ — indicateurs de feedbacks sur la grille (retour de recette du 15/06, ancien libellé erroné « 7b.6 »).
 7. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier à la granularité jalon.
@@ -743,6 +745,19 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 1 novembre 2026 — Stories, mots-clés et arbitrages
+
+Dernière mise à jour : **1 novembre 2026**, 16 h 25 (Europe/Paris)
+
+#### Fait
+- La doxa précise qui possède une roadmap, comment un projet traverse plusieurs directions, qui voit l'écran resserré pendant une revue, et que l'administrateur peut ouvrir une revue sans arbitrer. Commit `0315d3e`.
+- Le passage avant le code et les mots-clés sont écrits. Le guide est `docs/GUIDE-UTILISATEUR-IA-CURSOR.md`. Commit `c516777`.
+- Le document de suite de sécurité ne relance plus les lots fermés. Commit `f219a67`.
+
+#### Non fait
+- Aucune story approuvée, aucun plan ni code autorisé par ce lot.
+- La recette de **REF-7b.4**. Les trois pages détaillées (règles métier §1 bis, synthèse §6, matrice) disent encore l'ancienne formule.
 
 ### 1 novembre 2026 — Fiche entreprise à la volée, puis relecture
 
