@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **1 novembre 2026**, 16 h 25 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 16 h 27 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -13,7 +13,7 @@ Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heu
 
 Les valeurs **`REF-*`** et **`GH-*`** sont indépendantes (ex. `GH-11` = plan de charge côté GitHub, alors que **`REF-11`** en **EPIC 4** = actions PAE).
 
-Préparer un sujet avant le code suit la décision du 1 novembre 2026, en tête de [docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md](AI-AGENT-FEATURE-PLANNING-WORKFLOW.md). Le guide d’usage est [docs/GUIDE-UTILISATEUR-IA-CURSOR.md](GUIDE-UTILISATEUR-IA-CURSOR.md). Ce n’est pas une REF. Un statut de cette page n’approuve pas une story et n’autorise ni le plan ni le code.
+Préparer un sujet avant le code suit la décision du 1 novembre 2026, en tête de [docs/AI-AGENT-FEATURE-PLANNING-WORKFLOW.md](AI-AGENT-FEATURE-PLANNING-WORKFLOW.md). Le guide d’usage est [docs/GUIDE-UTILISATEUR-IA-CURSOR.md](GUIDE-UTILISATEUR-IA-CURSOR.md). Les mêmes demandes se lancent dans le chat par `/` : les fichiers sont dans `.cursor/commands`. Ce n’est pas une REF. Un statut de cette page n’approuve pas une story et n’autorise ni le plan ni le code.
 
 ## Traçabilité GitHub ([yoganfr/forge-du-changement](https://github.com/yoganfr/forge-du-changement))
 
@@ -745,6 +745,17 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 1 novembre 2026 — Commandes des mots-clés
+
+Dernière mise à jour : **1 novembre 2026**, 16 h 27 (Europe/Paris)
+
+#### Fait
+- Dix-huit commandes dans `.cursor/commands`, une par mot-clé du guide. On les lance avec `/` dans le chat. Commit `54f09b8`.
+
+#### Non fait
+- Aucune story approuvée, aucun plan ni code autorisé.
+- La recette de **REF-7b.4**.
 
 ### 1 novembre 2026 — Stories, mots-clés et arbitrages
 
