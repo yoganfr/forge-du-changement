@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pickSessionUserId } from './sessionUser'
-import { imageExtensionForUpload, validateImageFile } from './storageValidation'
+import { imageContentTypeForUpload, imageExtensionForUpload, validateImageFile } from './storageValidation'
 import { payloadForUserInsert, payloadForUserUpdate } from './userPayload'
 
 describe('payload utilisateur', () => {
@@ -96,6 +96,7 @@ describe('validateImageFile', () => {
     const file = { name: 'IMG.heic', type: '', size: 2_000_000 }
     expect(validateImageFile(file)).toBeNull()
     expect(imageExtensionForUpload(file)).toBe('heic')
+    expect(imageContentTypeForUpload(file)).toBe('image/heic')
   })
 
   it('refuse un svg même annoncé comme image', () => {

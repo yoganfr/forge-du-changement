@@ -27,8 +27,9 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: enforcingCsp },
-          // TODO(CSP): passer script-src en bloquant après revue des violations
-          // Report-Only sur preview. Butoir : 1 novembre 2026.
+          // script-src reste en observation. Le cadre du site ajoute d'autres
+          // scripts que celui du thème. Le passer en bloquant sans essai sur
+          // une prévisualisation casserait la page. Revue du 1 novembre 2026.
           { key: "Content-Security-Policy-Report-Only", value: reportOnlyCsp },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },

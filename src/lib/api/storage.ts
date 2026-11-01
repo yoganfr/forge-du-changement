@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import { imageExtensionForUpload } from './storageValidation'
+import { imageContentTypeForUpload, imageExtensionForUpload } from './storageValidation'
 
 /** Bucket logos / pièces jointes non sensibles. */
 export const STORAGE_BUCKET_ASSETS = 'assets'
@@ -111,7 +111,10 @@ export async function uploadImageToStorage(params: {
 
   const { error: uploadError } = await supabase.storage
     .from(STORAGE_BUCKET_ASSETS)
-    .upload(path, params.file, { upsert: false, contentType: params.file.type })
+    .upload(path, params.file, {
+      upsert: false,
+      contentType: imageContentTypeForUpload(params.file),
+    })
   if (uploadError) throw uploadError
 
   const { data } = supabase.storage.from(STORAGE_BUCKET_ASSETS).getPublicUrl(path)

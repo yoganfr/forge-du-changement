@@ -40,3 +40,13 @@ export function imageExtensionForUpload(file: { name: string; type: string; size
   if (ext === 'heif') return 'heic'
   return ext
 }
+
+/** Type envoyé au dossier, dérivé du fichier déjà accepté par l’écran. */
+export function imageContentTypeForUpload(file: { name: string; type: string; size: number }): string {
+  const ext = imageExtensionForUpload(file)
+  if (ext === 'jpg') return 'image/jpeg'
+  if (ext === 'png') return 'image/png'
+  if (ext === 'webp') return 'image/webp'
+  if (ext === 'gif') return 'image/gif'
+  return 'image/heic'
+}
