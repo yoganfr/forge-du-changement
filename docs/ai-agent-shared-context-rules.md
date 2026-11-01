@@ -31,6 +31,8 @@ Read in this order:
 
 - If the request is about refactoring (refactor, refacto, technical restructuring), also read:
   - `docs/refactor_rules.md`
+- If the request adds a function, a header, a secret, or a database rule, also read:
+  - `docs/regles-securite-codage.md`
 - If the request is about product evolution (features, roadmap, priorities, sprint planning), also read:
   - `docs/backlog.md`
 - If there is any doubt about roles, permissions, or access rights, also read:
@@ -82,6 +84,8 @@ Ordre recommande :
 
 - Si la demande concerne la refactorisation (refactor, refacto, restructuration technique), lire aussi:
   - `docs/refactor_rules.md`
+- Si la demande ajoute une fonction, un en-tete, un secret ou une regle de base, lire aussi:
+  - `docs/regles-securite-codage.md`
 - Si la demande concerne l'evolution produit (features, roadmap, priorites, sprint planning), lire aussi:
   - `docs/backlog.md`
 - Au moindre doute sur les roles, permissions ou droits d'acces, lire aussi:

@@ -9,12 +9,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.3"
 import { z } from "https://esm.sh/zod@3.24.1"
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-} as const
+import { corsHeaders } from "../_shared/cors.ts"
 
 const BodySchema = z.object({
   workspace_id: z.string().uuid(),
@@ -26,6 +21,7 @@ function normalizeEmail(raw: string): string {
 }
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req)
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { ...cors } })
   }

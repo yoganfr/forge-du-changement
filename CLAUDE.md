@@ -49,6 +49,7 @@ Avant toute action, lire les docs pertinents :
 | Règles métier roadmap | [docs/# Règles métier — Maturity Roadmap.md](docs/#%20Règles%20métier%20—%20Maturity%20Roadmap.md) |
 | Évolution produit / EPICs / backlog | [docs/backlog.md](docs/backlog.md) |
 | Refactor / restructuration | [docs/refactor_rules.md](docs/refactor_rules.md) |
+| Fonction, en-tête, secret, règle de base | [docs/regles-securite-codage.md](docs/regles-securite-codage.md) |
 | Permissions / rôles / RACI | [docs/proposition-regles-matrice-permissions.md](docs/proposition-regles-matrice-permissions.md) |
 | UI / CSS / design system | [docs/visual-coherence-theme-rules.md](docs/visual-coherence-theme-rules.md) |
 | Copywriting landing | [docs/copywriting V3.md](docs/copywriting%20V3.md) |

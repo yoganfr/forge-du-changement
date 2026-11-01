@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **1 novembre 2026**, 14 h 00 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 14 h 23 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -706,7 +706,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-**EPIC 18 terminé** le 1 novembre 2026. Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). La priorité suivante redevient le fil revue.
+**EPIC 18 terminé** le 1 novembre 2026. La priorité métier redevient le fil revue (**REF-7b.4**). La fiabilisation suivante est un plan à part, en tranches courtes : [docs/plan-suite-apres-owasp.md](plan-suite-apres-owasp.md). Elle ne mélange pas les fichiers de la revue.
 
 1. EPIC 18 · **REF-102** ✅ — contrôles automatiques livrés le 1 novembre 2026. Tests dans la CI. Lint racine laissé dehors.
 2. EPIC 18 · **REF-103** ✅ — photos et logos livrés le 1 novembre 2026. Recette passée. Commit `7dea920` sur `main`.
@@ -743,6 +743,19 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 1 novembre 2026 — Tranche A du plan après l'audit
+
+Dernière mise à jour : **1 novembre 2026**, 14 h 23 (Europe/Paris)
+
+#### Fait
+- Page de règles : [docs/regles-securite-codage.md](regles-securite-codage.md).
+- Le tableau de bord envoie les protections de page. Le thème clair et sombre a été essayé.
+- Une personne non connectée ne peut plus appeler les fonctions sensibles. Les personnes connectées le peuvent encore.
+- Les deux fonctions n'acceptent plus tous les sites. L'analyse du discours est publiée.
+
+#### Non fait
+- Les tranches B et C. La recette de **REF-7b.4**.
 
 ### 1 novembre 2026 — REF-104, historique protégé
 

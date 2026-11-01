@@ -1,6 +1,6 @@
 # OWASP audit — ASVS 5.0.0
 
-Dernière mise à jour : **1 novembre 2026**, 13 h 58 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 14 h 06 (Europe/Paris)
 
 Référence : [OWASP ASVS 5.0.0](https://github.com/OWASP/ASVS/tree/v5.0.0) (mai 2025).
 
@@ -37,7 +37,7 @@ Fermé le 1 novembre 2026 par REF-103. Une personne connectée ne voit plus que 
 
 ### 4. V16 Journal et V6 anti-automatisation
 
-REF-104 est fait le 1 novembre 2026 : une personne connectée ne peut plus modifier ni effacer l’historique. Le plafond d’envoi des liens magiques reste côté navigateur, pas côté serveur. ASVS niveau 2 demande une limite serveur contre le bourrage d’identifiants.
+REF-104 est fait le 1 novembre 2026 : une personne connectée ne peut plus modifier ni effacer l’historique. Le code dit que le plafond des liens de connexion est le réglage Supabase Auth. Le navigateur ne fait qu’éviter le double-clic. Il reste à vérifier que ce réglage est actif, pas à en écrire un nouveau.
 
 ### 5. V1 Encodage
 
@@ -57,4 +57,4 @@ Le MD5 ne sert qu’à l’adresse Gravatar, pas à stocker un mot de passe. La 
 
 ## Suite utile
 
-EPIC 18 est terminé. Le plus rentable ensuite est d’ajouter les en-têtes du tableau de bord et de restreindre l’origine des deux fonctions. Le reste est du durcissement, pas le trou ouvert.
+EPIC 18 est terminé. La suite est écrite dans [plan-suite-apres-owasp.md](plan-suite-apres-owasp.md) : en-têtes du tableau de bord, origine des deux fonctions, fonctions sensibles, puis les réglages Supabase. Le fil revue reprend en parallèle. Le plafond des liens de connexion est déjà celui de Supabase Auth : on le vérifie, on ne le reconstruit pas.

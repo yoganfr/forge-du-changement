@@ -1,10 +1,10 @@
 # Sécurité à venir
 
-Dernière mise à jour : **21 octobre 2026**, 03 h 23 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 14 h 06 (Europe/Paris)
 
 Ce document dit ce qu’il resterait à faire pour un très bon niveau de défense, du genre de ce qu’un grand client demande. Il ne remplace pas le lot déjà décidé.
 
-Le lot en cours est **EPIC 18 · REF-102, REF-103, REF-104**. Son plan : [plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md).
+**EPIC 18 est terminé** le 1 novembre 2026. Son plan : [plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). La suite proche est [plan-suite-apres-owasp.md](plan-suite-apres-owasp.md). Ce document-ci garde ce qui attend un premier client payant.
 
 ## Déjà en place
 

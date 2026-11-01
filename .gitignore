@@ -37,6 +37,10 @@ test-invitations.csv
 # Exports recette locaux (CSV Supabase, captures)
 recette/
 
+# Codes de secours Vercel — secret de compte, jamais dans le dépôt
+recovery-codes vercel.txt
+recovery-codes*.txt
+
 # Playwright test artifacts
 .playwright-cli/
 tmp-check.png

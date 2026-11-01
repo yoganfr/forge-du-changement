@@ -8,16 +8,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1"
 import { z } from "https://esm.sh/zod@3.24.1"
+import { corsHeaders } from "../_shared/cors.ts"
 
 const MIN_CHARS = 400
 const MODEL = "openai/gpt-oss-120b"
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-} as const
 
 const AiDimensionsSchema = z.object({
   // Certains modèles renvoient parfois les valeurs en string. `coerce` évite un échec Zod inutile.
@@ -61,6 +57,7 @@ const BodySchema = z.object({
 })
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req)
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { ...cors } })
   }
