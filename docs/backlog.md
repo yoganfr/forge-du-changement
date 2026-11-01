@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **1 novembre 2026**, 13 h 38 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 14 h 00 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -74,13 +74,13 @@ Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Se
 
 Constat du 21 octobre 2026 : le dossier `assets` n’est plus public, mais toute personne connectée peut encore lire, ajouter, modifier et supprimer n’importe quel fichier. 2 logos d’entreprise sont à déplacer. 3 fichiers orphelins deviennent invisibles, sans être effacés. L’historique est déjà protégé en lecture et en ajout. On retire seulement les droits SQL de modification et d’effacement.
 
-Le temps 1 est livré. Les temps 2a et 2b sont livrés le 1 novembre 2026. Le temps 3 n’est pas commencé. Chaque temps s’arrête avant le suivant.
+Les trois temps sont livrés le 1 novembre 2026. Le plan est terminé.
 
 | REF | Titre | Priorité | Statut |
 |---|-------|----------|--------|
 | 102 | Contrôles automatiques : tests, et lint seulement s’il est déjà vert. Aucun écran, aucun SQL. Preuve : 42 tests verts ; lint racine laissé dehors (4 erreurs déjà présentes) ; `npm test` ajouté à la CI | 🔴 | ✅ |
-| 103 | Photos et logos : application (2a) et base (2b) livrées le 1 novembre 2026. Chaque entreprise ne voit que ses logos. Les fichiers non cités restent, invisibles | 🔴 | ✅ |
-| 104 | Historique : retirer UPDATE et DELETE au rôle connecté, sans réécrire qui lit ni qui ajoute | 🔴 | ⬜ |
+| 103 | Photos et logos livrées le 1 novembre 2026. Recette passée. Commit `7dea920` sur `main`. Chaque entreprise ne voit que ses logos. Les fichiers non cités restent, invisibles | 🔴 | ✅ |
+| 104 | Historique : une personne connectée ne peut plus modifier ni effacer une trace. La lecture et l’ajout sont inchangés. Livré le 1 novembre 2026 | 🔴 | ✅ |
 
 Ce lot passe devant le fil revue (**REF-7b.4** et la suite) tant qu’il n’est pas terminé. Il n’annule pas ce fil.
 
@@ -706,11 +706,11 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-**PRIORITÉ MAXIMALE** : EPIC 18 · **REF-104** — fiabiliser les permissions. Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). Les temps 2a et 2b sont livrés.
+**EPIC 18 terminé** le 1 novembre 2026. Plan : [docs/plan-fiabiliser-permissions.md](plan-fiabiliser-permissions.md). La priorité suivante redevient le fil revue.
 
 1. EPIC 18 · **REF-102** ✅ — contrôles automatiques livrés le 1 novembre 2026. Tests dans la CI. Lint racine laissé dehors.
-2. EPIC 18 · **REF-103** ✅ — photos et logos livrés le 1 novembre 2026. L’application range par fiche. La base n’ouvre plus le dossier entier.
-3. EPIC 18 · **REF-104** ⬜ — historique ineffaçable, sans changer qui lit.
+2. EPIC 18 · **REF-103** ✅ — photos et logos livrés le 1 novembre 2026. Recette passée. Commit `7dea920` sur `main`.
+3. EPIC 18 · **REF-104** ✅ — historique protégé le 1 novembre 2026. Une personne connectée ne peut plus modifier ni effacer une trace.
 
 **TERMINÉ** : EPIC 3 · **REF-7b.5bis** — Polish ReviewerPage (alignement frontend sur policies RLS, indicateurs CODIR, édition granulaire, empty state pédagogique, sidebar sticky, labels axes). Implémenté et recetté le 15/06/2026.
 
@@ -744,15 +744,28 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ## Journal d'avancement (historique opérationnel)
 
+### 1 novembre 2026 — REF-104, historique protégé
+
+Dernière mise à jour : **1 novembre 2026**, 13 h 58 (Europe/Paris)
+
+#### Fait
+- Une personne connectée peut toujours ajouter une trace et lire l’historique.
+- Elle ne peut plus modifier ni effacer une trace. La maintenance le peut encore.
+- La trace d’essai a été annulée. Rien n’a été laissé dans l’historique.
+
+#### Non fait
+- Le masquage de la revue reste un autre lot, non commité.
+
 ### 1 novembre 2026 — REF-103 temps 2b, dossier photos refermé
 
-Dernière mise à jour : **1 novembre 2026**, 13 h 38 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 13 h 55 (Europe/Paris)
 
 #### Fait
 - World Company et La Forge du Changement ont leur logo dans leur propre dossier. Essai avec logo y était déjà.
-- Une personne de World Company voit ce logo, pas celui d’une autre entreprise.
+- Recette passée : les trois logos s’affichent. Le compte admin de World Company voit ce logo, et pas les autres entreprises.
 - Trois fichiers non cités restent sur le disque et ne sont plus lisibles.
 - Le SQL de retour arrière des règles est dans la migration, écrit avant l’application.
+- Commit `7dea920` poussé sur `main`. Le masquage de la revue n’y est pas.
 
 #### Non fait
 - REF-104. Le masquage de la revue reste un autre lot, non commité.

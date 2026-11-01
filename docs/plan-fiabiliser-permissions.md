@@ -1,8 +1,8 @@
 # Plan — Fiabiliser les permissions
 
-Dernière mise à jour : **1 novembre 2026**, 13 h 38 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 13 h 58 (Europe/Paris)
 
-Statut : temps 2b livré. Arrêt avant REF-104. Note de cadrage : 8/10.
+Statut : plan terminé. REF-104 livré. Note de cadrage : 8/10.
 
 Identifiants backlog : **EPIC 18 · REF-102, REF-103, REF-104**.
 
@@ -100,7 +100,7 @@ Preuve du **1 novembre 2026**, 13 h 38. `can_access_workspace` couvre le super-a
 
 Ne pas modifier qui lit une trace ni qui en ajoute une. Retirer au rôle `authenticated` les droits SQL UPDATE et DELETE. Le rôle de maintenance les garde.
 
-Preuve : une trace s’ajoute encore, l’historique reste lisible, une personne connectée ne peut ni modifier ni effacer une trace. Arrêt.
+Preuve du **1 novembre 2026**, 13 h 58. Une trace d’essai a été ajoutée puis annulée, pour ne rien laisser dans l’historique. Le compte admin de World Company la voyait, avec le reste de l’historique. La modification et l’effacement ont été refusés. La maintenance garde ces deux droits. Arrêt. Le plan des trois temps est terminé.
 
 ## Temps de travail
 

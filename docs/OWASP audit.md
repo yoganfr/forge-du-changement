@@ -1,6 +1,6 @@
 # OWASP audit — ASVS 5.0.0
 
-Dernière mise à jour : **1 novembre 2026**, 13 h 38 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 13 h 58 (Europe/Paris)
 
 Référence : [OWASP ASVS 5.0.0](https://github.com/OWASP/ASVS/tree/v5.0.0) (mai 2025).
 
@@ -25,7 +25,7 @@ Pour ce SaaS multi-entreprises, le bon objectif est le **niveau 2** : données d
 
 ### 1. V5 Fichiers et V8 Autorisation — le dossier photos
 
-Fermé le 1 novembre 2026, 13 h 38, par REF-103 temps 2b. Une personne connectée ne voit plus que les logos de son entreprise, et sa propre photo. Le trou d’isolation des fichiers est refermé. Le prochain trou du lot est REF-104, sur l’historique.
+Fermé le 1 novembre 2026 par REF-103. Une personne connectée ne voit plus que les logos de son entreprise, et sa propre photo.
 
 ### 2. V3 Frontend et V13 Configuration — le tableau de bord n’a pas d’en-têtes
 
@@ -37,7 +37,7 @@ Fermé le 1 novembre 2026, 13 h 38, par REF-103 temps 2b. Une personne connecté
 
 ### 4. V16 Journal et V6 anti-automatisation
 
-REF-104 n’est pas fait : le rôle connecté a encore le droit SQL de modifier et d’effacer l’historique, même si la RLS le bloque. Le plafond d’envoi des liens magiques est côté navigateur, pas côté serveur. ASVS niveau 2 demande une limite serveur contre le bourrage d’identifiants.
+REF-104 est fait le 1 novembre 2026 : une personne connectée ne peut plus modifier ni effacer l’historique. Le plafond d’envoi des liens magiques reste côté navigateur, pas côté serveur. ASVS niveau 2 demande une limite serveur contre le bourrage d’identifiants.
 
 ### 5. V1 Encodage
 
@@ -57,4 +57,4 @@ Le MD5 ne sert qu’à l’adresse Gravatar, pas à stocker un mot de passe. La 
 
 ## Suite utile
 
-Le plus rentable est de finir **REF-103 temps 2b** et **REF-104**, puis d’ajouter les en-têtes du tableau de bord et de restreindre l’origine des deux fonctions. Le reste est du durcissement, pas le trou ouvert.
+EPIC 18 est terminé. Le plus rentable ensuite est d’ajouter les en-têtes du tableau de bord et de restreindre l’origine des deux fonctions. Le reste est du durcissement, pas le trou ouvert.
