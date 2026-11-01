@@ -1,6 +1,6 @@
 # OWASP audit — ASVS 5.0.0
 
-Dernière mise à jour : **1 novembre 2026**, 13 h 15 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 13 h 38 (Europe/Paris)
 
 Référence : [OWASP ASVS 5.0.0](https://github.com/OWASP/ASVS/tree/v5.0.0) (mai 2025).
 
@@ -25,7 +25,7 @@ Pour ce SaaS multi-entreprises, le bon objectif est le **niveau 2** : données d
 
 ### 1. V5 Fichiers et V8 Autorisation — le dossier photos
 
-Les règles du 18 octobre laissent toute personne connectée lire, ajouter, modifier et supprimer n’importe quel fichier de `assets`. Une personne d’une entreprise peut donc ouvrir le logo d’une autre. C’est le cœur du temps 2b de REF-103, pas encore appliqué. Tant que ces règles restent, le niveau 2 n’est pas tenable sur l’isolation des clients.
+Fermé le 1 novembre 2026, 13 h 38, par REF-103 temps 2b. Une personne connectée ne voit plus que les logos de son entreprise, et sa propre photo. Le trou d’isolation des fichiers est refermé. Le prochain trou du lot est REF-104, sur l’historique.
 
 ### 2. V3 Frontend et V13 Configuration — le tableau de bord n’a pas d’en-têtes
 

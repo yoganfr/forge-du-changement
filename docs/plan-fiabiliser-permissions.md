@@ -1,8 +1,8 @@
 # Plan — Fiabiliser les permissions
 
-Dernière mise à jour : **1 novembre 2026**, 13 h 09 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 13 h 38 (Europe/Paris)
 
-Statut : temps 2a livré dans l’application, arrêt avant le SQL. Note de cadrage : 8/10.
+Statut : temps 2b livré. Arrêt avant REF-104. Note de cadrage : 8/10.
 
 Identifiants backlog : **EPIC 18 · REF-102, REF-103, REF-104**.
 
@@ -94,7 +94,7 @@ Ensuite :
 
 Le SQL inverse des règles est écrit avant de les appliquer. Les fichiers d’essai n’ont pas de retour arrière automatique : un logo perdu se renvoie depuis la fiche.
 
-Preuve : le logo s’affiche encore pour les bonnes personnes ; une autre entreprise ne peut pas l’ouvrir. Arrêt.
+Preuve du **1 novembre 2026**, 13 h 38. `can_access_workspace` couvre le super-admin, le consultant du dossier et la personne dont l’entreprise est la sienne. `authenticated` peut exécuter les deux fonctions. Recomptage : trois logos cités (World Company, La Forge du Changement, Essai avec logo), aucune photo citée. Les deux logos encore dans le dossier commun ont été copiés, l’adresse mise à jour, l’image vérifiée, puis l’ancien fichier effacé. Essai avec logo était déjà au bon endroit. Trois fichiers non cités restent sur le disque et ne sont plus lisibles. Une personne de World Company voit le logo de World Company et pas celui d’une autre entreprise. L’admin de World Company peut gérer ce logo, pas celui d’une autre. Le super-admin voit les trois logos cités, pas les fichiers non cités. Arrêt avant REF-104.
 
 ### REF-104 — Temps 3, historique
 

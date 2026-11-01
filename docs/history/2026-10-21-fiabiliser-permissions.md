@@ -1,9 +1,9 @@
 # Session — fiabiliser les permissions
 
 Date : 21 octobre 2026  
-Statut : temps 1 livré le 1 novembre 2026, arrêt avant le temps 2
+Statut : temps 2b livré le 1 novembre 2026, arrêt avant REF-104
 
-Dernière mise à jour : **1 novembre 2026**, 13 h 09 (Europe/Paris)
+Dernière mise à jour : **1 novembre 2026**, 13 h 38 (Europe/Paris)
 
 ## 1) Contexte et objectif
 
@@ -12,7 +12,7 @@ Objectif : garder la stack, et fermer le trou du dossier photos sans casser les 
 Contexte :
 
 - Revue externe : la stack React, Vite, Next et Supabase se garde. Le risque est dans les droits non prouvés.
-- Le 18 octobre, le dossier `assets` a cessé d’être public. Toute personne connectée peut encore ouvrir n’importe quel fichier.
+- Le 18 octobre, le dossier `assets` a cessé d’être public. Jusqu’au 1 novembre 2026, toute personne connectée pouvait encore ouvrir n’importe quel fichier.
 - La base a été lue le 21 octobre au matin, en lecture seule, sur `kpgkxeilddeyfwiiqaha`.
 
 ## 2) Décisions prises
@@ -50,9 +50,9 @@ Sécurité :
 
 ## 5) Risques / limites restantes
 
-- Le trou du dossier photos est toujours ouvert. Le temps 1 ne le ferme pas.
-- La CI lance les tests une fois ce commit sur `main`. Elle ne lance pas le lint.
-- Le plan est noté 8/10. Avant le temps 2b, il faut le droit d’exécuter les deux fonctions, et le SQL de retour arrière.
+- Le trou du dossier photos est fermé le 1 novembre 2026. REF-104, l’historique, reste ouvert.
+- La CI lance les tests. Elle ne lance pas le lint.
+- Le plan est noté 8/10. Le droit d’exécuter les deux fonctions et le SQL de retour arrière ont été vérifiés avant les règles.
 - Le temps 1 ne bloque pas Vercel à lui seul.
 - Les 38 documents de `docs/` n’ont pas été relus un par un. Les règles de refactor, la session du 18 octobre et le constat de base gouvernent ce lot.
 
@@ -60,7 +60,7 @@ Sécurité :
 
 - Tableau de bord : `https://forge-du-changement.vercel.app` — inchangé
 - Site public : `https://forge-du-changement-kgyg-xi.vercel.app` — inchangé
-- Base : `kpgkxeilddeyfwiiqaha` — lue, non modifiée
+- Base : `kpgkxeilddeyfwiiqaha` — règles du dossier photos remplacées le 1 novembre 2026
 - Local : `http://localhost:5173` si le dashboard tourne. Le serveur Next local ne se lance pas.
 
 ## 7) Prochaines étapes
@@ -70,7 +70,7 @@ Décisions du 1 novembre 2026, 12 h 58 : le plan des temps 2 et 3 est tranché d
 Maintenant :
 
 1. **REF-102** — livré. Le lint racine reste dehors.
-2. **REF-103** — temps 2a livré le 1 novembre 2026, 13 h 09. La base attend un oui explicite.
+2. **REF-103** — livré le 1 novembre 2026, 13 h 38. Chaque entreprise ne voit que ses logos.
 3. **REF-104** — retrait des droits SQL de modification et d’effacement de l’historique.
 
 Après :
