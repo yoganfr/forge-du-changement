@@ -1,5 +1,5 @@
 # Backlog — La Forge du Changement
-Dernière mise à jour : **1 novembre 2026**, 16 h 27 (Europe/Paris)
+Dernière mise à jour : **3 novembre 2026**, 01 h 14 (Europe/Paris)
 
 Les **dates et heures** de mise à jour dans ce fichier sont exprimées en **heure de France** (fuseau **Europe/Paris**), sauf mention contraire.
 
@@ -159,7 +159,7 @@ Implémenté le 17/04/2026. Gantt 24 mois, scoring, onboarding, logos Storage, c
 | 7b.1e | Durcissement technique / performance PCI (bulk updates batch, robustesse gros volumes, recette accessibilité clavier) | 🟡 | ⬜ |
 | 7b.2 | Schéma revue (`roadmap_snapshot_reviewers`, `roadmap_review_feedbacks`, `roadmap_snapshots.review_deadline`, RLS + audit triggers) — **spec** [`docs/# Règles métier — REF-7b.2 Cycle de revue feedback.md`](docs/#%20Règles%20métier%20—%20REF-7b.2%20Cycle%20de%20revue%20feedback.md) + **plan** [`docs/plan-ref-7b.2-schema-revue.md`](plan-ref-7b.2-schema-revue.md) + **DDL** [`docs/supabase-roadmap-review-cycle.sql`](supabase-roadmap-review-cycle.sql) — Complété 11/06/2026 : colonne `reaction_acknowledged_at`, policies INSERT/SELECT/UPDATE/DELETE renforcées, 3 triggers audit (`reviewer_submitted`, `snapshot_review_reopened`, `feedback_arbitrated`) | 🔴 | ✅ |
 | 7b.3 | Fenêtre « Ouvrir la revue » et e-mail de connexion. Livré le 19/10/2026 : contributeurs actifs, autres directions seulement si la version figée est transverse, date limite, lien copié. L’e-mail est celui de connexion déjà utilisé : il ouvre la revue, sans y écrire le nom de la version ni la date limite (décision du 19/10, l’e-mail sur mesure a été jugé trop lourd). Trace `snapshot_review_opened`. Recette : message d’envoi, trace, e-mail reçu, arrivée sur la revue. Reste hors lot : rejouer avec un membre du CODIR dont la fiche a une direction | 🔴 | ✅ |
-| 7b.4 | Routing conditionnel reviewer (redirect /review/:snapshotId + masquage nav principale pour les contributeurs-reviewers). Route `/review/:snapshotId` et query super-admin `?reviewer=` déjà livrées. Masquage codé le 19/10/2026 dans `App.tsx` / `App.css` (parcours, menu décideur et hamburger absents pour un contributeur sur la revue ; marque statique ; thème, profil et déconnexion restent ; retour par « Retour dashboard »). **Pas recetté, pas commité.** Arbitrage du 1 novembre 2026, 16 h 19, dans la doxa : l’écran se resserre seulement pour les personnes invitées à commenter cette revue ; le chef de projet garde le menu complet ; l’administrateur de l’espace peut ouvrir une revue et n’arbitre pas. Ce n’est pas une approbation de story | 🟠 | 🚧 |
+| 7b.4 | Routing conditionnel reviewer. Masquage recetté le 3 novembre 2026 sur World Company, commit `31c9e05` : Corinne, contributeur invité, a la barre resserrée sur `/review/…` (marque inactive, retour par « Retour dashboard », pas de hamburger en fenêtre étroite) ; Camille Codir et Paul Pilote gardent la barre. Le statut ✅ constate cette recette. Il n’approuve pas de story | 🟠 | ✅ |
 | 7b.5 | ReviewerPage V1 (header + bandeau deadline avec pastille 🟢/🟠/🔴 + accordéon projets + roadmap lecture seule + partie 3 propositions + modal "Soumettre ma review") — **architecture UX** [`docs/architecture-ux-reviewerpage-ref7b5.md`](docs/architecture-ux-reviewerpage-ref7b5.md) + **plan** [`docs/plan-ref-7b.5-reviewerpage-frontend.md`](plan-ref-7b.5-reviewerpage-frontend.md). Cœur V1 livré. Restent : PCI figé (`raci_chantier`), drawer plein écran sous 768 px, autosave | 🔴 | 🚧 |
 | 7b.5bis | Polish ReviewerPage : alignement frontend sur policies RLS (édition granulaire feedbacks, indicateurs visuels CODIR, suppression draft, bandeau réouverture, empty state pédagogique, sidebar sticky, labels axes) — **plan Cursor** `ref-7b.5_polish_frontend_b28a3469.plan.md`. Recetté le 15/06/2026 | 🟠 | ✅ |
 | 7b.5ter | Indicateurs feedbacks sur la grille roadmap (jalons et chantiers déjà commentés + accès à l’édition depuis la grille). Retour de recette du 15/06/2026, d’abord noté par erreur sous le numéro 7b.6 | 🟠 | ⬜ |
@@ -698,7 +698,7 @@ Ce bloc est la référence produit pour la navbar applicative `/src` (workspace 
 
 La trajectoire de référence est désormais la section **Priorisation produit — Maintenant / Après / Plus tard** ci-dessous.
 
-- **Maintenant** : **EPIC 18 · REF-102 → REF-104** passe en premier. **REF-102** est livré le 1 novembre 2026 (tests dans la CI, lint racine laissé dehors). Le dossier photos est encore ouvert à toute personne connectée. Ensuite seulement le fil revue : **REF-7b.3** est livré (19/10/2026). **REF-7b.4** est codé en local, en attente de recette et de commit. Puis **REF-7b.5** et **REF-7b.5ter**. **REF-7b.6** reste le panneau flottant. En parallèle, une fois le lot permissions avancé : gap décideur transverse (EPIC 2 · REF-3) et lots Discours **REF-93 → REF-95**. **REF-7b.1bis** (PCI jalon) reste ouvert, hors du fil revue.
+- **Maintenant** : **EPIC 18 · REF-102 → REF-104** est livré. **REF-7b.3** est livré (19/10/2026). **REF-7b.4** est recetté le 3 novembre 2026. La suite du fil revue est **REF-7b.5** et **REF-7b.5ter**. **REF-7b.6** reste le panneau flottant. En parallèle : gap décideur transverse (EPIC 2 · REF-3) et lots Discours **REF-93 → REF-95**. **REF-7b.1bis** (PCI jalon) reste ouvert, hors du fil revue.
 - **Après** : poser les fondations de l'EPIC 15 (REF-76 + REF-77), arbitrer l'export PDF autonome (EPIC 13), puis lancer l’harmonisation **PCI / RACI** et le polish final du module PCI (REF-7b.1c → 7b.1e).
 - **Plus tard** : poursuivre la migration EPIC 15 par vagues (REF-78 → REF-86) en parallèle des modules d'extension (EPIC 4, 5, 6, 7, 8, 9) et l'extension design premium complète ; **veille infra** **EPIC 10 · REF-47a** (migration clés Supabase réservées Edge / Next server).
 
@@ -708,7 +708,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 ### Maintenant
 
-**EPIC 18 terminé** le 1 novembre 2026. La priorité métier redevient le fil revue (**REF-7b.4**). La fiabilisation suivante est un plan à part, en tranches courtes : [docs/plan-suite-apres-owasp.md](plan-suite-apres-owasp.md). Elle ne mélange pas les fichiers de la revue.
+**EPIC 18 terminé** le 1 novembre 2026. **REF-7b.4** est recetté le 3 novembre 2026, commit `31c9e05`. La priorité métier du fil revue passe à **REF-7b.5** et **REF-7b.5ter**. La fiabilisation suivante est un plan à part, en tranches courtes : [docs/plan-suite-apres-owasp.md](plan-suite-apres-owasp.md). Elle ne mélange pas les fichiers de la revue.
 
 1. EPIC 18 · **REF-102** ✅ — contrôles automatiques livrés le 1 novembre 2026. Tests dans la CI. Lint racine laissé dehors.
 2. EPIC 18 · **REF-103** ✅ — photos et logos livrés le 1 novembre 2026. Recette passée. Commit `7dea920` sur `main`.
@@ -716,9 +716,7 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 
 **TERMINÉ** : EPIC 3 · **REF-7b.5bis** — Polish ReviewerPage (alignement frontend sur policies RLS, indicateurs CODIR, édition granulaire, empty state pédagogique, sidebar sticky, labels axes). Implémenté et recetté le 15/06/2026.
 
-**CONSTAT CODE 19/10/2026, 19 h 37** : **REF-7b.4** est codé en local sur `main`, non recetté, non commité. Reprise après le lot permissions : recette contributeur puis commit.
-
-4. EPIC 3 · **REF-7b.4** 🚧 — masquage codé, recette et commit en attente. L’arbitrage du 1 novembre 2026, 16 h 19, est dans la doxa : écran resserré seulement pour les invités de cette revue, menu complet pour le chef de projet, l’administrateur peut ouvrir une revue sans arbitrer. **REF-7b.3** est ✅.
+4. EPIC 3 · **REF-7b.4** ✅ — masquage recetté le 3 novembre 2026, commit `31c9e05`. Contributeur invité : barre resserrée. CODIR et pilote : barre complète. **REF-7b.3** est ✅.
 5. EPIC 3 · **REF-7b.5** 🚧 — cœur ReviewerPage livré. Restent PCI figé, drawer mobile, autosave.
 6. EPIC 3 · **REF-7b.5ter** ⬜ — indicateurs de feedbacks sur la grille (retour de recette du 15/06, ancien libellé erroné « 7b.6 »).
 7. EPIC 3 · **REF-7b.1bis** — relier la macro PCI chantier à la granularité jalon.
@@ -745,6 +743,24 @@ La trajectoire de référence est désormais la section **Priorisation produit �
 ---
 
 ## Journal d'avancement (historique opérationnel)
+
+### 3 novembre 2026 — Recette du masquage de revue
+
+Dernière mise à jour : **3 novembre 2026**, 01 h 14 (Europe/Paris)
+
+#### Fait
+- **EPIC 3 · REF-7b.4** passe à ✅. Recette sur World Company, revue V1 mai 2026.
+- Corinne, contributeur invité : accueil à barre complète ; revue resserrée ; marque inactive ; « Retour dashboard » ; fenêtre étroite sans hamburger.
+- Camille Codir et Paul Pilote : barre complète sur la même revue.
+- Commit `31c9e05` sur `main`.
+
+#### Non fait
+- Déconnexion de Corinne sur la revue en fenêtre étroite, non regardée.
+- Comptes consultant et admin non rejoués sur cette revue.
+- Aucune story approuvée. Aucune autorisation de plan ou de code.
+
+#### Reprise
+1. **REF-7b.5** (PCI figé, drawer mobile, autosave) ou **REF-7b.5ter**.
 
 ### 1 novembre 2026 — Commandes des mots-clés
 
