@@ -160,6 +160,31 @@ const CONTRIBUTEUR_JOURNEY_DEFS: readonly JourneyModuleDef[] = [
  * Cela permet à un admin de déverrouiller progressivement les modules du parcours
  * depuis la page Paramètres sans redéploiement.
  */
+function DashboardBrandIdentity({
+  companyLogo,
+  workspaceLabel,
+}: {
+  companyLogo: string | null
+  workspaceLabel: string
+}) {
+  return (
+    <>
+      <div className="dashboard__brand-mark">
+        {companyLogo
+          ? <StoredAssetImg src={companyLogo} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+          : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
+            {workspaceLabel.slice(0, 2).toUpperCase()}
+          </span>
+        }
+      </div>
+      <span className="dashboard__brand-stack">
+        <span className="dashboard__brand-product">La Forge du Changement</span>
+        <span className="dashboard__brand-text">{workspaceLabel}</span>
+      </span>
+    </>
+  )
+}
+
 function buildJourneyModules(
   defs: readonly JourneyModuleDef[],
   currentStep: number | null | undefined,
@@ -1003,6 +1028,18 @@ function App() {
     setLoginForcedMessage(null)
   }, [navigateToMainNav])
 
+  /**
+   * REF-7b.4 : un contributeur sur `/review/:snapshotId` ne voit pas la navigation
+   * des modules. Le retour se fait depuis la page de revue. Le super-admin
+   * (y compris en observation `?reviewer=`) garde la barre.
+   */
+  const contributorOnReview =
+    reviewSnapshotId != null && !platformSuperadmin && currentUserRole === 'contributeur'
+
+  useEffect(() => {
+    if (contributorOnReview) setMobileNavOpen(false)
+  }, [contributorOnReview])
+
   useEffect(() => {
     if (!mobileNavOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -1706,26 +1743,22 @@ function App() {
       <header className="dashboard__topbar">
         <div className="dashboard__topbar-inner">
           <div className="dashboard__topbar-leading">
-            <button
-              type="button"
-              className="dashboard__brand"
-              onClick={() => navigateToMainNav('home')}
-              aria-label="Retour à l'accueil"
-            >
-              <div className="dashboard__brand-mark">
-                {companyLogo
-                  ? <StoredAssetImg src={companyLogo} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                  : <span style={{ color: 'white', fontSize: '0.8rem', fontWeight: 700, lineHeight: 1 }}>
-                    {workspaceLabel.slice(0, 2).toUpperCase()}
-                  </span>
-                }
+            {contributorOnReview ? (
+              <div className="dashboard__brand dashboard__brand--static">
+                <DashboardBrandIdentity companyLogo={companyLogo} workspaceLabel={workspaceLabel} />
               </div>
-              <span className="dashboard__brand-stack">
-                <span className="dashboard__brand-product">La Forge du Changement</span>
-                <span className="dashboard__brand-text">{workspaceLabel}</span>
-              </span>
-            </button>
+            ) : (
+              <button
+                type="button"
+                className="dashboard__brand"
+                onClick={() => navigateToMainNav('home')}
+                aria-label="Retour à l'accueil"
+              >
+                <DashboardBrandIdentity companyLogo={companyLogo} workspaceLabel={workspaceLabel} />
+              </button>
+            )}
 
+            {contributorOnReview ? null : (
             <button
               type="button"
               className="dashboard__menu-btn"
@@ -1741,8 +1774,10 @@ function App() {
                 <span />
               </span>
             </button>
+            )}
           </div>
 
+          {contributorOnReview ? null : (
           <div className="dashboard__nav-strip dashboard__nav--desktop">
             <DashboardMainNav
               activeNav={activeNav}
@@ -1767,6 +1802,7 @@ function App() {
               />
             ) : null}
           </div>
+          )}
 
           <div className="dashboard__topbar-actions">
             <button
@@ -1849,7 +1885,7 @@ function App() {
         </div>
       </header>
 
-      {mobileNavOpen ? (
+      {mobileNavOpen && !contributorOnReview ? (
         <div className="dashboard__mobile-nav-layer" role="presentation">
           <button
             type="button"

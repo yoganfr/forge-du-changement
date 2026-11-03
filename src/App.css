@@ -77,6 +77,10 @@
   min-width: 0;
 }
 
+.dashboard__brand--static {
+  cursor: default;
+}
+
 .dashboard__brand-stack {
   display: flex;
   flex-direction: column;
