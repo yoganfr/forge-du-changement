@@ -66,6 +66,11 @@ export type RoadmapPciColumnApi = {
   readOnly: boolean
   getRowFor: (chantierId: string, key: StakeholderKey) => RaciChantier | null
   openCell: (chantierId: string, key: StakeholderKey) => void
+  /**
+   * Revue figée : le rôle ne se modifie pas, mais la lettre ouvre le commentaire.
+   * Absent sur la roadmap vivante.
+   */
+  onCommentCell?: (chantierId: string, key: StakeholderKey) => void
   openNewStakeholder: (chantierIdInitial: string | null) => void
   openEditStakeholder: (key: StakeholderKey) => void
   firstChantierId: string | null
@@ -495,13 +500,31 @@ export default function RoadmapTimelineGrid({
           <div className="mr-tgrid__pci-cell-inner">
             {roles.length > 0 ? (
               pciRo ? (
-                <span className="rcm-cell-roles" title={cellTitle}>
-                  {roles.map((r) => (
-                    <span key={r} className={`rcm-role rcm-role--${r.toLowerCase()}`}>
-                      {r}
+                pci.onCommentCell ? (
+                  <button
+                    type="button"
+                    className="mr-tgrid__pci-cell-edit"
+                    onClick={() => pci.onCommentCell?.(chantierId, s.key)}
+                    title="Commenter cette partie prenante"
+                    aria-label={`Commenter ${s.entite_nom} sur ce chantier`}
+                  >
+                    <span className="rcm-cell-roles">
+                      {roles.map((r) => (
+                        <span key={r} className={`rcm-role rcm-role--${r.toLowerCase()}`}>
+                          {r}
+                        </span>
+                      ))}
                     </span>
-                  ))}
-                </span>
+                  </button>
+                ) : (
+                  <span className="rcm-cell-roles" title={cellTitle}>
+                    {roles.map((r) => (
+                      <span key={r} className={`rcm-role rcm-role--${r.toLowerCase()}`}>
+                        {r}
+                      </span>
+                    ))}
+                  </span>
+                )
               ) : (
                 <button
                   type="button"

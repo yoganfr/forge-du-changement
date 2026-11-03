@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import RoadmapTimelineGrid from '../RoadmapTimelineGrid'
 import {
   createReviewFeedback,
@@ -16,8 +16,9 @@ import { buildTimelineColumns } from '../lib/roadmapTimelineColumns'
 import type { TimelineColumn } from '../lib/roadmapTimelineColumns'
 import { assignRoadmapProjectColors } from '../lib/projectRoadmapColor'
 import { buildChantiersAndJalonsFromSnapshotItems } from '../lib/reviewerSnapshotRoadmap'
-import type { Axe, Chantier, Jalon } from '../lib/types'
+import type { Axe, Chantier, Jalon, RaciChantier } from '../lib/types'
 import { AXES, AXE_META } from '../lib/axeMeta'
+import { buildCanonicalFromRow, sortCanonical, stakeholderKey } from '../pciMatrixTypes'
 import { getCurrentUser, isPlatformSuperadmin } from '../lib/auth'
 import '../MaturityRoadmap.css'
 
@@ -34,6 +35,36 @@ function canEditFeedback(fb: RoadmapReviewFeedback, reviewerStatus: string | nul
 
 function canDeleteFeedback(reviewerStatus: string | null): boolean {
   return reviewerStatus === 'draft'
+}
+
+type EncartEdit = {
+  id: string
+  kind: 'reaction' | 'decision'
+  comment: string
+  constat: string
+  proposition: string
+  benefice: string
+}
+
+function feedbackKindLabel(kind: RoadmapReviewFeedback['kind']): string {
+  if (kind === 'reaction') return 'Réaction'
+  if (kind === 'decision') return 'Demande de décision'
+  return 'Proposition'
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path d="M12 20h9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path
+        d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 type EmptyStatePedagogiqueProps = {
@@ -88,6 +119,42 @@ type Props = {
 type Selection =
   | { kind: 'chantier'; chantier: Chantier }
   | { kind: 'jalon'; chantier: Chantier; jalon: Jalon }
+  | { kind: 'raci'; chantier: Chantier; party: RaciChantier }
+
+const SIDEBAR_AUTOSAVE_MS = 800
+
+function selectionKey(selection: Selection | null): string {
+  if (!selection) return ''
+  if (selection.kind === 'jalon') return `jalon:${selection.jalon.id}`
+  if (selection.kind === 'raci') return `raci:${selection.party.id}`
+  return `chantier:${selection.chantier.id}`
+}
+
+function sidebarTarget(selection: Selection): {
+  target_type: 'chantier' | 'jalon' | 'raci_chantier'
+  target_id: string
+} {
+  if (selection.kind === 'jalon') return { target_type: 'jalon', target_id: selection.jalon.id }
+  if (selection.kind === 'raci') return { target_type: 'raci_chantier', target_id: selection.party.id }
+  return { target_type: 'chantier', target_id: selection.chantier.id }
+}
+
+function useMaxWidth768(): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 768px)').matches
+      : false,
+  )
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(max-width: 768px)')
+    const onChange = () => setMatches(mq.matches)
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return matches
+}
 
 function deadlineUrgency(
   deadlineIso: string | null,
@@ -125,6 +192,7 @@ export default function ReviewerSnapshotPage({
   const [reviewerUserId, setReviewerUserId] = useState<string | null>(null)
   const [chantiers, setChantiers] = useState<Chantier[]>([])
   const [jalonsByChantier, setJalonsByChantier] = useState<Record<string, Jalon[]>>({})
+  const [partiesByChantier, setPartiesByChantier] = useState<Record<string, RaciChantier[]>>({})
   const [projetNomById, setProjetNomById] = useState<Record<string, string>>({})
   const [feedbacks, setFeedbacks] = useState<RoadmapReviewFeedback[]>([])
   const [selection, setSelection] = useState<Selection | null>(null)
@@ -146,6 +214,19 @@ export default function ReviewerSnapshotPage({
   const [propSaving, setPropSaving] = useState(false)
   const [editingFeedback, setEditingFeedback] = useState<RoadmapReviewFeedback | null>(null)
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
+  const [sidebarAutosaveNote, setSidebarAutosaveNote] = useState<string | null>(null)
+  const [propositionAutosaveNote, setPropositionAutosaveNote] = useState<string | null>(null)
+  const [composerDraftId, setComposerDraftId] = useState<string | null>(null)
+  const [encartEdit, setEncartEdit] = useState<EncartEdit | null>(null)
+  const [encartNote, setEncartNote] = useState<string | null>(null)
+  const sidebarDraftIdRef = useRef<string | null>(null)
+  const sidebarCreateRef = useRef<Promise<string | null> | null>(null)
+  const sidebarGenRef = useRef(0)
+  const propositionDraftIdRef = useRef<string | null>(null)
+  const propositionCreateRef = useRef<Promise<string | null> | null>(null)
+  const encartDirtyRef = useRef(false)
+  const narrow = useMaxWidth768()
+  const activeSelectionKey = selectionKey(selection)
 
   const timelineColumns = useMemo<TimelineColumn[]>(() => {
     const anchor = frozenAt ? new Date(frozenAt) : new Date()
@@ -176,6 +257,20 @@ export default function ReviewerSnapshotPage({
     }
     return { reactions, decisions, propositions }
   }, [feedbacks])
+
+  const partyEncarts = useMemo(() => {
+    if (selection?.kind !== 'raci') return []
+    const partyId = selection.party.id
+    return feedbacks
+      .filter(
+        (fb) =>
+          fb.target_type === 'raci_chantier' &&
+          fb.target_id === partyId &&
+          (fb.kind === 'reaction' || fb.kind === 'decision') &&
+          fb.id !== composerDraftId,
+      )
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+  }, [selection, feedbacks, composerDraftId])
 
   const reloadFeedbacks = useCallback(async () => {
     if (!reviewerUserId) return
@@ -224,7 +319,8 @@ export default function ReviewerSnapshotPage({
 
         setObserverReadOnly(superAdmin && targetReviewerId !== me.id)
 
-        const { chantiers: chs, jalonsByChantier: jb } = buildChantiersAndJalonsFromSnapshotItems(snapItems)
+        const { chantiers: chs, jalonsByChantier: jb, partiesByChantier: parties } =
+          buildChantiersAndJalonsFromSnapshotItems(snapItems)
         const projetIds = [...new Set(chs.map((c) => c.projet_id).filter(Boolean))]
         const noms: Record<string, string> = {}
         await Promise.all(
@@ -245,6 +341,7 @@ export default function ReviewerSnapshotPage({
         setDeadline(snapshot.review_deadline ?? null)
         setChantiers(chs)
         setJalonsByChantier(jb)
+        setPartiesByChantier(parties)
         setProjetNomById(noms)
 
         const myFb = await listReviewerFeedbacks(snapshotId, targetReviewerId)
@@ -266,15 +363,38 @@ export default function ReviewerSnapshotPage({
     return () => window.clearInterval(timer)
   }, [])
 
-  const openJalon = useCallback((jalon: Jalon, chantierId: string) => {
-    const ch = chantiers.find((c) => c.id === chantierId)
-    if (!ch) return
-    setSelection({ kind: 'jalon', chantier: ch, jalon })
+  function assignComposerDraft(id: string | null) {
+    sidebarDraftIdRef.current = id
+    setComposerDraftId(id)
+  }
+
+  function resetSidebarComposer() {
+    setEditingFeedback(null)
+    setEncartEdit(null)
+    setEncartNote(null)
     setFbKind('reaction')
     setFbReactionText('')
     setFbConstat('')
     setFbProposition('')
     setFbBenefice('')
+    setSidebarAutosaveNote(null)
+    assignComposerDraft(null)
+  }
+
+  const openJalon = useCallback((jalon: Jalon, chantierId: string) => {
+    const ch = chantiers.find((c) => c.id === chantierId)
+    if (!ch) return
+    setSelection({ kind: 'jalon', chantier: ch, jalon })
+    setEditingFeedback(null)
+    setFbKind('reaction')
+    setFbReactionText('')
+    setFbConstat('')
+    setFbProposition('')
+    setFbBenefice('')
+    setSidebarAutosaveNote(null)
+    setEncartEdit(null)
+    setEncartNote(null)
+    assignComposerDraft(null)
   }, [chantiers])
 
   const onChantierCellClick = useCallback(
@@ -283,77 +403,167 @@ export default function ReviewerSnapshotPage({
       const ch = chantiers.find((c) => c.id === chantierId)
       if (!ch) return
       setSelection({ kind: 'chantier', chantier: ch })
+      setEditingFeedback(null)
       setFbKind('reaction')
       setFbReactionText('')
       setFbConstat('')
       setFbProposition('')
       setFbBenefice('')
+      setSidebarAutosaveNote(null)
+      setEncartEdit(null)
+      setEncartNote(null)
+      assignComposerDraft(null)
     },
     [chantiers],
   )
 
-  async function handleSaveSidebarFeedback() {
-    if (!reviewerUserId || !selection || editsDisabled) return
-    setFbSaving(true)
-    try {
-      const targetType = selection.kind === 'jalon' ? 'jalon' : 'chantier'
-      const targetId = selection.kind === 'jalon' ? selection.jalon.id : selection.chantier.id
+  const openFrozenParty = useCallback(
+    (chantierId: string, key: string) => {
+      const ch = chantiers.find((c) => c.id === chantierId)
+      const party = (partiesByChantier[chantierId] ?? []).find((row) => stakeholderKey(row) === key)
+      if (!ch || !party) return
+      setSelection({ kind: 'raci', chantier: ch, party })
+      setEditingFeedback(null)
+      setFbKind('reaction')
+      setFbReactionText('')
+      setFbConstat('')
+      setFbProposition('')
+      setFbBenefice('')
+      setSidebarAutosaveNote(null)
+      setEncartEdit(null)
+      setEncartNote(null)
+      assignComposerDraft(null)
+    },
+    [chantiers, partiesByChantier],
+  )
 
-      if (fbKind === 'reaction') {
-        const text = fbReactionText.trim()
-        if (!text) return
-        await createReviewFeedback({
-          snapshot_id: snapshotId,
-          reviewer_user_id: reviewerUserId,
-          kind: 'reaction',
-          target_type: targetType,
-          target_id: targetId,
-          comment: text,
-          constat: null,
-          proposition: null,
-          benefice: null,
-          projet_pere_id: null,
-          axe: null,
-          titre_chantier: null,
-          codir_status: 'pending',
-          codir_motivation: null,
-          parent_id: null,
-        })
-        setFbReactionText('')
-      } else {
-        const c = fbConstat.trim()
-        const p = fbProposition.trim()
-        const b = fbBenefice.trim()
-        if (!c || !p || !b) return
-        await createReviewFeedback({
-          snapshot_id: snapshotId,
-          reviewer_user_id: reviewerUserId,
-          kind: 'decision',
-          target_type: targetType,
-          target_id: targetId,
-          comment: null,
-          constat: c,
-          proposition: p,
-          benefice: b,
-          projet_pere_id: null,
-          axe: null,
-          titre_chantier: null,
-          codir_status: 'pending',
-          codir_motivation: null,
-          parent_id: null,
-        })
-        setFbConstat('')
-        setFbProposition('')
-        setFbBenefice('')
-      }
+  const sidebarFieldsReady =
+    fbKind === 'reaction'
+      ? fbReactionText.trim().length > 0
+      : fbConstat.trim().length > 0 && fbProposition.trim().length > 0 && fbBenefice.trim().length > 0
+
+  async function persistSidebarDraft() {
+    if (!reviewerUserId || !selection || editsDisabled || !sidebarFieldsReady) return
+    if (editingFeedback?.kind === 'proposition_chantier') return
+    const genAtStart = sidebarGenRef.current
+    const updates =
+      fbKind === 'reaction'
+        ? { comment: fbReactionText.trim() }
+        : {
+            constat: fbConstat.trim(),
+            proposition: fbProposition.trim(),
+            benefice: fbBenefice.trim(),
+          }
+    const editedId = editingFeedback?.id
+    if (editedId) {
+      await updateReviewFeedback(editedId, updates)
+      if (sidebarGenRef.current !== genAtStart) return
       await reloadFeedbacks()
+      return
+    }
+    if (sidebarDraftIdRef.current) {
+      await updateReviewFeedback(sidebarDraftIdRef.current, updates)
+      if (sidebarGenRef.current !== genAtStart) return
+      await reloadFeedbacks()
+      return
+    }
+    if (sidebarCreateRef.current) {
+      await sidebarCreateRef.current
+      if (sidebarGenRef.current !== genAtStart) return
+      const id = sidebarDraftIdRef.current
+      if (id) await updateReviewFeedback(id, updates)
+      await reloadFeedbacks()
+      return
+    }
+    const target = sidebarTarget(selection)
+    const creating = createReviewFeedback({
+      snapshot_id: snapshotId,
+      reviewer_user_id: reviewerUserId,
+      kind: fbKind === 'reaction' ? 'reaction' : 'decision',
+      target_type: target.target_type,
+      target_id: target.target_id,
+      comment: fbKind === 'reaction' ? fbReactionText.trim() : null,
+      constat: fbKind === 'decision' ? fbConstat.trim() : null,
+      proposition: fbKind === 'decision' ? fbProposition.trim() : null,
+      benefice: fbKind === 'decision' ? fbBenefice.trim() : null,
+      projet_pere_id: null,
+      axe: null,
+      titre_chantier: null,
+      codir_status: 'pending',
+      codir_motivation: null,
+      parent_id: null,
+    }).then((row) => {
+      if (sidebarGenRef.current === genAtStart) assignComposerDraft(row.id)
+      return row.id
+    })
+    sidebarCreateRef.current = creating
+    try {
+      await creating
+      await reloadFeedbacks()
+    } finally {
+      sidebarCreateRef.current = null
+    }
+  }
+
+  async function handleSaveSidebarFeedback() {
+    if (!reviewerUserId || !selection || editsDisabled || !sidebarFieldsReady) return
+    setFbSaving(true)
+    setSidebarAutosaveNote('Enregistrement…')
+    try {
+      await persistSidebarDraft()
+      assignComposerDraft(null)
+      setFbReactionText('')
+      setFbConstat('')
+      setFbProposition('')
+      setFbBenefice('')
+      setSidebarAutosaveNote('Enregistré')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Enregistrement impossible'
+      setSidebarAutosaveNote(msg)
     } finally {
       setFbSaving(false)
     }
   }
 
+  function beginEncartEdit(fb: RoadmapReviewFeedback) {
+    if (fb.kind !== 'reaction' && fb.kind !== 'decision') return
+    if (!canEditFeedback(fb, reviewerStatus)) return
+    encartDirtyRef.current = false
+    setEncartEdit({
+      id: fb.id,
+      kind: fb.kind,
+      comment: fb.comment ?? '',
+      constat: fb.constat ?? '',
+      proposition: fb.proposition ?? '',
+      benefice: fb.benefice ?? '',
+    })
+    setEncartNote(null)
+  }
+
   function handleEditFeedback(fb: RoadmapReviewFeedback) {
     if (!canEditFeedback(fb, reviewerStatus)) return
+    if (fb.target_type === 'raci_chantier' && fb.target_id) {
+      const sameParty = selection?.kind === 'raci' && selection.party.id === fb.target_id
+      for (const [cId, rows] of Object.entries(partiesByChantier)) {
+        const party = rows.find((row) => row.id === fb.target_id)
+        const parentCh = chantiers.find((c) => c.id === cId)
+        if (party && parentCh) {
+          setSelection({ kind: 'raci', chantier: parentCh, party })
+          break
+        }
+      }
+      if (!sameParty) {
+        setFbKind('reaction')
+        setFbReactionText('')
+        setFbConstat('')
+        setFbProposition('')
+        setFbBenefice('')
+        setSidebarAutosaveNote(null)
+        assignComposerDraft(null)
+      }
+      beginEncartEdit(fb)
+      return
+    }
     setEditingFeedback(fb)
     setFbKind(fb.kind === 'proposition_chantier' ? 'reaction' : fb.kind)
     if (fb.kind === 'reaction') {
@@ -430,42 +640,206 @@ export default function ReviewerSnapshotPage({
     }
   }
 
-  async function handleSubmitPropositionChantier() {
-    if (!reviewerUserId || editsDisabled) return
-    const pid = propProjetId.trim()
-    const titre = propTitre.trim()
-    const c = propConstat.trim()
-    const p = propProposition.trim()
-    const b = propBenefice.trim()
-    if (!pid || !titre || !c || !p || !b) return
-    setPropSaving(true)
+  const propositionFieldsReady =
+    propProjetId.trim().length > 0 &&
+    propTitre.trim().length > 0 &&
+    propConstat.trim().length > 0 &&
+    propProposition.trim().length > 0 &&
+    propBenefice.trim().length > 0
+
+  async function persistPropositionDraft() {
+    if (!reviewerUserId || editsDisabled || !propositionFieldsReady) return
+    const updates = {
+      constat: propConstat.trim(),
+      proposition: propProposition.trim(),
+      benefice: propBenefice.trim(),
+      titre_chantier: propTitre.trim(),
+      projet_pere_id: propProjetId.trim(),
+      axe: propAxe,
+    }
+    if (propositionDraftIdRef.current) {
+      await updateReviewFeedback(propositionDraftIdRef.current, updates)
+      await reloadFeedbacks()
+      return
+    }
+    if (propositionCreateRef.current) {
+      await propositionCreateRef.current
+      const id = propositionDraftIdRef.current
+      if (id) await updateReviewFeedback(id, updates)
+      await reloadFeedbacks()
+      return
+    }
+    const creating = createReviewFeedback({
+      snapshot_id: snapshotId,
+      reviewer_user_id: reviewerUserId,
+      kind: 'proposition_chantier',
+      target_type: 'proposition',
+      target_id: null,
+      comment: null,
+      constat: updates.constat,
+      proposition: updates.proposition,
+      benefice: updates.benefice,
+      projet_pere_id: updates.projet_pere_id,
+      axe: updates.axe,
+      titre_chantier: updates.titre_chantier,
+      codir_status: 'pending',
+      codir_motivation: null,
+      parent_id: null,
+    }).then((row) => {
+      propositionDraftIdRef.current = row.id
+      return row.id
+    })
+    propositionCreateRef.current = creating
     try {
-      await createReviewFeedback({
-        snapshot_id: snapshotId,
-        reviewer_user_id: reviewerUserId,
-        kind: 'proposition_chantier',
-        target_type: 'proposition',
-        target_id: null,
-        comment: null,
-        constat: c,
-        proposition: p,
-        benefice: b,
-        projet_pere_id: pid,
-        axe: propAxe,
-        titre_chantier: titre,
-        codir_status: 'pending',
-        codir_motivation: null,
-        parent_id: null,
-      })
+      await creating
+      await reloadFeedbacks()
+    } finally {
+      propositionCreateRef.current = null
+    }
+  }
+
+  async function handleSubmitPropositionChantier() {
+    if (!reviewerUserId || editsDisabled || !propositionFieldsReady) return
+    setPropSaving(true)
+    setPropositionAutosaveNote('Enregistrement…')
+    try {
+      await persistPropositionDraft()
+      propositionDraftIdRef.current = null
       setPropTitre('')
       setPropConstat('')
       setPropProposition('')
       setPropBenefice('')
-      await reloadFeedbacks()
+      setPropositionAutosaveNote('Enregistré')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Enregistrement impossible'
+      setPropositionAutosaveNote(msg)
     } finally {
       setPropSaving(false)
     }
   }
+
+  useEffect(() => {
+    sidebarGenRef.current += 1
+    sidebarDraftIdRef.current = null
+    setComposerDraftId(null)
+  }, [activeSelectionKey, fbKind])
+
+  useEffect(() => {
+    if (editsDisabled || !reviewerUserId || !selection || !sidebarFieldsReady) return
+    if (editingFeedback?.kind === 'proposition_chantier') return
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setSidebarAutosaveNote('Enregistrement…')
+        try {
+          await persistSidebarDraft()
+          if (!cancelled) setSidebarAutosaveNote('Enregistré')
+        } catch (e) {
+          if (!cancelled) {
+            setSidebarAutosaveNote(e instanceof Error ? e.message : 'Enregistrement impossible')
+          }
+        }
+      })()
+    }, SIDEBAR_AUTOSAVE_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [
+    editsDisabled,
+    reviewerUserId,
+    activeSelectionKey,
+    fbKind,
+    fbReactionText,
+    fbConstat,
+    fbProposition,
+    fbBenefice,
+    sidebarFieldsReady,
+    editingFeedback?.id,
+    editingFeedback?.kind,
+  ])
+
+  useEffect(() => {
+    if (editsDisabled || !encartEdit || !encartDirtyRef.current) return
+    const draft = encartEdit
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setEncartNote('Enregistrement…')
+        try {
+          await updateReviewFeedback(
+            draft.id,
+            draft.kind === 'reaction'
+              ? { comment: draft.comment.trim() }
+              : {
+                  constat: draft.constat.trim(),
+                  proposition: draft.proposition.trim(),
+                  benefice: draft.benefice.trim(),
+                },
+          )
+          await reloadFeedbacks()
+          if (!cancelled) setEncartNote('Enregistré')
+        } catch (e) {
+          if (!cancelled) {
+            setEncartNote(e instanceof Error ? e.message : 'Enregistrement impossible')
+          }
+        }
+      })()
+    }, SIDEBAR_AUTOSAVE_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [encartEdit, editsDisabled, reloadFeedbacks])
+
+  useEffect(() => {
+    if (editsDisabled || !reviewerUserId || !propositionFieldsReady) return
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setPropositionAutosaveNote('Enregistrement…')
+        try {
+          await persistPropositionDraft()
+          if (!cancelled) setPropositionAutosaveNote('Enregistré')
+        } catch (e) {
+          if (!cancelled) {
+            setPropositionAutosaveNote(e instanceof Error ? e.message : 'Enregistrement impossible')
+          }
+        }
+      })()
+    }, SIDEBAR_AUTOSAVE_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [
+    editsDisabled,
+    reviewerUserId,
+    propositionFieldsReady,
+    propProjetId,
+    propAxe,
+    propTitre,
+    propConstat,
+    propProposition,
+    propBenefice,
+  ])
+
+  useEffect(() => {
+    if (!narrow || !selection) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelection(null)
+        resetSidebarComposer()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [narrow, activeSelectionKey])
 
   async function confirmSubmitReview() {
     if (!reviewerUserId || observerReadOnly) return
@@ -484,6 +858,29 @@ export default function ReviewerSnapshotPage({
     const ids = [...new Set(chantiers.map((c) => c.projet_id).filter(Boolean))]
     return ids.map((id) => ({ id, nom: projetNomById[id] ?? id }))
   }, [chantiers, projetNomById])
+
+  const frozenPci = useMemo(() => {
+    const byKey = new Map<string, ReturnType<typeof buildCanonicalFromRow>>()
+    for (const rows of Object.values(partiesByChantier)) {
+      for (const row of rows) {
+        const canonical = buildCanonicalFromRow(row)
+        if (!byKey.has(canonical.key)) byKey.set(canonical.key, canonical)
+      }
+    }
+    const canonicalStakeholders = [...byKey.values()].sort(sortCanonical)
+    if (canonicalStakeholders.length === 0) return null
+    return {
+      canonicalStakeholders,
+      readOnly: true as const,
+      getRowFor: (chantierId: string, key: string) =>
+        (partiesByChantier[chantierId] ?? []).find((row) => stakeholderKey(row) === key) ?? null,
+      openCell: openFrozenParty,
+      onCommentCell: openFrozenParty,
+      openNewStakeholder: () => {},
+      openEditStakeholder: () => {},
+      firstChantierId: chantiers[0]?.id ?? null,
+    }
+  }, [partiesByChantier, chantiers, openFrozenParty])
 
   if (loading) {
     return (
@@ -576,7 +973,9 @@ export default function ReviewerSnapshotPage({
         <div className="reviewer-layout__grid">
           <h2 className="reviewer-section-title">Roadmap figée (lecture seule)</h2>
           <p className="mr-muted" style={{ marginBottom: 12 }}>
-            Cliquez un chantier ou un jalon pour commenter dans le panneau de droite.
+            {frozenPci
+              ? 'Cliquez un chantier, un jalon ou une partie prenante pour commenter.'
+              : 'Cliquez un chantier ou un jalon pour commenter dans le panneau de droite.'}
           </p>
           <div className="mr-tgrid-wrap">
             <RoadmapTimelineGrid
@@ -590,12 +989,29 @@ export default function ReviewerSnapshotPage({
               onOpenJalon={openJalon}
               onQuickAddInCell={() => {}}
               onChantierCellClick={onChantierCellClick}
-              pci={null}
+              pci={frozenPci}
             />
           </div>
         </div>
 
-        <aside className="reviewer-layout__sidebar" aria-label="Commentaires reviewer">
+        <aside
+          className={
+            selection ? 'reviewer-layout__sidebar reviewer-layout__sidebar--drawer' : 'reviewer-layout__sidebar'
+          }
+          aria-label="Commentaires reviewer"
+          aria-modal={narrow && selection ? true : undefined}
+          role={narrow && selection ? 'dialog' : undefined}
+        >
+          <button
+            type="button"
+            className="reviewer-drawer-close"
+            onClick={() => {
+              setSelection(null)
+              resetSidebarComposer()
+            }}
+          >
+            Fermer
+          </button>
           <h2 className="reviewer-section-title">
             {observerReadOnly ? 'Commentaires du reviewer (lecture seule)' : 'Votre commentaire'}
           </h2>
@@ -609,6 +1025,12 @@ export default function ReviewerSnapshotPage({
                     Jalon <strong>{selection.jalon.nom || 'Sans titre'}</strong> — chantier{' '}
                     <strong>{selection.chantier.nom}</strong>
                   </>
+                ) : selection.kind === 'raci' ? (
+                  <>
+                    Partie prenante <strong>{selection.party.entite_nom}</strong>
+                    {selection.party.personne_nom ? ` — ${selection.party.personne_nom}` : ''} — chantier{' '}
+                    <strong>{selection.chantier.nom}</strong>
+                  </>
                 ) : (
                   <>
                     Chantier <strong>{selection.chantier.nom}</strong>
@@ -616,6 +1038,109 @@ export default function ReviewerSnapshotPage({
                 )}
               </p>
               <div className="reviewer-sidebar__scrollable">
+              {partyEncarts.length > 0 ? (
+                <ul className="reviewer-encarts">
+                  {partyEncarts.map((fb) => {
+                    const editing = encartEdit?.id === fb.id ? encartEdit : null
+                    const editable = canEditFeedback(fb, reviewerStatus)
+                    return (
+                      <li key={fb.id} className="reviewer-encart">
+                        <div className="reviewer-encart__head">
+                          <span className="reviewer-encart__type">{feedbackKindLabel(fb.kind)}</span>
+                          {editable ? (
+                            <button
+                              type="button"
+                              className="reviewer-encart__edit"
+                              aria-label="Modifier ce commentaire"
+                              onClick={() => {
+                                if (editing) return
+                                beginEncartEdit(fb)
+                              }}
+                            >
+                              <PencilIcon />
+                            </button>
+                          ) : null}
+                        </div>
+                        {editing?.kind === 'reaction' ? (
+                          <textarea
+                            className="reviewer-encart__field"
+                            aria-label="Commentaire"
+                            value={editing.comment}
+                            rows={3}
+                            onChange={(e) => {
+                              encartDirtyRef.current = true
+                              setEncartEdit({ ...editing, comment: e.target.value })
+                            }}
+                          />
+                        ) : editing?.kind === 'decision' ? (
+                          <>
+                            <label className="reviewer-encart__label" htmlFor={`encart-constat-${fb.id}`}>
+                              Constat
+                            </label>
+                            <textarea
+                              id={`encart-constat-${fb.id}`}
+                              className="reviewer-encart__field"
+                              value={editing.constat}
+                              rows={2}
+                              onChange={(e) => {
+                                encartDirtyRef.current = true
+                                setEncartEdit({ ...editing, constat: e.target.value })
+                              }}
+                            />
+                            <label className="reviewer-encart__label" htmlFor={`encart-prop-${fb.id}`}>
+                              Proposition
+                            </label>
+                            <textarea
+                              id={`encart-prop-${fb.id}`}
+                              className="reviewer-encart__field"
+                              value={editing.proposition}
+                              rows={2}
+                              onChange={(e) => {
+                                encartDirtyRef.current = true
+                                setEncartEdit({ ...editing, proposition: e.target.value })
+                              }}
+                            />
+                            <label className="reviewer-encart__label" htmlFor={`encart-ben-${fb.id}`}>
+                              Bénéfice anticipé
+                            </label>
+                            <textarea
+                              id={`encart-ben-${fb.id}`}
+                              className="reviewer-encart__field"
+                              value={editing.benefice}
+                              rows={2}
+                              onChange={(e) => {
+                                encartDirtyRef.current = true
+                                setEncartEdit({ ...editing, benefice: e.target.value })
+                              }}
+                            />
+                          </>
+                        ) : fb.kind === 'reaction' ? (
+                          <p className="reviewer-encart__text">{fb.comment}</p>
+                        ) : (
+                          <>
+                            <p className="reviewer-encart__text">
+                              <span className="reviewer-encart__label">Constat</span> {fb.constat}
+                            </p>
+                            <p className="reviewer-encart__text">
+                              <span className="reviewer-encart__label">Proposition</span> {fb.proposition}
+                            </p>
+                            <p className="reviewer-encart__text">
+                              <span className="reviewer-encart__label">Bénéfice anticipé</span> {fb.benefice}
+                            </p>
+                          </>
+                        )}
+                        {editing && encartNote ? (
+                          <p className="mr-muted" role="status">
+                            {encartNote}
+                          </p>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
+              {selection.kind === 'raci' && editsDisabled ? null : (
+              <>
               <div className="mr-field">
                 <label htmlFor="fb-kind">Type</label>
                 <select
@@ -707,6 +1232,13 @@ export default function ReviewerSnapshotPage({
                   {fbSaving ? 'Enregistrement…' : 'Enregistrer le feedback'}
                 </button>
               )}
+              {sidebarAutosaveNote ? (
+                <p className="mr-muted" role="status">
+                  {sidebarAutosaveNote}
+                </p>
+              ) : null}
+              </>
+              )}
               </div>
             </>
           )}
@@ -797,6 +1329,11 @@ export default function ReviewerSnapshotPage({
           >
             {propSaving ? 'Envoi…' : 'Soumettre au CODIR'}
           </button>
+          {propositionAutosaveNote ? (
+            <p className="mr-muted" role="status">
+              {propositionAutosaveNote}
+            </p>
+          ) : null}
         </div>
 
         <h3 style={{ marginTop: 20 }}>Vos propositions et feedbacks</h3>
@@ -926,6 +1463,27 @@ export default function ReviewerSnapshotPage({
           background: var(--theme-bg-card, #fff);
           overflow: hidden;
         }
+        .reviewer-drawer-close {
+          display: none;
+          align-self: flex-end;
+          margin-bottom: var(--space-sm, 8px);
+        }
+        @media (max-width: 768px) {
+          .reviewer-layout__sidebar { display: none; }
+          .reviewer-layout__sidebar--drawer {
+            display: flex;
+            position: fixed;
+            inset: 0;
+            z-index: 140;
+            width: auto;
+            max-height: none;
+            top: 0;
+            border-radius: 0;
+            background: var(--theme-bg-card);
+            color: var(--theme-text);
+          }
+          .reviewer-layout__sidebar--drawer .reviewer-drawer-close { display: inline-flex; }
+        }
         .reviewer-layout__sidebar > h2 { flex-shrink: 0; }
         .reviewer-layout__sidebar > p { flex-shrink: 0; }
         .reviewer-sidebar__scrollable {
@@ -937,6 +1495,68 @@ export default function ReviewerSnapshotPage({
         .reviewer-part3__form { display: grid; gap: 12px; max-width: 640px; }
         .reviewer-fb-list { list-style: none; padding: 0; margin: 12px 0 0; }
         .reviewer-fb-list li { padding: 10px 0; border-bottom: 1px solid var(--theme-border-subtle, rgba(0,0,0,.08)); }
+        .reviewer-encarts {
+          list-style: none;
+          margin: 0 0 var(--space-sm, 8px);
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-sm, 8px);
+        }
+        .reviewer-encart {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-xs, 4px);
+          padding: var(--space-sm, 8px);
+          border: 1px solid var(--theme-border-subtle, rgba(0,0,0,.12));
+          border-radius: var(--radius-md, 8px);
+          background: var(--theme-bg-card);
+          color: var(--theme-text);
+        }
+        .reviewer-encart__head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--space-sm, 8px);
+        }
+        .reviewer-encart__type {
+          font-weight: 600;
+          font-size: 0.75rem;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        .reviewer-encart__edit {
+          appearance: none;
+          border: none;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: var(--radius-sm, 4px);
+          display: inline-flex;
+        }
+        .reviewer-encart__edit:hover {
+          background: color-mix(in srgb, var(--theme-accent, var(--caramel-candy-600)) 12%, transparent);
+        }
+        .reviewer-encart__edit:focus-visible {
+          outline: 2px solid var(--theme-accent, var(--caramel-candy-600));
+          outline-offset: 2px;
+        }
+        .reviewer-encart__text { margin: 0; font-size: 0.92rem; white-space: pre-wrap; }
+        .reviewer-encart__label {
+          display: block;
+          font-size: 0.75rem;
+          color: var(--theme-text-muted, #57534e);
+        }
+        .reviewer-encart__field {
+          width: 100%;
+          font: inherit;
+          color: inherit;
+          background: var(--theme-bg-card);
+          border: 1px solid var(--theme-border-subtle, rgba(0,0,0,.12));
+          border-radius: var(--radius-sm, 4px);
+          padding: var(--space-xs, 4px) var(--space-sm, 8px);
+        }
         .reviewer-fb-kind { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
         .reviewer-fb-codir { font-size: 0.85rem; }
         .reviewer-fb-preview { margin-top: 4px; font-size: 0.9rem; }

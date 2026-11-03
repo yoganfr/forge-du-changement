@@ -9,6 +9,7 @@ import {
   getChantierJalons,
   getJalonById,
   getJalonsByChantierIds,
+  getRaciChantiersByChantierIds,
   getJalonRaci,
   getProjetChantiers,
   getRoadmapEligibleProjects,
@@ -630,11 +631,15 @@ export default function MaturityRoadmap({
     try {
       setSnapshotSaving(true)
       const selectedProjectId = selectedProjectIds.length === 1 ? selectedProjectIds[0] : null
+      const partiesByChantier = await getRaciChantiersByChantierIds(chantiers.map((chantier) => chantier.id))
       const items = chantiers.flatMap((chantier) => {
         const chantierPayload = {
           kind: 'chantier' as const,
           source_id: chantier.id,
-          payload: chantier as unknown as Record<string, unknown>,
+          payload: {
+            ...(chantier as unknown as Record<string, unknown>),
+            parties_prenantes: partiesByChantier[chantier.id] ?? [],
+          },
         }
         const jalonItems = (jalonsByChantier[chantier.id] ?? []).map((jalon) => ({
           kind: 'jalon' as const,

@@ -290,7 +290,10 @@ export async function arbitrateFeedback(
 export async function updateReviewFeedback(
   feedbackId: string,
   updates: Partial<
-    Pick<RoadmapReviewFeedback, 'comment' | 'constat' | 'proposition' | 'benefice' | 'titre_chantier'>
+    Pick<
+      RoadmapReviewFeedback,
+      'comment' | 'constat' | 'proposition' | 'benefice' | 'titre_chantier' | 'projet_pere_id' | 'axe'
+    >
   >,
 ): Promise<RoadmapReviewFeedback> {
   const { data, error } = await supabase
